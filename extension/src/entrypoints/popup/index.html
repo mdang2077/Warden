@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Warden</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <p class="brand">Warden</p>
+      <p id="status" class="status" data-decision="none">Checking…</p>
+      <p id="detail" class="detail"></p>
+      <button id="report" type="button" hidden>Report false positive</button>
+      <p id="report-done" class="detail" role="status" hidden>
+        Thanks. The report was saved on this device.
+      </p>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

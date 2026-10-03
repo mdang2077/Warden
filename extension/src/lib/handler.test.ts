@@ -30,6 +30,7 @@ function deps(stages: Stage[], bypassed = false) {
     onBlock: vi.fn(),
     isBypassed: vi.fn(async () => bypassed),
     onResult: vi.fn(),
+    onVerdict: vi.fn(),
   };
 }
 
@@ -53,6 +54,10 @@ describe("createNavigationHandler", () => {
     await createNavigationHandler(d)(nav("https://phish.example/"));
     expect(d.isBypassed).toHaveBeenCalledWith("https://phish.example/", ["openphish"]);
     expect(d.onBlock).not.toHaveBeenCalled();
+    expect(d.onVerdict).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ decision: "block", bypassed: true }),
+    );
   });
 
   it("ignores subframes and skipped URLs", async () => {

@@ -1,6 +1,7 @@
 import { type CascadeResult, runCascade } from "@warden/shared/cascade";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { shouldEvaluate } from "./navigation.ts";
+import type { TabVerdict } from "./tab-state.ts";
 
 /** Total time the cascade may spend on one hop. Covers the 1.5 s Safe Browsing timeout. */
 export const CASCADE_BUDGET_MS = 2000;
@@ -21,6 +22,8 @@ export interface HandlerDeps {
   onBlock: (ctx: NavigationContext, sources: SourceId[]) => void | Promise<void>;
   isBypassed: (url: string, sources: readonly SourceId[]) => Promise<boolean>;
   onResult?: (ctx: NavigationContext, result: CascadeResult) => void;
+  /** Final outcome for the hop, after bypasses are applied. */
+  onVerdict?: (ctx: NavigationContext, verdict: TabVerdict) => void | Promise<void>;
   now?: () => number;
 }
 
@@ -61,14 +64,21 @@ export function createNavigationHandler(deps: HandlerDeps) {
     const result = await runCascade(deps.stages(), ctx, { budgetMs: CASCADE_BUDGET_MS });
     deps.onResult?.(ctx, result);
 
+    const sources = blockSources(result);
+    let bypassed = false;
     if (result.decision === "block") {
       // Never dedupe a block: a repeat visit to a blocked URL must be blocked again.
       recent.delete(key);
-      const sources = blockSources(result);
-      if (!(await deps.isBypassed(details.url, sources))) {
-        await deps.onBlock(ctx, sources);
-      }
+      bypassed = await deps.isBypassed(details.url, sources);
     }
+    await deps.onVerdict?.(ctx, {
+      url: details.url,
+      decision: result.decision,
+      sources,
+      bypassed,
+      at: t,
+    });
+    if (result.decision === "block" && !bypassed) await deps.onBlock(ctx, sources);
     return result;
   };
 }

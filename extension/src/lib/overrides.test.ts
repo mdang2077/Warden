@@ -1,17 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createOverrideStore, type KeyValueArea } from "./overrides.ts";
-
-function memoryArea(): KeyValueArea {
-  const data: Record<string, unknown> = {};
-  return {
-    async get(key) {
-      return key in data ? { [key]: data[key] } : {};
-    },
-    async set(items) {
-      Object.assign(data, items);
-    },
-  };
-}
+import { createOverrideStore } from "./overrides.ts";
+import { memoryArea } from "./test-utils.ts";
 
 describe("override store", () => {
   it("bypasses only the exact URL the user clicked through", async () => {

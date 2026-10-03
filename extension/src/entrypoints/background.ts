@@ -5,6 +5,7 @@ import { defineBackground } from "wxt/utils/define-background";
 import { createNavigationHandler } from "../lib/handler.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
+import { clearTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
 
 // Stage 0 and Stage 1 are wired in during Phase 2.
 const stages: Stage[] = [];
@@ -32,12 +33,17 @@ async function showInterstitial(ctx: NavigationContext, sources: SourceId[]) {
 export default defineBackground({
   type: "module",
   main() {
-    const overrides = createOverrideStore(browser.storage.session);
+    const session = browser.storage.session;
+    const overrides = createOverrideStore(session);
     const handle = createNavigationHandler({
       stages: () => stages,
       onBlock: showInterstitial,
       isBypassed: overrides.isBypassed,
       onResult: logResult,
+      onVerdict: (ctx, verdict) => setTabVerdict(session, ctx.tabId, verdict),
+    });
+    browser.tabs.onRemoved.addListener((tabId) => {
+      void clearTabVerdict(session, tabId);
     });
     const listener = (details: Parameters<typeof handle>[0]) => {
       handle(details).catch((err) => console.error("[Warden] navigation handler failed", err));
