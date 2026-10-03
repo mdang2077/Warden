@@ -1,4 +1,5 @@
 import { browser } from "wxt/browser";
+import { addSessionBypass, type DnrSessionApi } from "../../lib/dnr.ts";
 import { parseWarningParams, SOURCE_LABELS } from "../../lib/interstitial.ts";
 import { createOverrideStore } from "../../lib/overrides.ts";
 
@@ -36,6 +37,8 @@ if (!params || framed) {
   proceed.addEventListener("click", async () => {
     proceed.disabled = true;
     await store.addBypass(params.url, params.sources);
+    // Tier A entries are also DNR block rules, which run before the service worker.
+    await addSessionBypass(browser.declarativeNetRequest as unknown as DnrSessionApi, params.url);
     location.replace(params.url);
   });
 }
