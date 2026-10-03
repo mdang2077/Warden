@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "updated": "2026-10-03",
+  "entries": [
+    {
+      "pattern": "docs.google.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "drive.google.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "sites.google.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "script.google.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "*.googleusercontent.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "storage.googleapis.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "firebasestorage.googleapis.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "*.firebaseapp.com",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "*.web.app",
+      "group": "Google user content"
+    },
+    {
+      "pattern": "forms.office.com",
+      "group": "Microsoft user content"
+    },
+    {
+      "pattern": "onedrive.live.com",
+      "group": "Microsoft user content"
+    },
+    {
+      "pattern": "*.sharepoint.com",
+      "group": "Microsoft user content"
+    },
+    {
+      "pattern": "*.blob.core.windows.net",
+      "group": "Microsoft user content"
+    },
+    {
+      "pattern": "*.web.core.windows.net",
+      "group": "Microsoft user content"
+    },
+    {
+      "pattern": "*.azurewebsites.net",
+      "group": "Microsoft user content"
+    },
+    {
+      "pattern": "*.amazonaws.com",
+      "group": "AWS (S3 and other customer hosts)"
+    },
+    {
+      "pattern": "dropbox.com",
+      "group": "File sharing"
+    },
+    {
+      "pattern": "*.dropbox.com",
+      "group": "File sharing"
+    },
+    {
+      "pattern": "*.dropboxusercontent.com",
+      "group": "File sharing"
+    },
+    {
+      "pattern": "notion.so",
+      "group": "Notion"
+    },
+    {
+      "pattern": "*.notion.so",
+      "group": "Notion"
+    },
+    {
+      "pattern": "*.notion.site",
+      "group": "Notion"
+    },
+    {
+      "pattern": "ipfs.io",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "dweb.link",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "*.dweb.link",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "cloudflare-ipfs.com",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "*.mypinata.cloud",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "gateway.pinata.cloud",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "w3s.link",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "*.w3s.link",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "*.nftstorage.link",
+      "group": "IPFS gateways"
+    },
+    {
+      "pattern": "*.webflow.io",
+      "group": "Site builders"
+    },
+    {
+      "pattern": "*.wixsite.com",
+      "group": "Site builders"
+    },
+    {
+      "pattern": "*.weebly.com",
+      "group": "Site builders"
+    },
+    {
+      "pattern": "*.square.site",
+      "group": "Site builders"
+    },
+    {
+      "pattern": "*.workers.dev",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "*.pages.dev",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "*.vercel.app",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "*.netlify.app",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "*.github.io",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "*.glitch.me",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "*.r2.dev",
+      "group": "App hosting"
+    },
+    {
+      "pattern": "bit.ly",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "tinyurl.com",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "t.co",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "goo.gl",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "ow.ly",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "is.gd",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "buff.ly",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "rebrand.ly",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "cutt.ly",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "shorturl.at",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "rb.gy",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "t.ly",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "lnkd.in",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "forms.gle",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "1drv.ms",
+      "group": "URL shorteners"
+    },
+    {
+      "pattern": "aka.ms",
+      "group": "URL shorteners"
+    }
+  ]
+}
