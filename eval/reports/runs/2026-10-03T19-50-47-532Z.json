@@ -1,0 +1,22 @@
+{
+  "gatePassed": true,
+  "benign": 102145,
+  "phishTest": 5307,
+  "timeSplit": null,
+  "prod": {
+    "block": {
+      "tp": 206,
+      "fp": 0,
+      "tn": 102145,
+      "fn": 5101
+    },
+    "flagged": {
+      "tp": 206,
+      "fp": 0,
+      "tn": 102145,
+      "fn": 5101
+    }
+  },
+  "benignBlocks": [],
+  "benignFlaggedAllFeeds": []
+}
