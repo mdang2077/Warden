@@ -72,6 +72,32 @@ describe("createNavigationHandler", () => {
     );
   });
 
+  it("waits for stage data before evaluating", async () => {
+    const order: string[] = [];
+    const stage: Stage = {
+      id: "stage1_deterministic",
+      evaluate: async () => {
+        order.push("evaluate");
+        return {
+          decision: "allow",
+          score: 0,
+          signals: [],
+          latency_ms: 0,
+          source: "stage1_deterministic",
+        };
+      },
+    };
+    const d = deps([stage]);
+    await createNavigationHandler({
+      ...d,
+      ready: async () => {
+        await new Promise((r) => setTimeout(r, 10));
+        order.push("ready");
+      },
+    })(nav("https://ok.example/"));
+    expect(order).toEqual(["ready", "evaluate"]);
+  });
+
   it("ignores subframes and skipped URLs", async () => {
     const d = deps([blockAll]);
     const handle = createNavigationHandler(d);

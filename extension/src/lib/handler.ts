@@ -20,6 +20,11 @@ export interface TopFrameNavigation {
 
 export interface HandlerDeps {
   stages: () => readonly Stage[];
+  /**
+   * Resolves once stage data (the stored allowlist) is loaded. A worker woken by a
+   * navigation must not evaluate it with an empty allowlist.
+   */
+  ready?: () => Promise<void>;
   /** Called only for blocks the user hasn't already clicked through. */
   onBlock: (ctx: NavigationContext, sources: SourceId[]) => void | Promise<void>;
   isBypassed: (url: string, sources: readonly SourceId[]) => Promise<boolean>;
@@ -63,6 +68,7 @@ export function createNavigationHandler(deps: HandlerDeps) {
       redirectChain: details.redirectChain ?? [],
       startedAt: details.timeStamp,
     };
+    await deps.ready?.().catch(() => {});
     const result = await runCascade(deps.stages(), ctx, { budgetMs: CASCADE_BUDGET_MS });
     deps.onResult?.(ctx, result);
 
