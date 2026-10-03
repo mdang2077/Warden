@@ -50,6 +50,10 @@ export interface StageResult {
   source: StageId;
   /** Set by `risk.ts` when the stage emitted something above its cap. */
   capped_from?: Decision;
+  /** True when no later stage should run (e.g. an allowlist hit). `block` always stops. */
+  final?: boolean;
+  /** Set by the cascade runner when the stage threw or timed out (fail-open to `allow`). */
+  error?: string;
 }
 
 /** Input to every stage: one top-frame navigation hop. */
