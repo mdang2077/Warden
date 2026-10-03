@@ -1,0 +1,22 @@
+{
+  // Warden feed service. Deploying needs a Cloudflare account: `wrangler login`, create the
+  // R2 bucket, set the SB_API_KEY secret, then `wrangler deploy`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "warden-feeds",
+  "main": "src/runners/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "triggers": {
+    // Hourly ingest + publish. OpenPhish refreshes every 12 h; ETags make most polls cheap.
+    "crons": ["17 * * * *"]
+  },
+  "r2_buckets": [{ "binding": "FEEDS", "bucket_name": "warden-feeds" }],
+  "ratelimits": [
+    {
+      // Per-IP limit for the Safe Browsing proxy.
+      "name": "SB_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 120, "period": 60 }
+    }
+  ]
+  // Secrets (wrangler secret put): SB_API_KEY, ADMIN_TOKEN. Optional var: ALERT_WEBHOOK_URL.
+}

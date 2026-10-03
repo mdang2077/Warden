@@ -8,5 +8,9 @@
   },
   "dependencies": {
     "@warden/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261003.1",
+    "wrangler": "^4.147.0"
   }
 }
