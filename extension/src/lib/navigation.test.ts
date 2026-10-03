@@ -9,6 +9,8 @@ describe("shouldEvaluate", () => {
     "https://[2001:4860:4860::8888]/",
     "https://172.32.0.1/", // just outside 172.16/12
     "https://localhost.example.com/",
+    "https://local.example.com/",
+    "https://internal.example/",
   ])("evaluates %s", (url) => {
     expect(shouldEvaluate(url)).toBe(true);
   });
@@ -37,6 +39,13 @@ describe("shouldEvaluate", () => {
     "http://[::ffff:127.0.0.1]/",
     "http://[fd12:3456::1]/",
     "http://[fe80::1]/",
+    "http://intranet/",
+    "http://wiki./",
+    "http://printer.local/",
+    "http://nas.home.arpa/",
+    "http://jira.corp.internal/",
+    "http://router.lan/",
+    "http://localhost./",
   ])("skips %s", (url) => {
     expect(shouldEvaluate(url)).toBe(false);
   });

@@ -15,12 +15,22 @@ export function shouldEvaluate(rawUrl: string): boolean {
   return !isLocalHost(url.hostname);
 }
 
+/**
+ * Suffixes that only resolve on a local or private network: `.local` (mDNS, RFC 6762),
+ * `.home.arpa` (RFC 8375), `.internal` (ICANN-reserved for private use), and the common
+ * de facto `.lan`.
+ */
+const PRIVATE_SUFFIXES = ["localhost", "local", "home.arpa", "internal", "lan"];
+
 /** `hostname` as returned by `URL`: lowercase, IPv4 normalized, IPv6 in brackets. */
 export function isLocalHost(hostname: string): boolean {
-  if (hostname === "localhost" || hostname.endsWith(".localhost")) return true;
+  const host = hostname.replace(/\.$/, "");
+  if (PRIVATE_SUFFIXES.some((s) => host === s || host.endsWith(`.${s}`))) return true;
   if (hostname.startsWith("[")) return isPrivateIPv6(hostname.slice(1, -1));
-  const v4 = parseIPv4(hostname);
-  return v4 !== null && isPrivateIPv4(v4);
+  const v4 = parseIPv4(host);
+  if (v4 !== null) return isPrivateIPv4(v4);
+  // Single-label names (http://intranet/) resolve through the local search domain.
+  return !host.includes(".");
 }
 
 function parseIPv4(host: string): number[] | null {
