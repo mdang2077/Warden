@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.output/
+.wxt/
+coverage/
+.wrangler/
+.dev.vars
+*.log
+.DS_Store
+eval/corpora/
+playwright-report/
+test-results/
