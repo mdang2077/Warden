@@ -7,6 +7,7 @@
 import type { CanonicalUrl } from "@warden/shared/canonicalize";
 import { hashExpressions } from "@warden/shared/expressions";
 import { protectedLookupExpressions, type SharedHostList } from "@warden/shared/shared-hosts";
+import type { ListMatch } from "@warden/shared/stage1";
 import type { FeedId, FeedTier } from "@warden/shared/types";
 
 export interface ListEntry {
@@ -19,13 +20,6 @@ export interface ListEntry {
 export interface FeedConfig {
   tier: FeedTier;
   enabled: boolean;
-}
-
-export interface ListMatch {
-  feed: FeedId;
-  tier: FeedTier;
-  /** The lookup expression that matched. */
-  expression: string;
 }
 
 interface EntryRecord extends ListEntry {
