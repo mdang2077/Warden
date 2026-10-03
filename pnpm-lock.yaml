@@ -23,6 +23,9 @@ importers:
 
   eval:
     dependencies:
+      '@warden/service':
+        specifier: workspace:*
+        version: link:../service
       '@warden/shared':
         specifier: workspace:*
         version: link:../shared
