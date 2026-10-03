@@ -30,6 +30,11 @@ if (!params || framed) {
   proceed.hidden = true;
 } else {
   byId("blocked-url").textContent = params.url;
+  if (params.origin) {
+    byId("origin-url").textContent = params.origin;
+    byId("origin-label").hidden = false;
+    byId("origin-row").hidden = false;
+  }
   byId("sources").textContent = params.sources.map((s) => SOURCE_LABELS[s]).join(", ") || "Unknown";
   byId("sb-attribution").hidden = !params.sources.includes("safe_browsing");
 

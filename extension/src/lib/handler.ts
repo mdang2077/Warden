@@ -14,6 +14,8 @@ export interface TopFrameNavigation {
   frameId: number;
   url: string;
   timeStamp: number;
+  /** Earlier hops of the same navigation, oldest first (see redirects.ts). */
+  redirectChain?: string[];
 }
 
 export interface HandlerDeps {
@@ -58,7 +60,7 @@ export function createNavigationHandler(deps: HandlerDeps) {
     const ctx: NavigationContext = {
       url: details.url,
       tabId: details.tabId,
-      redirectChain: [],
+      redirectChain: details.redirectChain ?? [],
       startedAt: details.timeStamp,
     };
     const result = await runCascade(deps.stages(), ctx, { budgetMs: CASCADE_BUDGET_MS });

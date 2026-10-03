@@ -48,3 +48,16 @@ test("Proceed anyway bypasses the block for that URL only", async ({ context, ex
   await other.goto("https://phish.warden-test.example/other").catch(() => {});
   await waitForInterstitial(other, extensionId);
 });
+
+test("a redirect into a blocked page names the link the user followed", async ({
+  context,
+  extensionId,
+}) => {
+  const link = `https://redirect.warden-test.example/?to=${encodeURIComponent(BLOCKED)}`;
+  const page = await context.newPage();
+  await page.goto(link).catch(() => {});
+  await waitForInterstitial(page, extensionId);
+
+  await expect(page.locator("#blocked-url")).toHaveText(BLOCKED);
+  await expect(page.locator("#origin-url")).toHaveText(link);
+});

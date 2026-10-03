@@ -8,6 +8,8 @@ export default defineConfig({
     description: "Blocks known phishing pages using curated threat feeds.",
     permissions: [
       "webNavigation",
+      // Observe-only (no blocking): sees each server-redirect hop of a top-frame navigation.
+      "webRequest",
       "tabs",
       "storage",
       "alarms",

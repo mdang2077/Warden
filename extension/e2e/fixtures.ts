@@ -11,12 +11,16 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
       args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],
     });
     // Serve the fake test hosts locally; nothing goes to the network.
-    await context.route(/^https:\/\/[^/]*\.warden-test\.example\//, (route) =>
-      route.fulfill({
+    await context.route(/^https:\/\/[^/]*\.warden-test\.example\//, (route) => {
+      const url = new URL(route.request().url());
+      // https://redirect.warden-test.example/?to=<url> answers with a 302.
+      const to = url.hostname === "redirect.warden-test.example" && url.searchParams.get("to");
+      if (to) return route.fulfill({ status: 302, headers: { location: to } });
+      return route.fulfill({
         contentType: "text/html",
         body: "<!doctype html><title>Test page</title><h1>Test page</h1>",
-      }),
-    );
+      });
+    });
     await use(context);
     await context.close();
   },

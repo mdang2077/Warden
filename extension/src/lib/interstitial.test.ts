@@ -26,6 +26,27 @@ describe("interstitial params", () => {
     expect(parseWarningParams(search)).toBeNull();
   });
 
+  it("carries the originating link of a redirect chain", () => {
+    const href = buildWarningUrl(PAGE, {
+      url: "https://phish.example/",
+      sources: ["openphish"],
+      origin: "https://news.example/out?id=1",
+    });
+    expect(parseWarningParams(new URL(href).search)?.origin).toBe("https://news.example/out?id=1");
+  });
+
+  it("drops an origin that is unsafe or the same as the blocked URL", () => {
+    const base = "?u=https%3A%2F%2Fx.example%2F&s=openphish";
+    expect(parseWarningParams(`${base}&o=javascript%3Aalert(1)`)?.origin).toBeUndefined();
+    expect(parseWarningParams(`${base}&o=https%3A%2F%2Fx.example%2F`)?.origin).toBeUndefined();
+    const same = buildWarningUrl(PAGE, {
+      url: "https://x.example/",
+      sources: [],
+      origin: "https://x.example/",
+    });
+    expect(new URL(same).searchParams.has("o")).toBe(false);
+  });
+
   it("drops unknown and non-blocking sources", () => {
     const parsed = parseWarningParams("?u=https%3A%2F%2Fx.example%2F&s=openphish,bogus,allowlist");
     expect(parsed?.sources).toEqual(["openphish"]);

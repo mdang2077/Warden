@@ -60,6 +60,18 @@ describe("createNavigationHandler", () => {
     );
   });
 
+  it("passes the redirect chain to the stages and the block handler", async () => {
+    const d = deps([blockAll]);
+    await createNavigationHandler(d)({
+      ...nav("https://phish.example/"),
+      redirectChain: ["https://link.example/"],
+    });
+    expect(d.onBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectChain: ["https://link.example/"] }),
+      ["openphish"],
+    );
+  });
+
   it("ignores subframes and skipped URLs", async () => {
     const d = deps([blockAll]);
     const handle = createNavigationHandler(d);

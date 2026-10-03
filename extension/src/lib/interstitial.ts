@@ -26,30 +26,41 @@ export interface WarningParams {
   /** The blocked URL. Always http(s). */
   url: string;
   sources: SourceId[];
+  /** The link the user followed, when the blocked page was reached by redirect. */
+  origin?: string;
 }
 
 export function buildWarningUrl(pageUrl: string, params: WarningParams): string {
   const url = new URL(pageUrl);
   url.searchParams.set("u", params.url);
   url.searchParams.set("s", params.sources.join(","));
+  if (params.origin && params.origin !== params.url) url.searchParams.set("o", params.origin);
   return url.href;
 }
 
 /** Returns null when the blocked URL is missing or isn't http(s). */
 export function parseWarningParams(search: string): WarningParams | null {
   const params = new URLSearchParams(search);
-  const raw = params.get("u");
-  if (!raw) return null;
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const url = parseHttpUrl(params.get("u"));
+  if (!url) return null;
 
   const sources = (params.get("s") ?? "")
     .split(",")
     .filter((s): s is SourceId => BLOCK_SOURCES.has(s as SourceId));
-  return { url: url.href, sources: [...new Set(sources)] };
+  const origin = parseHttpUrl(params.get("o"));
+  return {
+    url: url.href,
+    sources: [...new Set(sources)],
+    ...(origin && origin.href !== url.href ? { origin: origin.href } : {}),
+  };
+}
+
+function parseHttpUrl(raw: string | null): URL | null {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
 }
