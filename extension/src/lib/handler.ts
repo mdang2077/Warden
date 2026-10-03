@@ -1,0 +1,74 @@
+import { type CascadeResult, runCascade } from "@warden/shared/cascade";
+import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
+import { shouldEvaluate } from "./navigation.ts";
+
+/** Total time the cascade may spend on one hop. Covers the 1.5 s Safe Browsing timeout. */
+export const CASCADE_BUDGET_MS = 2000;
+
+/** The same allowed URL in the same tab is evaluated once within this window. */
+const DEDUPE_WINDOW_MS = 3000;
+
+export interface TopFrameNavigation {
+  tabId: number;
+  frameId: number;
+  url: string;
+  timeStamp: number;
+}
+
+export interface HandlerDeps {
+  stages: () => readonly Stage[];
+  /** Called only for blocks the user hasn't already clicked through. */
+  onBlock: (ctx: NavigationContext, sources: SourceId[]) => void | Promise<void>;
+  isBypassed: (url: string, sources: readonly SourceId[]) => Promise<boolean>;
+  onResult?: (ctx: NavigationContext, result: CascadeResult) => void;
+  now?: () => number;
+}
+
+/** Sources behind the stages that blocked, for the interstitial and bypass checks. */
+export function blockSources(result: CascadeResult): SourceId[] {
+  const sources = result.results
+    .filter((r) => r.decision === "block")
+    .flatMap((r) => r.signals.map((s) => s.source));
+  return [...new Set(sources)];
+}
+
+/**
+ * Builds the listener shared by onBeforeNavigate, onCommitted, and onHistoryStateUpdated.
+ * onCommitted matters: after a server redirect, it is the only event carrying the final URL.
+ */
+export function createNavigationHandler(deps: HandlerDeps) {
+  const now = deps.now ?? Date.now;
+  const recent = new Map<string, number>();
+
+  return async (details: TopFrameNavigation): Promise<CascadeResult | null> => {
+    if (details.frameId !== 0 || !shouldEvaluate(details.url)) return null;
+
+    const key = `${details.tabId}|${details.url}`;
+    const t = now();
+    const last = recent.get(key);
+    if (last !== undefined && t - last < DEDUPE_WINDOW_MS) return null;
+    recent.set(key, t);
+    for (const [k, seen] of recent) {
+      if (t - seen >= DEDUPE_WINDOW_MS) recent.delete(k);
+    }
+
+    const ctx: NavigationContext = {
+      url: details.url,
+      tabId: details.tabId,
+      redirectChain: [],
+      startedAt: details.timeStamp,
+    };
+    const result = await runCascade(deps.stages(), ctx, { budgetMs: CASCADE_BUDGET_MS });
+    deps.onResult?.(ctx, result);
+
+    if (result.decision === "block") {
+      // Never dedupe a block: a repeat visit to a blocked URL must be blocked again.
+      recent.delete(key);
+      const sources = blockSources(result);
+      if (!(await deps.isBypassed(details.url, sources))) {
+        await deps.onBlock(ctx, sources);
+      }
+    }
+    return result;
+  };
+}

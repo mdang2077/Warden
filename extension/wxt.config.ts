@@ -16,8 +16,6 @@ export default defineConfig({
     ],
     host_permissions: ["<all_urls>"],
     // DNR redirect rules point at the interstitial, so it must be web-accessible.
-    web_accessible_resources: [
-      { resources: ["warning.html"], matches: ["<all_urls>"] },
-    ],
+    web_accessible_resources: [{ resources: ["warning.html"], matches: ["<all_urls>"] }],
   },
 });
