@@ -1,15 +1,33 @@
+import { createAllowlistStage } from "@warden/shared/allowlist";
 import type { CascadeResult } from "@warden/shared/cascade";
+import { bundledSharedHosts } from "@warden/shared/shared-hosts";
+import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { createNavigationHandler } from "../lib/handler.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
+import { openListStore } from "../lib/list-store.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import { clearTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
 import { e2eTestStage } from "../lib/test-stage.ts";
 
-// Stage 0 and Stage 1 are wired in during Phase 2. The e2e build adds a test-only stage.
-const stages: Stage[] = import.meta.env.MODE === "e2e" ? [e2eTestStage] : [];
+// The allowlist, list contents, and Safe Browsing proxy endpoint arrive with feed sync (T3.8).
+// Until then Stage 0 reports nothing, Stage 1 finds nothing, and Safe Browsing is skipped.
+const listStore = openListStore();
+const lists: LocalLists = {
+  match: async (url, now) => (await listStore).match(url, bundledSharedHosts, now),
+};
+const stages: Stage[] = [
+  createAllowlistStage({
+    allowlist: () => null,
+    userDomains: () => new Set(),
+    shared: () => bundledSharedHosts,
+  }),
+  createStage1({ lists, safeBrowsing: null }),
+  // The e2e build adds a test-only stage that blocks one reserved host.
+  ...(import.meta.env.MODE === "e2e" ? [e2eTestStage] : []),
+];
 
 function logResult(ctx: NavigationContext, result: CascadeResult) {
   console.debug("[Warden] cascade", ctx.url, result.decision, {
