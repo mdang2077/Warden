@@ -71,6 +71,8 @@ export function createNavigationHandler(deps: HandlerDeps) {
       recent.delete(key);
       bypassed = await deps.isBypassed(details.url, sources);
     }
+    // Show the interstitial first: a failure recording popup state must never suppress a block.
+    if (result.decision === "block" && !bypassed) await deps.onBlock(ctx, sources);
     await deps.onVerdict?.(ctx, {
       url: details.url,
       decision: result.decision,
@@ -78,7 +80,6 @@ export function createNavigationHandler(deps: HandlerDeps) {
       bypassed,
       at: t,
     });
-    if (result.decision === "block" && !bypassed) await deps.onBlock(ctx, sources);
     return result;
   };
 }

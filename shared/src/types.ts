@@ -19,14 +19,12 @@ export type StageId = (typeof STAGE_IDS)[number];
 /** Feed confidence tier. Tier A may block alone; Tier B alone is capped at `escalate`. */
 export type FeedTier = "A" | "B";
 
+/** Local blocklist feeds the service publishes. Safe Browsing is queried live instead. */
+export const FEED_IDS = ["openphish", "phishing_database", "phishstats"] as const;
+export type FeedId = (typeof FEED_IDS)[number];
+
 /** Where a decision or signal came from. */
-export type SourceId =
-  | "allowlist"
-  | "user_override"
-  | "safe_browsing"
-  | "openphish"
-  | "phishing_database"
-  | "phishstats";
+export type SourceId = "allowlist" | "user_override" | "safe_browsing" | FeedId;
 
 /** One piece of evidence behind a decision. */
 export interface Signal {

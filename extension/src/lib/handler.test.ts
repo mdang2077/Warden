@@ -82,6 +82,13 @@ describe("createNavigationHandler", () => {
     expect(d.onResult).toHaveBeenCalledTimes(3);
   });
 
+  it("still blocks when recording the verdict fails", async () => {
+    const d = deps([blockAll]);
+    d.onVerdict.mockRejectedValue(new Error("storage quota"));
+    await expect(createNavigationHandler(d)(nav("https://phish.example/"))).rejects.toThrow();
+    expect(d.onBlock).toHaveBeenCalledTimes(1);
+  });
+
   it("never dedupes a block", async () => {
     const d = deps([blockAll]);
     const handle = createNavigationHandler({ ...d, now: () => 0 });
