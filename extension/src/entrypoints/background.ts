@@ -6,9 +6,10 @@ import { createNavigationHandler } from "../lib/handler.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import { clearTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
+import { e2eTestStage } from "../lib/test-stage.ts";
 
-// Stage 0 and Stage 1 are wired in during Phase 2.
-const stages: Stage[] = [];
+// Stage 0 and Stage 1 are wired in during Phase 2. The e2e build adds a test-only stage.
+const stages: Stage[] = import.meta.env.MODE === "e2e" ? [e2eTestStage] : [];
 
 function logResult(ctx: NavigationContext, result: CascadeResult) {
   console.debug("[Warden] cascade", ctx.url, result.decision, {

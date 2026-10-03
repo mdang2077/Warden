@@ -4,5 +4,5 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": true
   },
-  "include": ["src", "test", ".wxt/wxt.d.ts"]
+  "include": ["src", "e2e", "playwright.config.ts", ".wxt/wxt.d.ts"]
 }

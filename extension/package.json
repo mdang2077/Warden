@@ -8,12 +8,15 @@
     "build": "wxt build",
     "postinstall": "wxt prepare",
     "test": "vitest run",
-    "typecheck": "wxt prepare && tsc -p tsconfig.json"
+    "typecheck": "wxt prepare && tsc -p tsconfig.json",
+    "build:e2e": "wxt build --mode e2e",
+    "e2e": "wxt build --mode e2e && playwright test"
   },
   "dependencies": {
     "@warden/shared": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/chrome": "^0.3.4",
     "wxt": "^0.21.4"
   }
