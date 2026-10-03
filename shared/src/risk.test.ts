@@ -7,17 +7,9 @@ import {
   minDecision,
   STAGE_CAPS,
 } from "./risk.ts";
-import {
-  DECISIONS,
-  type Decision,
-  STAGE_IDS,
-  type StageResult,
-} from "./types.ts";
+import { DECISIONS, type Decision, STAGE_IDS, type StageResult } from "./types.ts";
 
-function result(
-  source: StageResult["source"],
-  decision: Decision,
-): StageResult {
+function result(source: StageResult["source"], decision: Decision): StageResult {
   return { decision, score: 1, signals: [], latency_ms: 0, source };
 }
 
@@ -63,9 +55,7 @@ describe("stage caps", () => {
   });
 
   it("clamps Stage 2 and Stage 3 blocks to warn", () => {
-    expect(capStageResult(result("stage2_heuristics", "block")).decision).toBe(
-      "warn",
-    );
+    expect(capStageResult(result("stage2_heuristics", "block")).decision).toBe("warn");
     expect(capStageResult(result("stage3_llm", "block")).decision).toBe("warn");
   });
 

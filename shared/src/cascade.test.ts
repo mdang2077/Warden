@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runCascade } from "./cascade.ts";
-import type {
-  NavigationContext,
-  Stage,
-  StageId,
-  StageResult,
-} from "./types.ts";
+import type { NavigationContext, Stage, StageId, StageResult } from "./types.ts";
 
 const ctx: NavigationContext = {
   url: "https://example.com/",
@@ -62,25 +57,17 @@ describe("runCascade", () => {
 
   it("stops after a final result", async () => {
     const later = stage("stage1_deterministic", {});
-    const out = await runCascade(
-      [stage("stage0_allowlist", { final: true }), later],
-      ctx,
-      {
-        budgetMs: 1000,
-      },
-    );
+    const out = await runCascade([stage("stage0_allowlist", { final: true }), later], ctx, {
+      budgetMs: 1000,
+    });
     expect(out.decision).toBe("allow");
     expect(later.calls).toBe(0);
   });
 
   it("caps each stage's decision", async () => {
-    const out = await runCascade(
-      [stage("stage2_heuristics", { decision: "block" })],
-      ctx,
-      {
-        budgetMs: 1000,
-      },
-    );
+    const out = await runCascade([stage("stage2_heuristics", { decision: "block" })], ctx, {
+      budgetMs: 1000,
+    });
     expect(out.decision).toBe("warn");
     expect(out.results[0]?.capped_from).toBe("block");
   });
@@ -100,12 +87,7 @@ describe("runCascade", () => {
   it("fails open when a stage throws", async () => {
     const later = stage("stage2_heuristics", {});
     const out = await runCascade(
-      [
-        stage("stage1_deterministic", () =>
-          Promise.reject(new Error("idb unavailable")),
-        ),
-        later,
-      ],
+      [stage("stage1_deterministic", () => Promise.reject(new Error("idb unavailable"))), later],
       ctx,
       { budgetMs: 1000 },
     );

@@ -4,12 +4,7 @@
  * runs past the remaining time budget contributes `allow`.
  */
 import { capStageResult, maxDecision } from "./risk.ts";
-import type {
-  Decision,
-  NavigationContext,
-  Stage,
-  StageResult,
-} from "./types.ts";
+import type { Decision, NavigationContext, Stage, StageResult } from "./types.ts";
 
 export interface CascadeOptions {
   /** Total wall-clock budget for all stages, in milliseconds. */
@@ -80,10 +75,7 @@ function failOpen(stage: Stage, latencyMs: number, error: string): StageResult {
   };
 }
 
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-): Promise<T | typeof TIMEOUT> {
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | typeof TIMEOUT> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<typeof TIMEOUT>((resolve) => {
     timer = setTimeout(() => resolve(TIMEOUT), ms);
