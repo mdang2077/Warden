@@ -50,7 +50,7 @@ export interface StageResult {
   source: StageId;
   /** Set by `risk.ts` when the stage emitted something above its cap. */
   capped_from?: Decision;
-  /** True when no later stage should run (e.g. an allowlist hit). `block` always stops. */
+  /** True when no later stage should run. `block` always stops. */
   final?: boolean;
   /** Set by the cascade runner when the stage threw or timed out (fail-open to `allow`). */
   error?: string;
@@ -69,5 +69,6 @@ export interface NavigationContext {
 
 export interface Stage {
   readonly id: StageId;
-  evaluate(ctx: NavigationContext): Promise<StageResult>;
+  /** `prior` holds the results of the stages that already ran for this hop, in order. */
+  evaluate(ctx: NavigationContext, prior: readonly StageResult[]): Promise<StageResult>;
 }

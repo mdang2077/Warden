@@ -31,7 +31,9 @@ Ordered from least to most severe:
 | `warn` | Dismissible in-page banner (Stage 2, parked) | Soft banner |
 | `block` | Full interstitial (`warning.html`) | Interstitial with "Back to safety" and a small "Proceed anyway" link |
 
-A stage that returns `allow` from the allowlist, or `block`, short-circuits the cascade.
+A `block` ends the cascade. An allowlist hit doesn't end it outright: it is recorded as an
+`allowlist_hit` signal, Stage 1 then skips its local feeds, and only Safe Browsing still runs
+(see §5). Later stages treat the signal as "allowed, stop".
 
 ## 3. Block-authority table
 

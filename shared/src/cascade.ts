@@ -45,7 +45,7 @@ export async function runCascade(
     const stageStart = now();
     let result: StageResult;
     try {
-      const outcome = await withTimeout(stage.evaluate(ctx), remaining);
+      const outcome = await withTimeout(stage.evaluate(ctx, [...results]), remaining);
       if (outcome === TIMEOUT) {
         timedOut = true;
         results.push(failOpen(stage, now() - stageStart, "timeout"));
