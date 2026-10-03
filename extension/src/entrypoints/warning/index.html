@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Warden blocked a phishing page</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="card" aria-labelledby="title">
+      <p class="eyebrow">Warden</p>
+      <h1 id="title">Deceptive site ahead</h1>
+      <p class="lede">
+        This page is on a list of known phishing sites. Phishing pages imitate real sites to
+        steal passwords, payment details, or other personal information.
+      </p>
+
+      <dl class="details">
+        <dt>Blocked page</dt>
+        <dd><code id="blocked-url"></code></dd>
+        <dt>Reported by</dt>
+        <dd id="sources"></dd>
+      </dl>
+
+      <p id="sb-attribution" class="attribution" hidden>
+        <a href="https://developers.google.com/safe-browsing/v4/advisory" target="_blank" rel="noopener noreferrer">Advisory provided by Google</a>
+      </p>
+
+      <div class="actions">
+        <button id="back" type="button" class="primary">Back to safety</button>
+      </div>
+
+      <p class="proceed">
+        <button id="proceed" type="button" class="link">Proceed anyway (unsafe)</button>
+      </p>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
