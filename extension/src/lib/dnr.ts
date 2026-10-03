@@ -11,10 +11,13 @@
  * - path prefix (`host/dir/`)      → `||host/dir/`     everything under the prefix
  * - exact path (`host/a`)          → `||host/a|`, `||host/a?`  the path with any query
  * - exact path + query             → `||host/a?q|`
- * - IP literals: exact host only (`|http*://ip…`).
+ * - IP literals and parents of shared hosts: exact host only (`|http://ip…`, `|https://ip…`).
  * - shared hosts: exact host and exact path only; bare-host entries are never compiled.
+ * - trusted hosts (allowlisted, or marked safe by the user) never get a rule: DNR runs
+ *   before the service worker, so a rule there would override the allowlist.
  */
 import { canonicalize, parseIPv4 } from "@warden/shared/canonicalize";
+import { sha256 } from "@warden/shared/expressions";
 import { isEntryAllowed, type SharedHostList } from "@warden/shared/shared-hosts";
 import type { FeedId } from "@warden/shared/types";
 
@@ -24,7 +27,8 @@ export interface DnrRule {
   priority: number;
   action: { type: "block" | "allow" };
   condition: {
-    urlFilter: string;
+    urlFilter?: string;
+    regexFilter?: string;
     isUrlFilterCaseSensitive: true;
     resourceTypes: ["main_frame"];
   };
@@ -51,16 +55,24 @@ export interface CompileResult {
   skipped: number;
 }
 
+export interface CompileOptions {
+  /** True for hosts the allowlist or the user trusts. Their entries are never compiled. */
+  trusted?: (host: string) => boolean;
+  maxRules?: number;
+}
+
 export function compileDnrRules(
   entries: readonly DnrEntry[],
   shared: SharedHostList,
-  maxRules = MAX_DYNAMIC_RULES,
+  options: CompileOptions = {},
 ): CompileResult {
+  const maxRules = options.maxRules ?? MAX_DYNAMIC_RULES;
+  const trusted = options.trusted ?? (() => false);
   const filters = new Set<string>();
   let skipped = 0;
 
   for (const { expression } of entries) {
-    const entryFilters = filtersFor(expression, shared);
+    const entryFilters = filtersFor(expression, shared, trusted);
     if (!entryFilters || filters.size + entryFilters.length > maxRules) {
       skipped++;
       continue;
@@ -68,45 +80,83 @@ export function compileDnrRules(
     for (const f of entryFilters) filters.add(f);
   }
 
-  const rules = [...filters].map((urlFilter, i) => rule(i + 1, BLOCK_PRIORITY, "block", urlFilter));
+  const rules = [...filters].map((urlFilter, i) =>
+    rule(i + 1, BLOCK_PRIORITY, "block", { urlFilter }),
+  );
   return { rules, skipped };
 }
 
-function filtersFor(expression: string, shared: SharedHostList): string[] | null {
+function filtersFor(
+  expression: string,
+  shared: SharedHostList,
+  trusted: (host: string) => boolean,
+): string[] | null {
   if (FILTER_SYNTAX.test(expression)) return null;
   const url = canonicalize(`http://${expression}`);
   if (!url || url.host.includes("%")) return null;
   // The expression must already be canonical, or the rule could match something else.
   const roundTrip = url.host + url.path + (url.query === null ? "" : `?${url.query}`);
   if (roundTrip !== expression) return null;
-  if (!isEntryAllowed(url, shared)) return null;
+  if (!isEntryAllowed(url, shared) || trusted(url.host)) return null;
 
   const sharedHost = shared.isShared(url.host);
-  // `||` would also match subdomains; shared hosts and IP literals need the exact host.
-  const exactHost = sharedHost || parseIPv4(url.host) === url.host;
-  const anchor = exactHost ? `|http*://${url.host}` : `||${url.host}`;
-  const target = anchor + url.path;
+  // `||` would also match subdomains, so shared hosts, parents of shared hosts (an entry on
+  // `googleapis.com` must not reach `storage.googleapis.com`), and IP literals need the
+  // exact host. Not `|http*://host`: the `*` can span another site's URL that merely
+  // contains this one, e.g. `https://archive.example/web/https://host/path`.
+  const exactHost =
+    sharedHost || shared.hasSharedBelow(url.host) || parseIPv4(url.host) === url.host;
+  const anchors = exactHost ? [`|http://${url.host}`, `|https://${url.host}`] : [`||${url.host}`];
 
-  if (url.query !== null) return [`${target}?${url.query}|`];
-  if (url.path.endsWith("/") && !sharedHost) return [target];
-  return [`${target}|`, `${target}?`];
+  return anchors.flatMap((anchor) => {
+    const target = anchor + url.path;
+    if (url.query !== null) return [`${target}?${url.query}|`];
+    if (url.path.endsWith("/") && !sharedHost) return [target];
+    return [`${target}|`, `${target}?`];
+  });
 }
 
-function rule(id: number, priority: number, type: "block" | "allow", urlFilter: string): DnrRule {
+function rule(
+  id: number,
+  priority: number,
+  type: "block" | "allow",
+  filter: { urlFilter: string } | { regexFilter: string },
+): DnrRule {
   return {
     id,
     priority,
     action: { type },
-    condition: { urlFilter, isUrlFilterCaseSensitive: true, resourceTypes: ["main_frame"] },
+    condition: { ...filter, isUrlFilterCaseSensitive: true, resourceTypes: ["main_frame"] },
   };
 }
 
-/** A session rule letting the user through to one exact URL after "Proceed anyway". */
-export function bypassRule(id: number, rawUrl: string): DnrRule | null {
+/**
+ * A session rule letting the user through to one exact URL after "Proceed anyway". URLs
+ * containing urlFilter syntax (`*`, `^`, `|`) use an escaped regexFilter instead.
+ */
+export function bypassRule(id: number, rawUrl: string): DnrRule {
   const url = new URL(rawUrl);
   url.hash = "";
-  if (FILTER_SYNTAX.test(url.href)) return null;
-  return rule(id, BYPASS_PRIORITY, "allow", `|${url.href}|`);
+  const filter = FILTER_SYNTAX.test(url.href)
+    ? { regexFilter: `^${url.href.replace(/[\\^$.|?*+()[\]{}]/g, "\\$&")}$` }
+    : { urlFilter: `|${url.href}|` };
+  return rule(id, BYPASS_PRIORITY, "allow", filter);
+}
+
+/** Session rule id for a URL: stable, so concurrent bypasses of one URL write one rule. */
+export async function bypassRuleId(rawUrl: string): Promise<number> {
+  const url = new URL(rawUrl);
+  url.hash = "";
+  const h = await sha256(url.href);
+  // 30 bits, never 0: DNR rule ids must be positive integers.
+  return (
+    ((((h[0] as number) << 24) |
+      ((h[1] as number) << 16) |
+      ((h[2] as number) << 8) |
+      (h[3] as number)) >>>
+      2) +
+    1
+  );
 }
 
 /** The subset of chrome.declarativeNetRequest the sync needs. */
@@ -123,14 +173,14 @@ export async function replaceDynamicRules(api: DnrApi, rules: DnrRule[]): Promis
 
 /** The subset of chrome.declarativeNetRequest session-rule calls the bypass needs. */
 export interface DnrSessionApi {
-  getSessionRules(): Promise<{ id: number }[]>;
-  updateSessionRules(options: { addRules: DnrRule[] }): Promise<void>;
+  updateSessionRules(options: { removeRuleIds: number[]; addRules: DnrRule[] }): Promise<void>;
 }
 
-/** Adds a session allow rule so DNR block rules don't stop a URL the user proceeded to. */
+/**
+ * Adds a session allow rule so DNR block rules don't stop one URL. Remove-then-add with
+ * a URL-derived id is atomic and idempotent, so two tabs bypassing at once can't collide.
+ */
 export async function addSessionBypass(api: DnrSessionApi, url: string): Promise<void> {
-  const existing = await api.getSessionRules();
-  const id = existing.reduce((max, r) => Math.max(max, r.id), 0) + 1;
-  const rule = bypassRule(id, url);
-  if (rule) await api.updateSessionRules({ addRules: [rule] });
+  const id = await bypassRuleId(url);
+  await api.updateSessionRules({ removeRuleIds: [id], addRules: [bypassRule(id, url)] });
 }

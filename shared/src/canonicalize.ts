@@ -4,10 +4,11 @@
  * Safe Browsing API docs ("URLs and Hashing"):
  *
  *  1. Remove tab, CR, and LF characters; trim leading/trailing spaces; drop the fragment.
- *  2. Split into scheme, host, path, and query (default scheme: http; port and userinfo dropped).
+ *  2. Split into scheme, host, path, and query (default scheme: http; port and userinfo dropped;
+ *     for http(s), `\` before the query counts as `/`, as in the browser).
  *  3. Percent-unescape each component repeatedly until it stops changing.
- *  4. Host: lowercase, strip leading/trailing dots, collapse runs of dots, normalize IPv4
- *     in any legal encoding (octal, hex, decimal, fewer than four parts).
+ *  4. Host: lowercase, strip leading/trailing dots, collapse runs of dots, punycode IDNs,
+ *     normalize IPv4 in any legal encoding (octal, hex, decimal, fewer than four parts).
  *  5. Path: resolve `.` and `..`, collapse runs of slashes. Empty path becomes `/`.
  *  6. Re-escape bytes <= 0x20, >= 0x7F, `#`, and `%` as uppercase %XX.
  *
@@ -44,6 +45,7 @@ export function canonicalizeBytes(input: string): CanonicalUrl | null {
     scheme = schemeMatch[1].toLowerCase();
     s = s.slice(schemeMatch[0].length);
   }
+  if (scheme === "http" || scheme === "https") s = backslashesToSlashes(s);
 
   const authorityEnd = s.search(/[/?]/);
   const authority = authorityEnd === -1 ? s : s.slice(0, authorityEnd);
@@ -77,13 +79,40 @@ function stripPort(hostPort: string): string {
 }
 
 function canonicalHost(raw: string): string | null {
-  let host = unescapeFully(raw).toLowerCase();
+  // ASCII only: on a byte string, toLowerCase() would also rewrite UTF-8 bytes (0xC3 → 0xE3).
+  let host = unescapeFully(raw).replace(/[A-Z]+/g, (m) => m.toLowerCase());
   if (!host.startsWith("[")) {
     host = host.replace(/^\.+|\.+$/g, "").replace(/\.{2,}/g, ".");
+    host = toAsciiHost(host);
     host = parseIPv4(host) ?? host;
   }
   if (host === "") return null;
   return sbEscape(host);
+}
+
+/**
+ * Browsers treat `\` as `/` before the query in http(s) URLs. Without this, a feed URL like
+ * `http://phish\@victim/` would read as userinfo `phish\` and target the victim's host.
+ */
+function backslashesToSlashes(s: string): string {
+  const q = s.indexOf("?");
+  const head = q === -1 ? s : s.slice(0, q);
+  return head.replace(/\\/g, "/") + (q === -1 ? "" : s.slice(q));
+}
+
+/**
+ * Internationalized hosts become punycode, which is how the browser reports them. Hosts
+ * that aren't valid UTF-8 or that the URL parser rejects are left as they are.
+ */
+function toAsciiHost(host: string): string {
+  if (!/[\x80-\xff]/.test(host)) return host;
+  try {
+    const bytes = Uint8Array.from(host, (c) => c.charCodeAt(0));
+    const unicode = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+    return new URL(`http://${unicode}/`).hostname;
+  } catch {
+    return host;
+  }
 }
 
 /**

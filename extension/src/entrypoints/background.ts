@@ -1,12 +1,14 @@
 import { createAllowlistStage } from "@warden/shared/allowlist";
 import type { CascadeResult } from "@warden/shared/cascade";
+import { runCascade } from "@warden/shared/cascade";
 import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
 import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
-import type { DnrApi } from "../lib/dnr.ts";
-import { createNavigationHandler } from "../lib/handler.ts";
+import { addSessionBypass, type DnrApi, type DnrSessionApi } from "../lib/dnr.ts";
+import { createDnrHealer } from "../lib/dnr-heal.ts";
+import { CASCADE_BUDGET_MS, createNavigationHandler } from "../lib/handler.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
@@ -23,7 +25,11 @@ import { e2eTestStage } from "../lib/test-stage.ts";
 const FEED_SERVICE_URL: string | undefined = import.meta.env.WXT_FEED_SERVICE_URL || undefined;
 const SYNC_ALARM = "feed-sync";
 
-const listStore = openListStore();
+// A failed open leaves lookups failing open (Stage 1 treats a throw as "no hit").
+const listStore = openListStore().catch((err: unknown) => {
+  console.error("[Warden] list store unavailable; local feeds disabled", err);
+  return null;
+});
 /** Allowlist and shared-host list from the last good sync, swapped in after each sync. */
 let local: LocalData = { allowlist: null, shared: bundledSharedHosts };
 const localReady = refreshLocalData();
@@ -33,7 +39,11 @@ async function refreshLocalData() {
 }
 
 const lists: LocalLists = {
-  match: async (url, now) => (await listStore).match(url, local.shared, now),
+  match: async (url, now) => {
+    const store = await listStore;
+    if (!store) throw new Error("list store unavailable");
+    return store.match(url, local.shared, now);
+  },
 };
 const stages: Stage[] = [
   createAllowlistStage({
@@ -70,10 +80,12 @@ let syncing: Promise<void> | null = null;
 function runSync(): Promise<void> {
   if (!FEED_SERVICE_URL) return Promise.resolve();
   syncing ??= (async () => {
+    const lists = await listStore;
+    if (!lists) return;
     const report = await syncFeeds({
       baseUrl: FEED_SERVICE_URL,
       fetch: (input, init) => fetch(input, init),
-      lists: await listStore,
+      lists,
       storage: browser.storage.local,
       dnr: browser.declarativeNetRequest as unknown as DnrApi,
       bundledShared: bundledSharedHostsFile,
@@ -145,9 +157,9 @@ export default defineBackground({
       });
     }, mainFrame);
 
-    browser.webNavigation.onBeforeNavigate.addListener((d) => {
-      run({ ...d, redirectChain: redirects.chainFor(d.tabId, d.url) });
-    });
+    // No chain yet: this navigation hasn't sent a request, so any hops the tracker holds
+    // belong to an earlier navigation in the tab.
+    browser.webNavigation.onBeforeNavigate.addListener((d) => run({ ...d, redirectChain: [] }));
     browser.webNavigation.onCommitted.addListener((d) => {
       if (d.frameId !== 0) return;
       const clientRedirect = d.transitionQualifiers.includes("client_redirect");
@@ -157,5 +169,22 @@ export default defineBackground({
     });
     browser.webNavigation.onHistoryStateUpdated.addListener((d) => run(d));
     browser.tabs.onRemoved.addListener((tabId) => redirects.forgetTab(tabId));
+
+    // A DNR rule the worker disagrees with (stale since the last sync) gets one retry.
+    const dnr = browser.declarativeNetRequest as unknown as DnrSessionApi;
+    const heal = createDnrHealer({
+      evaluate: async (url, tabId) => {
+        await localReady;
+        const ctx = { url, tabId, redirectChain: [], startedAt: Date.now() };
+        return (await runCascade(stages, ctx, { budgetMs: CASCADE_BUDGET_MS })).decision;
+      },
+      allow: (url) => addSessionBypass(dnr, url),
+      reload: async (tabId, url) => {
+        await browser.tabs.update(tabId, { url });
+      },
+    });
+    browser.webNavigation.onErrorOccurred.addListener((d) => {
+      heal(d).catch((err) => console.error("[Warden] DNR fallback failed", err));
+    });
   },
 });

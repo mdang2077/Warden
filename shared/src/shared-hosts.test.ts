@@ -115,6 +115,27 @@ describe("FP acceptance: shared-host matching", () => {
   });
 });
 
+describe("FP acceptance: public-suffix hosts", () => {
+  it("rejects entries whose host is a public suffix", () => {
+    for (const url of [
+      "http://co.uk/",
+      "http://co.uk/login",
+      "https://pages.dev/",
+      "http://com/",
+    ]) {
+      expect(isEntryAllowed(c(url), shared), url).toBe(false);
+    }
+    expect(isEntryAllowed(c("http://1.2.3.4/"), shared)).toBe(true);
+    expect(isEntryAllowed(c("http://evil.co.uk/"), shared)).toBe(true);
+  });
+
+  it("never looks up a public suffix as a host", () => {
+    const exprs = protectedLookupExpressions(c("https://www.bbc.co.uk/news"), shared);
+    expect(exprs.some((e) => e.startsWith("co.uk/"))).toBe(false);
+    expect(exprs).toContain("bbc.co.uk/");
+  });
+});
+
 describe("non-shared hosts keep normal SB matching", () => {
   it("a bare-host entry blocks the whole host and its subdomains", () => {
     expect(matches("http://evil.example/", "http://evil.example/any/path")).toBe(true);

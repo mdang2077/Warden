@@ -4,8 +4,9 @@
  * path, never a whole host or a path prefix, so one reported phish can't block everyone
  * else's content. See docs/shared-hosts.md for how to add entries.
  */
-import type { CanonicalUrl } from "./canonicalize.ts";
+import { type CanonicalUrl, parseIPv4 } from "./canonicalize.ts";
 import { lookupExpressions } from "./expressions.ts";
+import { registrableDomain } from "./psl.ts";
 import bundled from "./shared-hosts.json" with { type: "json" };
 
 export interface SharedHostEntry {
@@ -23,6 +24,8 @@ export interface SharedHostsFile {
 export interface SharedHostList {
   version: number;
   isShared(host: string): boolean;
+  /** True when some shared host is a strict subdomain of `host` (e.g. `googleapis.com`). */
+  hasSharedBelow(host: string): boolean;
 }
 
 const PATTERN = /^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$/;
@@ -48,6 +51,12 @@ export function loadSharedHosts(file: SharedHostsFile): SharedHostList {
       }
       return false;
     },
+    hasSharedBelow(host) {
+      const tail = `.${host}`;
+      for (const h of exact) if (h.endsWith(tail)) return true;
+      for (const h of suffixes) if (h.endsWith(tail)) return true;
+      return false;
+    },
   };
 }
 
@@ -68,14 +77,26 @@ export function protectedLookupExpressions(url: CanonicalUrl, shared: SharedHost
     if (url.query !== null) exact.unshift(`${url.host}${url.path}?${url.query}`);
     return exact;
   }
-  return lookupExpressions(url).filter((e) => !shared.isShared(e.slice(0, e.indexOf("/"))));
+  return lookupExpressions(url).filter((e) => {
+    const host = e.slice(0, e.indexOf("/"));
+    return !shared.isShared(host) && !isPublicSuffixHost(host);
+  });
 }
 
 /**
- * Whether a feed entry may enter the blocklist at all. A bare host (path `/`, no query)
- * on a shared host would mean "block this whole platform", so it is rejected.
+ * Whether a feed entry may enter the blocklist at all. Rejected:
+ * - a host that is itself a public suffix (`co.uk`, `pages.dev`): as a host-suffix match it
+ *   would cover every site under that suffix;
+ * - a bare host (path `/`, no query) on a shared host: "block this whole platform".
  */
 export function isEntryAllowed(entry: CanonicalUrl, shared: SharedHostList): boolean {
+  if (isPublicSuffixHost(entry.host)) return false;
   if (!shared.isShared(entry.host)) return true;
   return !(entry.path === "/" && entry.query === null);
+}
+
+/** True for hosts with no registrable domain of their own, other than IP literals. */
+export function isPublicSuffixHost(host: string): boolean {
+  if (host.startsWith("[") || parseIPv4(host) === host) return false;
+  return registrableDomain(host) === null;
 }

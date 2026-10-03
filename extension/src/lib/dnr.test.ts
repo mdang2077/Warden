@@ -4,6 +4,7 @@ import {
   addSessionBypass,
   BYPASS_PRIORITY,
   bypassRule,
+  bypassRuleId,
   compileDnrRules,
   type DnrEntry,
   type DnrRule,
@@ -37,7 +38,7 @@ function urlFilterMatches(filter: string, url: string): boolean {
 
 function blocks(rules: DnrRule[], url: string): boolean {
   return rules.some(
-    (r) => r.action.type === "block" && urlFilterMatches(r.condition.urlFilter, url),
+    (r) => r.action.type === "block" && urlFilterMatches(r.condition.urlFilter ?? "", url),
   );
 }
 
@@ -145,12 +146,42 @@ describe("FP acceptance: no host-level DNR rule on a shared host", () => {
     expect(blocks(rules, "https://acct.blob.core.windows.net/c/x.html")).toBe(true);
   });
 
+  it("never blocks a page that merely contains a reported URL in its path or query", () => {
+    // Checked against real Chromium: `|http*://host…` let `*` span another site's URL.
+    for (const url of [
+      "https://web.archive.org/web/2024/https://docs.google.com/forms/d/X/viewform",
+      "https://share.example/?u=https://docs.google.com/forms/d/X/viewform?usp=sf",
+      "https://scanner.example/check?url=http://bit.ly/abc123",
+    ]) {
+      expect(blocks(rules, url), url).toBe(false);
+    }
+    const ip = compile("1.2.3.4/a").rules;
+    expect(blocks(ip, "https://ok.example/?u=http://1.2.3.4/a")).toBe(false);
+    expect(blocks(ip, "https://1.2.3.4/a")).toBe(true);
+  });
+
+  it("an entry on a parent of a shared host never matches the shared host", () => {
+    const parents = compile("core.windows.net/", "googleapis.com/", "googleapis.com/login/").rules;
+    for (const url of [
+      "https://acct.blob.core.windows.net/c/x.html",
+      "https://storage.googleapis.com/bucket/x.html",
+      "https://firebasestorage.googleapis.com/login/x",
+    ]) {
+      expect(blocks(parents, url), url).toBe(false);
+    }
+    expect(blocks(parents, "https://core.windows.net/x")).toBe(true);
+    // googleapis.com is itself a public suffix (PSL private section), so it gets no rule.
+    expect(blocks(parents, "https://googleapis.com/login/x")).toBe(false);
+  });
+
   it("no rule on a shared host uses the subdomain anchor", () => {
     const sharedRules = rules.filter((r) =>
-      /docs\.google\.com|github\.io|googleapis|bit\.ly|windows\.net/.test(r.condition.urlFilter),
+      /docs\.google\.com|github\.io|googleapis|bit\.ly|windows\.net/.test(
+        r.condition.urlFilter ?? "",
+      ),
     );
     expect(sharedRules.length).toBeGreaterThan(0);
-    for (const r of sharedRules) expect(r.condition.urlFilter.startsWith("||")).toBe(false);
+    for (const r of sharedRules) expect(r.condition.urlFilter?.startsWith("||")).toBe(false);
   });
 });
 
@@ -171,7 +202,7 @@ describe("compileDnrRules: safety and limits", () => {
     const { rules, skipped } = compileDnrRules(
       [...entries, entries[0] as string].map((expression) => ({ expression, feed: "openphish" })),
       shared,
-      7,
+      { maxRules: 7 },
     );
     expect(rules).toHaveLength(6);
     expect(skipped).toBe(8);
@@ -189,6 +220,39 @@ describe("bypass rule", () => {
     expect(urlFilterMatches(filter, "https://evil.example/a.html?x=12")).toBe(false);
     expect(urlFilterMatches(filter, "https://evil.example/a.html")).toBe(false);
   });
+
+  it("falls back to an escaped regexFilter for URLs with urlFilter syntax", () => {
+    const url = "https://evil.example/a*b^c|d.html?q=(1)+[2]";
+    const rule = bypassRule(5, url);
+    expect(rule.condition.urlFilter).toBeUndefined();
+    const re = new RegExp(rule.condition.regexFilter ?? "");
+    expect(re.test(new URL(url).href)).toBe(true);
+    expect(re.test("https://evil.example/aXb^c|d.html?q=(1)+[2]")).toBe(false);
+    expect(re.test(`${new URL(url).href}x`)).toBe(false);
+  });
+});
+
+describe("trusted hosts", () => {
+  it("never compiles rules for allowlisted or user-trusted hosts", () => {
+    const trusted = (host: string) => host === "good.example" || host.endsWith(".good.example");
+    const { rules, skipped } = compileDnrRules(
+      ["good.example/", "login.good.example/x", "evil.example/"].map((expression) => ({
+        expression,
+        feed: "openphish" as const,
+      })),
+      shared,
+      { trusted },
+    );
+    expect(skipped).toBe(2);
+    expect(blocks(rules, "https://good.example/")).toBe(false);
+    expect(blocks(rules, "https://login.good.example/x")).toBe(false);
+    expect(blocks(rules, "https://evil.example/")).toBe(true);
+  });
+
+  it("never compiles rules for public-suffix hosts", () => {
+    const { rules } = compile("co.uk/", "pages.dev/x");
+    expect(rules).toEqual([]);
+  });
 });
 
 describe("replaceDynamicRules", () => {
@@ -204,14 +268,29 @@ describe("replaceDynamicRules", () => {
 });
 
 describe("addSessionBypass", () => {
-  it("adds an allow rule with the next free session id", async () => {
-    const api = {
-      getSessionRules: vi.fn(async () => [{ id: 3 }, { id: 7 }]),
-      updateSessionRules: vi.fn(async () => {}),
-    };
-    await addSessionBypass(api, "https://evil.example/a");
-    expect(api.updateSessionRules).toHaveBeenCalledWith({
-      addRules: [expect.objectContaining({ id: 8, action: { type: "allow" } })],
+  it("writes one rule per URL with a stable id, atomically", async () => {
+    const api = { updateSessionRules: vi.fn(async (_o: { removeRuleIds: number[] }) => {}) };
+    await Promise.all([
+      addSessionBypass(api, "https://evil.example/a#x"),
+      addSessionBypass(api, "https://evil.example/a"),
+    ]);
+    const [first, second] = api.updateSessionRules.mock.calls.map((c) => c[0]);
+    expect(first).toEqual(second);
+    const id = await bypassRuleId("https://evil.example/a");
+    expect(first).toEqual({
+      removeRuleIds: [id],
+      addRules: [expect.objectContaining({ id, action: { type: "allow" } })],
     });
+  });
+
+  it("gives different URLs different positive ids", async () => {
+    const a = await bypassRuleId("https://evil.example/a");
+    const b = await bypassRuleId("https://evil.example/b");
+    expect(a).not.toBe(b);
+    for (const id of [a, b]) {
+      expect(Number.isInteger(id)).toBe(true);
+      expect(id).toBeGreaterThan(0);
+      expect(id).toBeLessThanOrEqual(2 ** 30);
+    }
   });
 });

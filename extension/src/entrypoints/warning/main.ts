@@ -41,9 +41,14 @@ if (!params || framed) {
   const store = createOverrideStore(browser.storage.session);
   proceed.addEventListener("click", async () => {
     proceed.disabled = true;
-    await store.addBypass(params.url, params.sources);
-    // Tier A entries are also DNR block rules, which run before the service worker.
-    await addSessionBypass(browser.declarativeNetRequest as unknown as DnrSessionApi, params.url);
+    try {
+      await store.addBypass(params.url, params.sources);
+      // Tier A entries are also DNR block rules, which run before the service worker.
+      await addSessionBypass(browser.declarativeNetRequest as unknown as DnrSessionApi, params.url);
+    } catch (err) {
+      // Navigate anyway: the user chose to proceed. Worst case they see the block again.
+      console.error("[Warden] couldn't record the bypass", err);
+    }
     location.replace(params.url);
   });
 }

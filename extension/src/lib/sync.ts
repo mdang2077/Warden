@@ -21,6 +21,7 @@ import {
   type Snapshot,
   sha256Hex,
 } from "@warden/shared/feed-format";
+import { registrableDomain } from "@warden/shared/psl";
 import {
   loadSharedHosts,
   type SharedHostList,
@@ -73,6 +74,8 @@ export interface SyncDeps {
   storage: KeyValueArea;
   dnr: DnrApi;
   bundledShared: SharedHostsFile;
+  /** Registrable domains the user marked safe; never compiled into DNR block rules. */
+  userTrusted?: () => ReadonlySet<string>;
   now?: () => number;
 }
 
@@ -191,7 +194,7 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
 
     await deps.lists.pruneExpired(now());
 
-    const { shared } = await loadLocalData(deps.storage, deps.bundledShared);
+    const { shared, allowlist } = await loadLocalData(deps.storage, deps.bundledShared);
     const tierA: DnrEntry[] = [];
     for (const feed of FEED_IDS) {
       const settings = manifest.feeds?.[feed];
@@ -200,7 +203,14 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
         if (e.expression) tierA.push({ expression: e.expression, feed });
       }
     }
-    const { rules, skipped } = compileDnrRules(tierA, shared);
+    // DNR runs before the service worker, so trusted hosts must be kept out of the rules
+    // here; the worker's allowlist check would come too late.
+    const userTrusted = deps.userTrusted?.() ?? new Set<string>();
+    const trusted = (host: string) => {
+      const domain = registrableDomain(host);
+      return (allowlist?.allows(host) ?? false) || (domain !== null && userTrusted.has(domain));
+    };
+    const { rules, skipped } = compileDnrRules(tierA, shared, { trusted });
     await replaceDynamicRules(deps.dnr, rules);
     report.dnrRules = rules.length;
     report.dnrSkipped = skipped;

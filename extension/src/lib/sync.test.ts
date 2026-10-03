@@ -231,6 +231,24 @@ describe("syncFeeds", () => {
     expect(dnr.rules).toEqual([]);
   });
 
+  it("keeps allowlisted and user-trusted hosts out of DNR rules", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(
+      100,
+      {
+        openphish: [
+          await pub("https://sites.example/"),
+          await pub("https://mybank.example/"),
+          await pub("https://evil.example/"),
+        ],
+      },
+      "sites.example\n",
+    );
+    const { deps, dnr } = setup(service);
+    await syncFeeds({ ...deps, userTrusted: () => new Set(["mybank.example"]) });
+    expect(dnr.rules.map((r) => r.condition.urlFilter)).toEqual(["||evil.example/"]);
+  });
+
   it("only compiles enabled Tier A feeds into DNR rules", async () => {
     const service = new FakeService();
     await service.publishSnapshot(100, {

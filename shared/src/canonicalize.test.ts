@@ -80,6 +80,17 @@ describe("canonicalize: components", () => {
     expect(canonicalize("http://a.example/café")?.url).toBe("http://a.example/caf%C3%A9");
   });
 
+  it("treats a backslash before the query as a slash, like the browser", () => {
+    // Otherwise `phish\@victim` reads as userinfo and the entry targets the victim's host.
+    expect(canonicalize("http://phish.example\\@victim.example/")?.host).toBe("phish.example");
+    expect(canonicalize("http://a.example/x\\y?q=\\")?.url).toBe("http://a.example/x/y?q=\\");
+  });
+
+  it("converts internationalized hosts to punycode, as the browser reports them", () => {
+    expect(canonicalize("http://MÜNCHEN.example/x")?.host).toBe("xn--mnchen-3ya.example");
+    expect(canonicalize("http://m%C3%BCnchen.example/")?.host).toBe("xn--mnchen-3ya.example");
+  });
+
   it("leaves IPv6 hosts alone apart from case and port", () => {
     expect(canonicalize("http://[2001:DB8::1]:8080/x")?.url).toBe("http://[2001:db8::1]/x");
   });
