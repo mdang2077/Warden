@@ -1,31 +1,52 @@
 import { createAllowlistStage } from "@warden/shared/allowlist";
 import type { CascadeResult } from "@warden/shared/cascade";
-import { bundledSharedHosts } from "@warden/shared/shared-hosts";
+import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
 import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import type { DnrApi } from "../lib/dnr.ts";
 import { createNavigationHandler } from "../lib/handler.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import { createRedirectTracker } from "../lib/redirects.ts";
+import { createSafeBrowsingClient } from "../lib/safe-browsing.ts";
+import { type LocalData, loadLocalData, SYNC_PERIOD_MINUTES, syncFeeds } from "../lib/sync.ts";
 import { clearTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
 import { e2eTestStage } from "../lib/test-stage.ts";
 
-// The allowlist, list contents, and Safe Browsing proxy endpoint arrive with feed sync (T3.8).
-// Until then Stage 0 reports nothing, Stage 1 finds nothing, and Safe Browsing is skipped.
+/**
+ * Feed service base URL, set at build time (`WXT_FEED_SERVICE_URL=https://… wxt build`).
+ * Without it there is no sync and no Safe Browsing: Stage 0 and Stage 1 find nothing.
+ */
+const FEED_SERVICE_URL: string | undefined = import.meta.env.WXT_FEED_SERVICE_URL || undefined;
+const SYNC_ALARM = "feed-sync";
+
 const listStore = openListStore();
+/** Allowlist and shared-host list from the last good sync, swapped in after each sync. */
+let local: LocalData = { allowlist: null, shared: bundledSharedHosts };
+const localReady = refreshLocalData();
+
+async function refreshLocalData() {
+  local = await loadLocalData(browser.storage.local, bundledSharedHostsFile);
+}
+
 const lists: LocalLists = {
-  match: async (url, now) => (await listStore).match(url, bundledSharedHosts, now),
+  match: async (url, now) => (await listStore).match(url, local.shared, now),
 };
 const stages: Stage[] = [
   createAllowlistStage({
-    allowlist: () => null,
+    allowlist: () => local.allowlist,
     userDomains: () => new Set(),
-    shared: () => bundledSharedHosts,
+    shared: () => local.shared,
   }),
-  createStage1({ lists, safeBrowsing: null }),
+  createStage1({
+    lists,
+    safeBrowsing: FEED_SERVICE_URL
+      ? createSafeBrowsingClient({ endpoint: `${FEED_SERVICE_URL}/sb/hashes-search` })
+      : null,
+  }),
   // The e2e build adds a test-only stage that blocks one reserved host.
   ...(import.meta.env.MODE === "e2e" ? [e2eTestStage] : []),
 ];
@@ -43,6 +64,29 @@ function logResult(ctx: NavigationContext, result: CascadeResult) {
   });
 }
 
+let syncing: Promise<void> | null = null;
+
+/** One sync at a time; failures keep the last good data (see sync.ts). */
+function runSync(): Promise<void> {
+  if (!FEED_SERVICE_URL) return Promise.resolve();
+  syncing ??= (async () => {
+    const report = await syncFeeds({
+      baseUrl: FEED_SERVICE_URL,
+      fetch: (input, init) => fetch(input, init),
+      lists: await listStore,
+      storage: browser.storage.local,
+      dnr: browser.declarativeNetRequest as unknown as DnrApi,
+      bundledShared: bundledSharedHostsFile,
+    });
+    await refreshLocalData();
+    if (report.error) console.warn("[Warden] feed sync failed, keeping last good data", report);
+    else console.debug("[Warden] feed sync", report);
+  })().finally(() => {
+    syncing = null;
+  });
+  return syncing;
+}
+
 async function showInterstitial(ctx: NavigationContext, sources: SourceId[]) {
   const page = browser.runtime.getURL("/warning.html");
   const origin = ctx.redirectChain[0];
@@ -53,10 +97,23 @@ async function showInterstitial(ctx: NavigationContext, sources: SourceId[]) {
 export default defineBackground({
   type: "module",
   main() {
+    // Sync on install/update and browser start, then every SYNC_PERIOD_MINUTES.
+    browser.runtime.onInstalled.addListener(() => void runSync());
+    browser.runtime.onStartup.addListener(() => void runSync());
+    browser.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === SYNC_ALARM) void runSync();
+    });
+    void browser.alarms.get(SYNC_ALARM).then((existing) => {
+      if (!existing) {
+        void browser.alarms.create(SYNC_ALARM, { periodInMinutes: SYNC_PERIOD_MINUTES });
+      }
+    });
+
     const session = browser.storage.session;
     const overrides = createOverrideStore(session);
     const handle = createNavigationHandler({
       stages: () => stages,
+      ready: () => localReady,
       onBlock: showInterstitial,
       isBypassed: overrides.isBypassed,
       onResult: logResult,

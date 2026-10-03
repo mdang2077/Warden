@@ -1,4 +1,6 @@
+/// <reference types="chrome" />
 import type { Page } from "@playwright/test";
+import { FEED_BLOCKED_HOST } from "./feed-server.ts";
 import { expect, test } from "./fixtures.ts";
 
 const BLOCKED = "https://phish.warden-test.example/login?next=%2Fhome";
@@ -60,4 +62,26 @@ test("a redirect into a blocked page names the link the user followed", async ({
 
   await expect(page.locator("#blocked-url")).toHaveText(BLOCKED);
   await expect(page.locator("#origin-url")).toHaveText(link);
+});
+
+test("feed sync installs Tier A rules and blocks a listed host", async ({
+  context,
+  extensionId,
+}) => {
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error("no service worker");
+  await expect
+    .poll(() =>
+      worker.evaluate(async () =>
+        (await chrome.declarativeNetRequest.getDynamicRules()).map((r) => r.condition.urlFilter),
+      ),
+    )
+    .toContain(`||${FEED_BLOCKED_HOST}/`);
+
+  const blocked = `https://login.${FEED_BLOCKED_HOST}/verify`;
+  const page = await context.newPage();
+  await page.goto(blocked).catch(() => {});
+  await waitForInterstitial(page, extensionId);
+  await expect(page.locator("#blocked-url")).toHaveText(blocked);
+  await expect(page.locator("#sources")).toHaveText("OpenPhish");
 });

@@ -1,11 +1,25 @@
+import type { Server } from "node:http";
 import path from "node:path";
 import { type BrowserContext, test as base, chromium } from "@playwright/test";
+import { startFeedServer } from "./feed-server.ts";
 
 const EXTENSION_PATH = path.resolve(import.meta.dirname, "../.output/chrome-mv3-e2e");
 
-export const test = base.extend<{ context: BrowserContext; extensionId: string }>({
-  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture signature
-  context: async ({}, use) => {
+export const test = base.extend<
+  { context: BrowserContext; extensionId: string },
+  { feedServer: Server }
+>({
+  // The extension syncs on install, so the feed server must be up before Chrome starts.
+  feedServer: [
+    // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture signature
+    async ({}, use) => {
+      const server = await startFeedServer();
+      await use(server);
+      await new Promise((resolve) => server.close(resolve));
+    },
+    { scope: "worker", auto: true },
+  ],
+  context: async ({ feedServer: _ }, use) => {
     const context = await chromium.launchPersistentContext("", {
       channel: "chromium",
       args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],

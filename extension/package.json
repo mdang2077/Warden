@@ -9,8 +9,8 @@
     "postinstall": "wxt prepare",
     "test": "vitest run",
     "typecheck": "wxt prepare && tsc -p tsconfig.json",
-    "build:e2e": "wxt build --mode e2e",
-    "e2e": "wxt build --mode e2e && playwright test"
+    "build:e2e": "WXT_FEED_SERVICE_URL=http://127.0.0.1:47123 wxt build --mode e2e",
+    "e2e": "WXT_FEED_SERVICE_URL=http://127.0.0.1:47123 wxt build --mode e2e && playwright test"
   },
   "dependencies": {
     "@warden/shared": "workspace:*"
