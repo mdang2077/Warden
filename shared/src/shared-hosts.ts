@@ -51,7 +51,10 @@ export function loadSharedHosts(file: SharedHostsFile): SharedHostList {
   };
 }
 
-/** The list bundled with this build. The service ships updates with each snapshot. */
+/** The raw list bundled with this build; the service publishes it with each snapshot. */
+export const bundledSharedHostsFile: SharedHostsFile = bundled;
+
+/** The list bundled with this build. */
 export const bundledSharedHosts: SharedHostList = loadSharedHosts(bundled);
 
 /**

@@ -3,13 +3,9 @@
  * into every manifest it serves, so a change reaches clients on their next sync even
  * before the next publish run.
  */
-import { FEED_IDS, type FeedId, type FeedTier } from "@warden/shared/types";
+import type { FeedSettings } from "@warden/shared/feed-format";
+import { FEED_IDS, type FeedId } from "@warden/shared/types";
 import { type BlobStore, getJson, putJson } from "./storage.ts";
-
-export interface FeedSettings {
-  enabled: boolean;
-  tier: FeedTier;
-}
 
 export type FeedConfig = Record<FeedId, FeedSettings>;
 
