@@ -1,12 +1,20 @@
 {
   "name": "@warden/extension",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "postinstall": "wxt prepare",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "wxt prepare && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@warden/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.4",
+    "wxt": "^0.21.4"
   }
 }
