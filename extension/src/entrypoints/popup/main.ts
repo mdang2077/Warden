@@ -14,6 +14,11 @@ function show(decision: string, title: string, text: string) {
   detail.textContent = text;
 }
 
+function withoutFragment(url: string): string {
+  const hash = url.indexOf("#");
+  return hash === -1 ? url : url.slice(0, hash);
+}
+
 function sourceList(verdict: TabVerdict): string {
   return verdict.sources.map((s) => SOURCE_LABELS[s]).join(", ");
 }
@@ -32,7 +37,8 @@ async function main() {
     ? parseWarningParams(new URL(tab.url).search)?.url
     : tab.url;
 
-  if (!verdict || verdict.url !== shownUrl) {
+  // Fragment jumps don't trigger a new evaluation, and the fragment never reaches the server.
+  if (!verdict || !shownUrl || withoutFragment(verdict.url) !== withoutFragment(shownUrl)) {
     show("none", "Not checked", "Warden only checks web pages on public sites.");
     return;
   }
