@@ -15,6 +15,8 @@ export interface ListEntry {
   hash: string;
   /** Milliseconds since epoch. Entries past this are ignored and pruned. */
   expiresAt: number;
+  /** Canonical expression, kept so Tier A entries can be compiled into DNR rules. */
+  expression?: string;
 }
 
 export interface FeedConfig {
@@ -90,7 +92,7 @@ function createListStore(db: IDBDatabase) {
       const { t, done } = tx([ENTRIES], "readwrite");
       const store = t.objectStore(ENTRIES);
       deleteFeedEntries(store, feed);
-      for (const e of entries) store.put({ feed, hash: e.hash, expiresAt: e.expiresAt });
+      for (const e of entries) store.put(record(feed, e));
       await done;
     },
 
@@ -103,7 +105,7 @@ function createListStore(db: IDBDatabase) {
       const { t, done } = tx([ENTRIES], "readwrite");
       const store = t.objectStore(ENTRIES);
       for (const hash of removedHashes) store.delete([feed, hash]);
-      for (const e of added) store.put({ feed, hash: e.hash, expiresAt: e.expiresAt });
+      for (const e of added) store.put(record(feed, e));
       await done;
     },
 
@@ -127,6 +129,22 @@ function createListStore(db: IDBDatabase) {
       });
       await done;
       return removed;
+    },
+
+    /** Live (unexpired) entries of one feed. */
+    async entries(feed: FeedId, now: number): Promise<ListEntry[]> {
+      const { t, done } = tx([ENTRIES], "readonly");
+      const rows = (await request(
+        t.objectStore(ENTRIES).index("feed").getAll(feed),
+      )) as EntryRecord[];
+      await done;
+      return rows
+        .filter((r) => r.expiresAt > now)
+        .map(({ hash, expiresAt, expression }) => ({
+          hash,
+          expiresAt,
+          ...(expression ? { expression } : {}),
+        }));
     },
 
     async count(feed: FeedId): Promise<number> {
@@ -168,6 +186,15 @@ function createListStore(db: IDBDatabase) {
     close() {
       db.close();
     },
+  };
+}
+
+function record(feed: FeedId, e: ListEntry): EntryRecord {
+  return {
+    feed,
+    hash: e.hash,
+    expiresAt: e.expiresAt,
+    ...(e.expression ? { expression: e.expression } : {}),
   };
 }
 

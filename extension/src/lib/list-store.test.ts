@@ -92,6 +92,20 @@ describe("list store", () => {
     expect(await store.match(c("http://b.example/"), shared, NOW)).toEqual([]);
   });
 
+  it("lists live entries with their expressions", async () => {
+    await store.replaceFeed("openphish", [
+      { ...(await entry("http://evil.example/")), expression: "evil.example/" },
+      await entry("http://old.example/", NOW - 1),
+    ]);
+    expect(await store.entries("openphish", NOW)).toEqual([
+      {
+        hash: (await entry("http://evil.example/")).hash,
+        expiresAt: LATER,
+        expression: "evil.example/",
+      },
+    ]);
+  });
+
   it("replacing one feed leaves the others alone", async () => {
     const e = await entry("http://evil.example/");
     await store.replaceFeed("openphish", [e]);
