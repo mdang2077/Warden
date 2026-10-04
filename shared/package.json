@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "tldts": "^7.4.16"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.14.5"
   }
 }
