@@ -8,7 +8,11 @@
     "eval": "node src/cli.ts"
   },
   "dependencies": {
-    "@warden/shared": "workspace:*",
-    "@warden/service": "workspace:*"
+    "@warden/service": "workspace:*",
+    "@warden/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "playwright": "^1.63.0"
   }
 }
