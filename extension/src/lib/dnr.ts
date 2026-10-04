@@ -15,11 +15,13 @@
  * - shared hosts: exact host and exact path only; bare-host entries are never compiled.
  * - trusted hosts (allowlisted, or marked safe by the user) never get a rule: DNR runs
  *   before the service worker, so a rule there would override the allowlist.
+ * - private-network and local-only hosts never get a rule (the worker never checks them).
  */
 import { canonicalize, parseIPv4 } from "@warden/shared/canonicalize";
 import { sha256 } from "@warden/shared/expressions";
 import { isEntryAllowed, type SharedHostList } from "@warden/shared/shared-hosts";
 import type { FeedId } from "@warden/shared/types";
+import { shouldEvaluate } from "./navigation.ts";
 
 /** The subset of chrome.declarativeNetRequest.Rule this module produces. */
 export interface DnrRule {
@@ -98,6 +100,9 @@ function filtersFor(
   const roundTrip = url.host + url.path + (url.query === null ? "" : `?${url.query}`);
   if (roundTrip !== expression) return null;
   if (!isEntryAllowed(url, shared) || trusted(url.host)) return null;
+  // The worker never evaluates private-network or local-only hosts, so the
+  // ERR_BLOCKED_BY_CLIENT fallback could never undo a rule on one (e.g. a router page).
+  if (!shouldEvaluate(`http://${url.host}/`)) return null;
 
   const sharedHost = shared.isShared(url.host);
   // `||` would also match subdomains, so shared hosts, parents of shared hosts (an entry on

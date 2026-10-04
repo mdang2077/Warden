@@ -15,6 +15,7 @@ const TRANCO = [
   "docs.google.com",
   "dropbox.com",
   "github.io",
+  "000webhostapp.com",
   "bbc.co.uk",
   "google.com",
   "example.org",

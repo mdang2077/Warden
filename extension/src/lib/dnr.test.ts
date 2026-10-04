@@ -100,6 +100,19 @@ describe("compileDnrRules: normal hosts", () => {
     expect(blocks(rules, "http://11.2.3.4/x")).toBe(false);
   });
 
+  it("never compiles private-network or local-only hosts", () => {
+    // The worker never evaluates these, so the ERR_BLOCKED_BY_CLIENT fallback can't undo them.
+    const { rules, skipped } = compile(
+      "192.168.1.1/",
+      "10.0.0.1/admin",
+      "router.lan/",
+      "printer.local/",
+      "nas.home.arpa/x",
+    );
+    expect(rules).toEqual([]);
+    expect(skipped).toBe(5);
+  });
+
   it("only targets top-frame navigations", () => {
     const { rules } = compile("evil.example/");
     expect(rules[0]?.condition.resourceTypes).toEqual(["main_frame"]);
@@ -111,7 +124,9 @@ describe("FP acceptance: no host-level DNR rule on a shared host", () => {
     "docs.google.com/",
     "docs.google.com/forms/d/X/viewform",
     "docs.google.com/forms/d/",
-    "evil.github.io/",
+    "github.io/",
+    "www.github.io/",
+    "pages.dev/login",
     "evil.github.io/login/",
     "storage.googleapis.com/bucket/phish.html",
     "bit.ly/",
@@ -127,8 +142,9 @@ describe("FP acceptance: no host-level DNR rule on a shared host", () => {
       "https://docs.google.com/forms/d/X/edit",
       "https://docs.google.com/forms/d/other",
       "https://good.github.io/",
-      "https://evil.github.io/",
-      "https://evil.github.io/login/other.html",
+      "https://github.io/",
+      "https://www.github.io/",
+      "https://x.pages.dev/login",
       "https://storage.googleapis.com/bucket/other.html",
       "https://bit.ly/zzz",
       "https://bit.ly/",
@@ -160,6 +176,14 @@ describe("FP acceptance: no host-level DNR rule on a shared host", () => {
     expect(blocks(ip, "https://1.2.3.4/a")).toBe(true);
   });
 
+  it("a bare tenant entry blocks that tenant only", () => {
+    const tenant = compile("evil.github.io/").rules;
+    expect(blocks(tenant, "https://evil.github.io/login")).toBe(true);
+    expect(blocks(tenant, "https://a.evil.github.io/")).toBe(true);
+    expect(blocks(tenant, "https://good.github.io/")).toBe(false);
+    expect(blocks(tenant, "https://github.io/")).toBe(false);
+  });
+
   it("an entry on a parent of a shared host never matches the shared host", () => {
     const parents = compile("core.windows.net/", "googleapis.com/", "googleapis.com/login/").rules;
     for (const url of [
@@ -175,10 +199,12 @@ describe("FP acceptance: no host-level DNR rule on a shared host", () => {
   });
 
   it("no rule on a shared host uses the subdomain anchor", () => {
-    const sharedRules = rules.filter((r) =>
-      /docs\.google\.com|github\.io|googleapis|bit\.ly|windows\.net/.test(
-        r.condition.urlFilter ?? "",
-      ),
+    // evil.github.io is a tenant, so its own rules may use `||`; nothing else may.
+    const sharedRules = rules.filter(
+      (r) =>
+        /docs\.google\.com|github\.io|googleapis|bit\.ly|windows\.net/.test(
+          r.condition.urlFilter ?? "",
+        ) && !r.condition.urlFilter?.includes("evil.github.io"),
     );
     expect(sharedRules.length).toBeGreaterThan(0);
     for (const r of sharedRules) expect(r.condition.urlFilter?.startsWith("||")).toBe(false);

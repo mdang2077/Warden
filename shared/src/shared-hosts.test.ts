@@ -42,14 +42,24 @@ describe("isShared", () => {
     "mybucket.s3.amazonaws.com",
     "mybucket.s3.us-east-1.amazonaws.com",
     "acct.blob.core.windows.net",
-    "evil.github.io",
     "github.io",
-    "x.pages.dev",
+    "www.github.io",
+    "pages.dev",
+    "000webhostapp.com",
     "bit.ly",
     "tenant.sharepoint.com",
-  ])("%s is shared", (host) => {
+  ])("%s is shared (exact-path only)", (host) => {
     expect(shared.isShared(host)).toBe(true);
+    expect(shared.isListed(host)).toBe(true);
   });
+
+  it.each(["evil.github.io", "deep.evil.github.io", "x.pages.dev", "a0512393.xsph.ru"])(
+    "%s is a tenant: listed, but not path-shared",
+    (host) => {
+      expect(shared.isShared(host)).toBe(false);
+      expect(shared.isListed(host)).toBe(true);
+    },
+  );
 
   it.each(["google.com", "mail.google.com", "example.com", "notgithub.io", "evilbit.ly"])(
     "%s is not shared",
@@ -91,9 +101,25 @@ describe("FP acceptance: shared-host matching", () => {
 
   it("bare-host entries on shared hosts are rejected", () => {
     expect(isEntryAllowed(c("https://docs.google.com/"), shared)).toBe(false);
-    expect(isEntryAllowed(c("https://evil.github.io"), shared)).toBe(false);
+    expect(isEntryAllowed(c("https://www.000webhostapp.com/"), shared)).toBe(false);
     expect(isEntryAllowed(c("https://bit.ly/"), shared)).toBe(false);
     expect(isEntryAllowed(c("https://bit.ly/abc123"), shared)).toBe(true);
+  });
+
+  it("a bare tenant entry blocks that tenant only, never the platform", () => {
+    expect(isEntryAllowed(c("https://evil.github.io/"), shared)).toBe(true);
+    expect(matches("https://evil.github.io/", "https://evil.github.io/any/page")).toBe(true);
+    expect(matches("https://evil.github.io/", "https://login.evil.github.io/x")).toBe(true);
+    expect(matches("https://evil.github.io/", "https://good.github.io/")).toBe(false);
+    expect(matches("https://evil.github.io/", "https://github.io/")).toBe(false);
+    expect(matches("https://evil.github.io/", "https://www.github.io/")).toBe(false);
+    expect(matches("https://x.000webhostapp.com/", "https://y.000webhostapp.com/")).toBe(false);
+  });
+
+  it("tenant lookups never reach the platform apex", () => {
+    const exprs = protectedLookupExpressions(c("https://a.evil.github.io/x"), shared);
+    expect(exprs.some((e) => e.startsWith("github.io/"))).toBe(false);
+    expect(exprs).toContain("evil.github.io/");
   });
 
   it("one github.io tenant never blocks another", () => {

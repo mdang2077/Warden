@@ -1,238 +1,376 @@
 {
-  "version": 1,
-  "updated": "2026-10-03",
+  "version": 2,
+  "updated": "2026-10-04",
   "entries": [
     {
       "pattern": "docs.google.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "drive.google.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "sites.google.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "script.google.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "*.googleusercontent.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "storage.googleapis.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "firebasestorage.googleapis.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "path"
     },
     {
       "pattern": "*.firebaseapp.com",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "tenant"
     },
     {
       "pattern": "*.web.app",
-      "group": "Google user content"
+      "group": "Google user content",
+      "kind": "tenant"
     },
     {
       "pattern": "forms.office.com",
-      "group": "Microsoft user content"
+      "group": "Microsoft user content",
+      "kind": "path"
     },
     {
       "pattern": "onedrive.live.com",
-      "group": "Microsoft user content"
+      "group": "Microsoft user content",
+      "kind": "path"
     },
     {
       "pattern": "*.sharepoint.com",
-      "group": "Microsoft user content"
+      "group": "Microsoft user content",
+      "kind": "path"
     },
     {
       "pattern": "*.blob.core.windows.net",
-      "group": "Microsoft user content"
+      "group": "Microsoft user content",
+      "kind": "path"
     },
     {
       "pattern": "*.web.core.windows.net",
-      "group": "Microsoft user content"
+      "group": "Microsoft user content",
+      "kind": "tenant"
     },
     {
       "pattern": "*.azurewebsites.net",
-      "group": "Microsoft user content"
+      "group": "Microsoft user content",
+      "kind": "tenant"
     },
     {
       "pattern": "*.amazonaws.com",
-      "group": "AWS (S3 and other customer hosts)"
+      "group": "AWS (S3 and other customer hosts)",
+      "kind": "path"
     },
     {
       "pattern": "dropbox.com",
-      "group": "File sharing"
+      "group": "File sharing",
+      "kind": "path"
     },
     {
       "pattern": "*.dropbox.com",
-      "group": "File sharing"
+      "group": "File sharing",
+      "kind": "path"
     },
     {
       "pattern": "*.dropboxusercontent.com",
-      "group": "File sharing"
+      "group": "File sharing",
+      "kind": "path"
     },
     {
       "pattern": "notion.so",
-      "group": "Notion"
+      "group": "Notion",
+      "kind": "path"
     },
     {
       "pattern": "*.notion.so",
-      "group": "Notion"
+      "group": "Notion",
+      "kind": "path"
     },
     {
       "pattern": "*.notion.site",
-      "group": "Notion"
+      "group": "Notion",
+      "kind": "path"
     },
     {
       "pattern": "ipfs.io",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "path"
     },
     {
       "pattern": "dweb.link",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "path"
     },
     {
       "pattern": "*.dweb.link",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "tenant"
     },
     {
       "pattern": "cloudflare-ipfs.com",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "path"
     },
     {
       "pattern": "*.mypinata.cloud",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "path"
     },
     {
       "pattern": "gateway.pinata.cloud",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "path"
     },
     {
       "pattern": "w3s.link",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "path"
     },
     {
       "pattern": "*.w3s.link",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "tenant"
     },
     {
       "pattern": "*.nftstorage.link",
-      "group": "IPFS gateways"
+      "group": "IPFS gateways",
+      "kind": "tenant"
     },
     {
       "pattern": "*.webflow.io",
-      "group": "Site builders"
+      "group": "Site builders",
+      "kind": "tenant"
     },
     {
       "pattern": "*.wixsite.com",
-      "group": "Site builders"
+      "group": "Site builders",
+      "kind": "tenant"
     },
     {
       "pattern": "*.weebly.com",
-      "group": "Site builders"
+      "group": "Site builders",
+      "kind": "tenant"
     },
     {
       "pattern": "*.square.site",
-      "group": "Site builders"
+      "group": "Site builders",
+      "kind": "tenant"
     },
     {
       "pattern": "*.workers.dev",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "*.pages.dev",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "*.vercel.app",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "*.netlify.app",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "*.github.io",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "*.glitch.me",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "*.r2.dev",
-      "group": "App hosting"
+      "group": "App hosting",
+      "kind": "tenant"
     },
     {
       "pattern": "bit.ly",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "tinyurl.com",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "t.co",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "goo.gl",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "ow.ly",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "is.gd",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "buff.ly",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "rebrand.ly",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "cutt.ly",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "shorturl.at",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "rb.gy",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "t.ly",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "lnkd.in",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "forms.gle",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "1drv.ms",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
     },
     {
       "pattern": "aka.ms",
-      "group": "URL shorteners"
+      "group": "URL shorteners",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.000webhostapp.com",
+      "group": "Free hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.xsph.ru",
+      "group": "Free hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.tmweb.ru",
+      "group": "Free hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.tw1.ru",
+      "group": "Free hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.webcindario.com",
+      "group": "Free hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.jimdofree.com",
+      "group": "Site builders",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.filesusr.com",
+      "group": "Site builders",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.myshoptet.com",
+      "group": "Site builders",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.contaboserver.net",
+      "group": "App hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.nip.io",
+      "group": "App hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.zapier.app",
+      "group": "App hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "*.backblazeb2.com",
+      "group": "File sharing",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.squarespace.com",
+      "group": "Site builders",
+      "kind": "path"
+    },
+    {
+      "pattern": "goo.su",
+      "group": "URL shorteners",
+      "kind": "path"
+    },
+    {
+      "pattern": "tiny.cc",
+      "group": "URL shorteners",
+      "kind": "path"
+    },
+    {
+      "pattern": "bit.do",
+      "group": "URL shorteners",
+      "kind": "path"
     }
   ]
 }

@@ -19,7 +19,7 @@ const TRANCO = [
 const OPENPHISH = [
   "https://evil.example/login",
   "https://www.paypal.com/signin", // allowlisted → dropped
-  "https://evil.github.io/", // bare host on a shared host → dropped
+  "https://github.io/", // bare host on a platform apex → dropped
   "https://docs.google.com/forms/d/X/viewform", // path-specific on a shared host → kept
 ].join("\n");
 

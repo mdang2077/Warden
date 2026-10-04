@@ -32,7 +32,7 @@ export function buildAllowlist(
     if (seen++ >= topN) break;
     const host = raw.trim().toLowerCase();
     const domain = host && registrableDomain(host);
-    if (!domain || shared.isShared(host) || shared.isShared(domain)) continue;
+    if (!domain || shared.isListed(host) || shared.isListed(domain)) continue;
     out.add(domain);
   }
   return [...out].sort();
@@ -58,7 +58,7 @@ export function createAllowlist(domains: ReadonlySet<string>, shared: SharedHost
     allows(host) {
       // A shared host is never allowlisted, even under a popular domain: docs.google.com
       // carries other people's forms, so google.com's rank says nothing about them.
-      if (shared.isShared(host)) return false;
+      if (shared.isListed(host)) return false;
       const domain = registrableDomain(host);
       return domain !== null && domains.has(domain);
     },

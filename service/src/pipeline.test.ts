@@ -46,13 +46,23 @@ describe("cleanFeed", () => {
     expect(entries.map((e) => e.expression)).toEqual(["docs.google.com/forms/d/X/viewform"]);
   });
 
-  it("drops bare-host entries on shared hosts", async () => {
+  it("drops bare-host entries on path-shared hosts and platform apexes", async () => {
     const { entries, stats } = await clean([
-      rec("https://evil.github.io/"),
+      rec("https://github.io/"),
       rec("https://storage.googleapis.com"),
     ]);
     expect(entries).toEqual([]);
     expect(stats.dropped_shared_host).toBe(2);
+  });
+
+  it("keeps bare-host entries on tenant subdomains, even of Tranco-ranked platforms", async () => {
+    const { entries, stats } = await cleanFeed([rec("https://evil.000webhostapp.com/")], {
+      allowlist: parseAllowlist("000webhostapp.com\n", shared),
+      shared,
+      now: NOW,
+    });
+    expect(entries.map((e) => e.expression)).toEqual(["evil.000webhostapp.com/"]);
+    expect(stats.dropped_allowlist).toBe(0);
   });
 
   it("drops invalid and non-http entries", async () => {
