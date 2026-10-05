@@ -46,22 +46,26 @@ export type Resolver = (host: string) => Promise<string[]>;
 export const dnsResolver: Resolver = async (host) =>
   (await lookup(host, { all: true, verbatim: true })).map((a) => a.address);
 
-/** Caches per host. Resolution failures count as private (blocked). */
+export type HostVerdict = "allow" | "private" | "unresolved";
+
+/** Caches per host. Hosts that don't resolve are refused too (and reported as such). */
 export function createHostGuard(resolve: Resolver = dnsResolver) {
-  const cache = new Map<string, Promise<boolean>>();
-  return (host: string): Promise<boolean> => {
+  const cache = new Map<string, Promise<HostVerdict>>();
+  return (host: string): Promise<HostVerdict> => {
     const h = host.replace(/^\[|\]$/g, "").toLowerCase();
     let verdict = cache.get(h);
     if (!verdict) {
       verdict = (async () => {
-        if (h === "localhost" || h.endsWith(".localhost")) return false;
-        if (isIP(h)) return !isPrivateAddress(h);
+        if (h === "localhost" || h.endsWith(".localhost")) return "private";
+        if (isIP(h)) return isPrivateAddress(h) ? "private" : "allow";
+        let addresses: string[];
         try {
-          const addresses = await resolve(h);
-          return addresses.length > 0 && addresses.every((a) => !isPrivateAddress(a));
+          addresses = await resolve(h);
         } catch {
-          return false;
+          return "unresolved";
         }
+        if (addresses.length === 0) return "unresolved";
+        return addresses.every((a) => !isPrivateAddress(a)) ? "allow" : "private";
       })();
       cache.set(h, verdict);
     }

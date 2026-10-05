@@ -1,23 +1,25 @@
 /**
  * Hardened page crawler for Stage 2 corpora. Each URL gets a fresh browser context:
  * no downloads, no permissions, no service workers, dialogs dismissed, popups closed, and
- * no requests to private networks. The crawler never clicks or submits anything; it loads
+ * no requests or WebSockets to private networks. The crawler never clicks or submits anything; it loads
  * the page, lets it settle, and runs the shared extractor.
  *
  * Output per URL under `outDir/<id>/`: record.json, page.html, screenshot.png, plus a line
  * in `outDir/index.jsonl`.
  *
  * Where to run it: crawled pages are live phishing sites running real JavaScript. Run real
- * phish crawls in a throwaway container or VM (or a CI runner), not on a machine with
- * anything to protect. The network guard resolves hosts separately from the browser, so a
- * DNS-rebinding page could still slip one request past it in the gap between lookups.
+ * phish crawls in the hardened container in docker/crawler/, not on a machine with anything
+ * to protect. All browser traffic goes through egress-proxy.ts, which refuses private
+ * addresses and connects only to the address it checked.
  */
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import type { Socket } from "node:net";
 import path from "node:path";
 import { hasSecretSurface, type PageSnapshot } from "@warden/shared/page/extract";
 import { registrableDomain } from "@warden/shared/psl";
-import { type Browser, chromium } from "playwright";
+import { type Browser, type BrowserContext, chromium } from "playwright";
+import { startEgressProxy } from "./egress-proxy.ts";
 import { extractorScript } from "./extractor-bundle.ts";
 import { createHostGuard, type Resolver } from "./network-guard.ts";
 
@@ -51,8 +53,10 @@ export interface CrawlRecord extends CrawlTarget {
   gated: boolean;
   /** Same-site login link candidates, best first, when `discoverLogin` was set. */
   login_links?: string[];
-  /** Requests the network guard refused (private-network hosts). */
+  /** Requests the network guard refused (private-network or unresolvable hosts). */
   blocked_requests: number;
+  /** Why the guard refused the page's own navigation, when it did. */
+  main_frame_refused?: "private" | "unresolved";
   /** 1 for the first try, 2 for the retry. */
   attempt: number;
   duration_ms: number;
@@ -65,8 +69,10 @@ export interface CrawlerOptions {
   /** How long to let scripts run after load before extracting. */
   settleMs?: number;
   resolveHost?: Resolver;
-  /** Extra Chromium flags (tests map fake hosts to a local server with these). */
+  /** Extra Chromium flags. */
   launchArgs?: string[];
+  /** Upstream dialer for the egress proxy (tests point it at a local server). */
+  dial?: (address: string, port: number) => Socket;
   headless?: boolean;
   /**
    * Chromium's own sandbox. On by default (Playwright turns it off unless asked): it is the
@@ -124,11 +130,24 @@ export async function createCrawler(options: CrawlerOptions) {
   const settleMs = options.settleMs ?? 2_000;
   const allowHost = createHostGuard(options.resolveHost);
   const script = await extractorScript();
-  const browser: Browser = await chromium.launch({
-    headless: options.headless ?? true,
-    chromiumSandbox: options.sandbox ?? true,
-    args: options.launchArgs ?? [],
+  // Every connection Chromium makes goes through the filtering proxy, loopback included
+  // (Chromium bypasses proxies for loopback unless told otherwise). WebRTC can't be
+  // proxied, so its UDP is disabled.
+  const proxy = await startEgressProxy({
+    ...(options.resolveHost ? { resolveHost: options.resolveHost } : {}),
+    ...(options.dial ? { dial: options.dial } : {}),
   });
+  const launch = () =>
+    chromium.launch({
+      headless: options.headless ?? true,
+      chromiumSandbox: options.sandbox ?? true,
+      proxy: { server: proxy.url, bypass: "<-loopback>" },
+      args: [
+        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+        ...(options.launchArgs ?? []),
+      ],
+    });
+  let browser: Browser = await launch();
   await mkdir(options.outDir, { recursive: true });
 
   async function crawl(target: CrawlTarget, attempt = 1): Promise<CrawlRecord> {
@@ -150,28 +169,50 @@ export async function createCrawler(options: CrawlerOptions) {
       duration_ms: 0,
     };
 
-    const context = await browser.newContext({
-      userAgent: USER_AGENT,
-      viewport: { width: 1280, height: 800 },
-      acceptDownloads: false,
-      permissions: [],
-      serviceWorkers: "block",
-      ignoreHTTPSErrors: true,
-      javaScriptEnabled: true,
-    });
     const dir = path.join(options.outDir, id);
+    let context: BrowserContext | undefined;
     try {
+      // A crashed browser is replaced, so one bad page can't stop a whole watcher cycle.
+      if (!browser.isConnected()) browser = await launch();
+      context = await browser.newContext({
+        userAgent: USER_AGENT,
+        viewport: { width: 1280, height: 800 },
+        acceptDownloads: false,
+        permissions: [],
+        serviceWorkers: "block",
+        ignoreHTTPSErrors: true,
+        javaScriptEnabled: true,
+      });
       await context.route("**/*", async (route) => {
         const url = new URL(route.request().url());
         if (url.protocol === "data:" || url.protocol === "blob:") return route.continue();
-        if (
-          (url.protocol !== "http:" && url.protocol !== "https:") ||
-          !(await allowHost(url.hostname))
-        ) {
+        const verdict =
+          url.protocol === "http:" || url.protocol === "https:"
+            ? await allowHost(url.hostname)
+            : "private";
+        if (verdict !== "allow") {
           record.blocked_requests++;
+          const req = route.request();
+          if (req.isNavigationRequest() && req.frame().parentFrame() === null) {
+            record.main_frame_refused = verdict;
+          }
           return route.abort("blockedbyclient");
         }
         return route.continue();
+      });
+      // context.route() never sees WebSockets, so they get the same guard here. Not calling
+      // connectToServer() means a refused socket never reaches the network.
+      await context.routeWebSocket(/.*/, async (ws) => {
+        const url = new URL(ws.url());
+        if (
+          (url.protocol === "ws:" || url.protocol === "wss:") &&
+          (await allowHost(url.hostname)) === "allow"
+        ) {
+          ws.connectToServer();
+          return;
+        }
+        record.blocked_requests++;
+        await ws.close({ code: 1008, reason: "blocked by crawler" }).catch(() => {});
       });
       context.on("page", (p) => {
         p.on("dialog", (d) => void d.dismiss().catch(() => {}));
@@ -211,9 +252,14 @@ export async function createCrawler(options: CrawlerOptions) {
       record.ok = true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      record.error = (message.split("\n")[0] ?? message).slice(0, 300);
+      record.error =
+        record.main_frame_refused === "unresolved"
+          ? "dns: host did not resolve"
+          : record.main_frame_refused === "private"
+            ? "refused: host resolves to a private address"
+            : (message.split("\n")[0] ?? message).slice(0, 300);
     } finally {
-      await context.close().catch(() => {});
+      await context?.close().catch(() => {});
     }
 
     record.duration_ms = Date.now() - started;
@@ -226,7 +272,10 @@ export async function createCrawler(options: CrawlerOptions) {
 
   return {
     crawl,
-    close: () => browser.close(),
+    close: async () => {
+      await browser.close().catch(() => {});
+      await proxy.close();
+    },
   };
 }
 

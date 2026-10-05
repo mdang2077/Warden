@@ -14,10 +14,14 @@ Crawled phishing pages run real JavaScript. Three layers keep them contained:
    profile: Docker's default plus the namespace syscalls the sandbox uses.
 2. **The container**: non-root, read-only filesystem, all capabilities dropped,
    `no-new-privileges`, memory and process limits.
-3. **The crawler's network guard**: every request whose host resolves to a loopback,
-   private, or link-local address is refused, so a page can't probe the host or the LAN.
-   It resolves hosts separately from the browser, so a DNS-rebinding page could slip one
-   request through in between; layers 1 and 2 are why that's acceptable.
+3. **A filtering egress proxy** inside the crawler. Chromium sends every connection
+   through it, loopback included: HTTP requests, HTTPS and WebSocket tunnels, preconnects.
+   The proxy resolves each host itself, refuses loopback, private, link-local, and
+   unresolvable hosts, and connects to the exact address it checked, so DNS rebinding can't
+   swap in a private address. WebRTC can't be proxied, so its UDP is disabled
+   (`--force-webrtc-ip-handling-policy=disable_non_proxied_udp`).
+4. **Request and WebSocket routing** applies the same rules inside the browser and records
+   why a page's own navigation was refused (`dns: host did not resolve` for dead domains).
 
 ```sh
 docker compose -f docker/crawler/compose.yaml up -d --build   # start the watcher

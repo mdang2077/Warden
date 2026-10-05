@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
-import type { AddressInfo } from "node:net";
+import { type AddressInfo, connect } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -36,11 +36,11 @@ describe("network guard", () => {
       if (host === "rebind.example") return ["93.184.216.34", "127.0.0.1"];
       throw new Error("NXDOMAIN");
     });
-    expect(await allow("public.example")).toBe(true);
-    expect(await allow("rebind.example")).toBe(false);
-    expect(await allow("missing.example")).toBe(false);
-    expect(await allow("localhost")).toBe(false);
-    expect(await allow("[::1]")).toBe(false);
+    expect(await allow("public.example")).toBe("allow");
+    expect(await allow("rebind.example")).toBe("private");
+    expect(await allow("missing.example")).toBe("unresolved");
+    expect(await allow("localhost")).toBe("private");
+    expect(await allow("[::1]")).toBe("private");
   });
 });
 
@@ -52,6 +52,12 @@ const PAGES: Record<string, { status?: number; headers?: Record<string, string>;
       <input name="email"><input type="password" name="pw"></form>
       <img src="http://intranet.${HOST}/probe.png">
       <script>fetch("http://127.0.0.1:9/").catch(() => {});</script>`,
+    },
+    [`honeypot.${HOST}/`]: {
+      body: `<title>Search</title><form><input name="q">
+      <input type="password" style="position:absolute;left:-9999px">
+      <input type="password" style="width:0;height:0;border:0;padding:0">
+      <input type="password" style="opacity:0"></form>`,
     },
     [`hop.${HOST}/`]: { status: 302, headers: { location: `http://hop2.${HOST}/` } },
     [`hop2.${HOST}/`]: { status: 302, headers: { location: `http://login.${HOST}/` } },
@@ -70,7 +76,7 @@ describe("crawler", () => {
 
   beforeAll(async () => {
     dir = await mkdtemp(path.join(tmpdir(), "warden-crawl-"));
-    // A real server, so redirects are real; Chromium maps the fake hosts to it.
+    // A real server, so redirects are real; the proxy's dialer maps the fake hosts to it.
     server = createServer((req, res) => {
       const page = PAGES[`${(req.headers.host ?? "").split(":")[0]}${req.url}`];
       res.writeHead(page?.status ?? (page ? 200 : 404), {
@@ -85,7 +91,8 @@ describe("crawler", () => {
       outDir: dir,
       settleMs: 300,
       timeoutMs: 10_000,
-      launchArgs: [`--host-resolver-rules=MAP *.${HOST} 127.0.0.1:${port}`],
+      // Traffic for the fake hosts goes through the egress proxy to the local server.
+      dial: () => connect(port, "127.0.0.1"),
       // The guard sees the test hosts as public, except the intranet one.
       resolveHost: async (host) => {
         if (host === `intranet.${HOST}`) return ["10.0.0.5"];
@@ -117,10 +124,44 @@ describe("crawler", () => {
     expect(index).not.toContain('"snapshot"');
   }, 30_000);
 
+  it("doesn't count honeypot password fields (off-screen, zero-size, transparent)", async () => {
+    const r = await crawler.crawl({
+      url: `http://honeypot.${HOST}/`,
+      label: "benign",
+      group: "test",
+    });
+    expect(r.ok).toBe(true);
+    expect(r.snapshot?.secrets.password).toBe(0);
+    expect(r.gated).toBe(false);
+  }, 30_000);
+
   it("blocks requests to private networks from the crawled page", async () => {
     const r = await crawler.crawl({ url: `http://login.${HOST}/`, label: "phish", group: "test" });
     // intranet image (resolves to 10.0.0.5) and fetch to 127.0.0.1.
     expect(r.blocked_requests).toBeGreaterThanOrEqual(2);
+  }, 30_000);
+
+  it("blocks WebSockets to private networks too", async () => {
+    // page.route() doesn't see WebSockets: without routeWebSocket this reached the sentinel.
+    let upgrades = 0;
+    const sentinel = createServer();
+    sentinel.on("upgrade", (_req, socket) => {
+      upgrades++;
+      socket.destroy();
+    });
+    await new Promise<void>((resolve) => sentinel.listen(0, "127.0.0.1", resolve));
+    const port = (sentinel.address() as AddressInfo).port;
+    PAGES[`ws.${HOST}/`] = {
+      body: `<title>ws</title><script>new WebSocket("ws://127.0.0.1:${port}/");</script>`,
+    };
+    try {
+      const r = await crawler.crawl({ url: `http://ws.${HOST}/`, label: "phish", group: "test" });
+      expect(r.ok).toBe(true);
+      expect(upgrades).toBe(0);
+      expect(r.blocked_requests).toBeGreaterThanOrEqual(1);
+    } finally {
+      await new Promise((resolve) => sentinel.close(resolve));
+    }
   }, 30_000);
 
   it("records server and client redirect chains", async () => {
@@ -155,7 +196,8 @@ describe("crawler", () => {
   it("records failures instead of throwing", async () => {
     const r = await crawler.crawl({ url: "https://gone.invalid/", label: "phish", group: "test" });
     expect(r.ok).toBe(false);
-    expect(r.error).toBeTruthy();
+    expect(r.main_frame_refused).toBe("unresolved");
+    expect(r.error).toBe("dns: host did not resolve");
     expect(existsSync(path.join(dir, r.id, "record.json"))).toBe(true);
   }, 30_000);
 });

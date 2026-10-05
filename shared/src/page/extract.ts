@@ -226,15 +226,37 @@ function labelFor(doc: Document, el: Element): string {
   return clip(collapse(parts.join(" ")), MAX_ATTR);
 }
 
+/**
+ * Whether a user could see the field. Autofill honeypots are often hidden without
+ * `display`/`visibility`: transparent, tiny, or positioned off-screen. The size and position
+ * checks need real layout, so they only apply where the document has it (browsers, not
+ * DOM-only test environments).
+ */
 function isVisible(el: Element): boolean {
   if (el.hasAttribute("hidden")) return false;
   const view = el.ownerDocument.defaultView;
   for (let node: Element | null = el; node; node = node.parentElement) {
     if (node.hasAttribute("hidden")) return false;
     const style = view?.getComputedStyle(node);
-    if (style && (style.display === "none" || style.visibility === "hidden")) return false;
+    if (!style) continue;
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    if (style.opacity !== "" && Number(style.opacity) === 0) return false;
+  }
+  if (hasLayout(el.ownerDocument)) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return false;
+    // Positions are relative to the viewport at load (scrolled to the top), so anything
+    // fully above or left of it can never be scrolled into view.
+    if (rect.right <= 0 || rect.bottom <= 0) return false;
   }
   return true;
+}
+
+function hasLayout(doc: Document): boolean {
+  const root = doc.documentElement;
+  return (
+    typeof root?.getBoundingClientRect === "function" && root.getBoundingClientRect().width > 0
+  );
 }
 
 function visibleText(doc: Document): string {

@@ -41,6 +41,8 @@ describe("credential gate", () => {
         <input type="password" style="display:none">
         <div hidden><input type="password"></div>
         <input type="password" style="visibility:hidden">
+        <input type="password" style="opacity:0">
+        <div style="opacity: 0"><input type="password"></div>
         <input name="q" type="search"></form></body>`),
     );
     expect(hasSecretSurface(snap)).toBe(false);
