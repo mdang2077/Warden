@@ -20,6 +20,10 @@ services:
       - /home/crawler:size=256m
     shm_size: 1g
     cap_drop: [ALL]
+    # Only so the seccomp profile permits chroot(), which Chromium's sandbox calls inside its
+    # own user namespace. The crawler runs non-root with no-new-privileges, so it holds no
+    # effective capabilities in the container itself.
+    cap_add: [SYS_CHROOT]
     security_opt:
       - no-new-privileges:true
       # Playwright's published profile: Docker's default plus the namespace syscalls
