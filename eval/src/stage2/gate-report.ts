@@ -13,12 +13,18 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import type { SecretKind } from "@warden/shared/page/extract";
 import type { CrawlRecord } from "../crawl/crawler.ts";
+import { classifyInterception, isTlsReset } from "../crawl/interception.ts";
 
 const KINDS: SecretKind[] = ["password", "otp", "card", "seed"];
 
 export interface GroupStats {
   crawled: number;
+  /** Loaded and not intercepted: the page itself was seen. */
   ok: number;
+  /** Loaded, but an ISP filter or the site's provider replaced the page. */
+  intercepted: number;
+  /** Failed with a cut-off TLS handshake (typical of server-name filtering). */
+  tlsReset: number;
   gated: number;
   identifierOnly: number;
   kinds: Record<SecretKind, number>;
@@ -34,18 +40,26 @@ export function loadRecords(dir: string): CrawlRecord[] {
   return out;
 }
 
+function emptyStats(): GroupStats {
+  return {
+    crawled: 0,
+    ok: 0,
+    intercepted: 0,
+    tlsReset: 0,
+    gated: 0,
+    identifierOnly: 0,
+    kinds: { password: 0, otp: 0, card: 0, seed: 0 },
+  };
+}
+
 export function groupStats(records: readonly CrawlRecord[]): Map<string, GroupStats> {
   const groups = new Map<string, GroupStats>();
   for (const r of records) {
-    const g = groups.get(r.group) ?? {
-      crawled: 0,
-      ok: 0,
-      gated: 0,
-      identifierOnly: 0,
-      kinds: { password: 0, otp: 0, card: 0, seed: 0 },
-    };
+    const g = groups.get(r.group) ?? emptyStats();
     g.crawled++;
-    if (r.ok && r.snapshot) {
+    if (isTlsReset(r)) g.tlsReset++;
+    if (r.ok && r.snapshot && classifyInterception(r)) g.intercepted++;
+    else if (r.ok && r.snapshot) {
       g.ok++;
       if (r.gated) g.gated++;
       if (!r.gated && (r.snapshot.identifierFields ?? 0) > 0) g.identifierOnly++;
@@ -60,32 +74,25 @@ const pct = (n: number, d: number) => (d ? `${((n / d) * 100).toFixed(1)}%` : "â
 
 function table(title: string, groups: Map<string, GroupStats>, note: string): string[] {
   const rows = [...groups].sort((a, b) => b[1].ok - a[1].ok);
-  const total = rows.reduce<GroupStats>(
-    (t, [, g]) => {
-      t.crawled += g.crawled;
-      t.ok += g.ok;
-      t.gated += g.gated;
-      t.identifierOnly += g.identifierOnly;
-      for (const k of KINDS) t.kinds[k] += g.kinds[k];
-      return t;
-    },
-    {
-      crawled: 0,
-      ok: 0,
-      gated: 0,
-      identifierOnly: 0,
-      kinds: { password: 0, otp: 0, card: 0, seed: 0 },
-    },
-  );
+  const total = rows.reduce<GroupStats>((t, [, g]) => {
+    t.crawled += g.crawled;
+    t.ok += g.ok;
+    t.intercepted += g.intercepted;
+    t.tlsReset += g.tlsReset;
+    t.gated += g.gated;
+    t.identifierOnly += g.identifierOnly;
+    for (const k of KINDS) t.kinds[k] += g.kinds[k];
+    return t;
+  }, emptyStats());
   const line = (name: string, g: GroupStats) =>
-    `| ${name} | ${g.crawled} | ${g.ok} | ${g.gated} | ${pct(g.gated, g.ok)} | ${pct(g.identifierOnly, g.ok)} | ${KINDS.map((k) => g.kinds[k]).join(" / ")} |`;
+    `| ${name} | ${g.crawled} | ${g.intercepted} | ${g.tlsReset} | ${g.ok} | ${g.gated} | ${pct(g.gated, g.ok)} | ${pct(g.identifierOnly, g.ok)} | ${KINDS.map((k) => g.kinds[k]).join(" / ")} |`;
   return [
     `## ${title}`,
     "",
     note,
     "",
-    "| Group | Crawled | Loaded | Gated | Gate rate | Identifier-only | Password / OTP / card / seed |",
-    "|---|--:|--:|--:|--:|--:|---|",
+    "| Group | Crawled | Intercepted | TLS reset | Page seen | Gated | Gate rate | Identifier-only | Password / OTP / card / seed |",
+    "|---|--:|--:|--:|--:|--:|--:|--:|---|",
     ...rows.map(([name, g]) => line(name, g)),
     line("**all**", total),
     "",
@@ -110,7 +117,7 @@ export function renderGateReport(
     ...table(
       "Phish pages",
       groupStats(phish),
-      "Gate rate on loaded phish is the ceiling on Stage 2 recall: a page the gate misses can never get a warning. Loaded < crawled means the page was already dead or unreachable.",
+      "Gate rate on seen phish is the ceiling on Stage 2 recall: a page the gate misses can never get a warning. _Intercepted_ pages were replaced by an ISP filter or the site's provider (CDN/host takedown); _TLS reset_ crawls had their handshake cut off, typical of filters that block by server name. Neither says anything about the page, so both are excluded from the gate rate.",
     ),
   ].join("\n");
 }
