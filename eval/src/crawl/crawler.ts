@@ -46,6 +46,8 @@ export interface CrawlRecord extends CrawlTarget {
   snapshot: PageSnapshot | null;
   /** Requests the network guard refused (private-network hosts). */
   blocked_requests: number;
+  /** 1 for the first try, 2 for the retry. */
+  attempt: number;
   duration_ms: number;
 }
 
@@ -59,6 +61,12 @@ export interface CrawlerOptions {
   /** Extra Chromium flags (tests map fake hosts to a local server with these). */
   launchArgs?: string[];
   headless?: boolean;
+  /**
+   * Chromium's own sandbox. On by default (Playwright turns it off unless asked): it is the
+   * main barrier between a malicious page and the machine. In Docker it needs the seccomp
+   * profile in docker/crawler/.
+   */
+  sandbox?: boolean;
 }
 
 export function crawlId(url: string): string {
@@ -72,11 +80,12 @@ export async function createCrawler(options: CrawlerOptions) {
   const script = await extractorScript();
   const browser: Browser = await chromium.launch({
     headless: options.headless ?? true,
+    chromiumSandbox: options.sandbox ?? true,
     args: options.launchArgs ?? [],
   });
   await mkdir(options.outDir, { recursive: true });
 
-  async function crawl(target: CrawlTarget): Promise<CrawlRecord> {
+  async function crawl(target: CrawlTarget, attempt = 1): Promise<CrawlRecord> {
     const started = Date.now();
     const id = crawlId(target.url);
     const record: CrawlRecord = {
@@ -90,6 +99,7 @@ export async function createCrawler(options: CrawlerOptions) {
       chain: [],
       snapshot: null,
       blocked_requests: 0,
+      attempt,
       duration_ms: 0,
     };
 
