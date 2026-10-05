@@ -14,8 +14,9 @@ import { openListStore } from "../lib/list-store.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import { createRedirectTracker } from "../lib/redirects.ts";
 import { createSafeBrowsingClient } from "../lib/safe-browsing.ts";
+import { createShadowRecorder } from "../lib/shadow-log.ts";
 import { type LocalData, loadLocalData, SYNC_PERIOD_MINUTES, syncFeeds } from "../lib/sync.ts";
-import { clearTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
+import { clearTabVerdict, getTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
 import { e2eTestStage } from "../lib/test-stage.ts";
 
 /**
@@ -133,6 +134,24 @@ export default defineBackground({
     });
     browser.tabs.onRemoved.addListener((tabId) => {
       void clearTabVerdict(session, tabId);
+    });
+
+    // Stage 2 shadow mode: the content script reports secret-entry surfaces; nothing is shown.
+    const recordShadow = createShadowRecorder({
+      area: browser.storage.local,
+      allowlisted: (host) => local.allowlist?.allows(host) ?? false,
+      stage1For: async (tabId, url) => {
+        const verdict = await getTabVerdict(session, tabId);
+        const strip = (u: string) => u.split("#")[0];
+        return verdict && strip(verdict.url) === strip(url) ? verdict.decision : null;
+      },
+    });
+    browser.runtime.onMessage.addListener((message, sender) => {
+      void recordShadow(message, {
+        tabId: sender.tab?.id,
+        frameId: sender.frameId,
+        url: sender.url,
+      }).catch((err) => console.error("[Warden] shadow log failed", err));
     });
     const run = (details: Parameters<typeof handle>[0]) => {
       handle(details).catch((err) => console.error("[Warden] navigation handler failed", err));

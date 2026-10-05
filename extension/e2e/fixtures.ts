@@ -30,6 +30,12 @@ export const test = base.extend<
       // https://redirect.warden-test.example/?to=<url> answers with a 302.
       const to = url.hostname === "redirect.warden-test.example" && url.searchParams.get("to");
       if (to) return route.fulfill({ status: 302, headers: { location: to } });
+      if (url.pathname === "/login") {
+        return route.fulfill({
+          contentType: "text/html",
+          body: '<!doctype html><title>Sign in</title><form><input name="user"><input type="password" name="pw"></form>',
+        });
+      }
       return route.fulfill({
         contentType: "text/html",
         body: "<!doctype html><title>Test page</title><h1>Test page</h1>",

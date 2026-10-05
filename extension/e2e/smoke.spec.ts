@@ -85,3 +85,29 @@ test("feed sync installs Tier A rules and blocks a listed host", async ({
   await expect(page.locator("#blocked-url")).toHaveText(blocked);
   await expect(page.locator("#sources")).toHaveText("OpenPhish");
 });
+
+test("Stage 2 shadow mode logs a login page locally, without the query", async ({
+  context,
+  extensionId: _,
+}) => {
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error("no service worker");
+  const page = await context.newPage();
+  await page.goto("https://ok.warden-test.example/login?session=SECRET");
+  await expect(page.getByRole("textbox").first()).toBeVisible();
+
+  const readLog = () =>
+    worker.evaluate(
+      async () => ((await chrome.storage.local.get("shadow_log")).shadow_log ?? []) as unknown[],
+    );
+  await expect.poll(async () => (await readLog()).length).toBeGreaterThan(0);
+  const [entry] = await readLog();
+  expect(entry).toMatchObject({
+    page: "https://ok.warden-test.example/login",
+    kind: "gate",
+    secrets: { password: 1 },
+  });
+  expect(JSON.stringify(entry)).not.toContain("SECRET");
+  // Shadow mode: the page is not blocked or changed.
+  expect(page.url()).toBe("https://ok.warden-test.example/login?session=SECRET");
+});

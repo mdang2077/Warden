@@ -52,6 +52,11 @@ export interface PageSnapshot {
   forms: FormInfo[];
   /** Count of visible fields per secret kind across the page. */
   secrets: Record<SecretKind, number>;
+  /**
+   * Visible username/email/phone fields on a page with no secret field: the first step of a
+   * two-step login. Not part of the gate; logged in shadow mode to measure the pattern.
+   */
+  identifierFields: number;
   favicon: string | null;
   /** img/svg sources or alt texts whose attributes mention "logo". */
   logoCandidates: string[];
@@ -67,7 +72,11 @@ const CARD_HINT =
   /(card[\s_-]?(number|num|no)|cc[\s_-]?(number|num|no)|credit[\s_-]?card|debit[\s_-]?card|\bcvv2?\b|\bcvc\b|\bcsc\b|security[\s_-]?number|expir(y|ation))/i;
 const SEED_HINT = /\b(seed|recovery|mnemonic|secret|backup)[\s_-]?(phrase|words?)\b/i;
 
-export function extractSnapshot(doc: Document): PageSnapshot {
+/** The cheap part of a snapshot: forms, fields, and secret counts. No text, links, or scripts. */
+export type FieldsSnapshot = Pick<PageSnapshot, "url" | "forms" | "secrets" | "identifierFields">;
+
+/** Runs on every page in the content script, so it stays to form fields only. */
+export function extractFields(doc: Document): FieldsSnapshot {
   const url = doc.location?.href ?? doc.URL;
   const forms = collectForms(doc, url);
   const secrets: Record<SecretKind, number> = { password: 0, otp: 0, card: 0, seed: 0 };
@@ -91,6 +100,15 @@ export function extractSnapshot(doc: Document): PageSnapshot {
     for (const f of form.fields) if (f.visible && f.secret) secrets[f.secret]++;
   }
 
+  const anySecret = Object.values(secrets).some((n) => n > 0);
+  const identifierFields = anySecret
+    ? 0
+    : forms.flatMap((f) => f.fields).filter((f) => f.visible && isIdentifier(f)).length;
+  return { url, forms, secrets, identifierFields };
+}
+
+export function extractSnapshot(doc: Document): PageSnapshot {
+  const { url, forms, secrets, identifierFields } = extractFields(doc);
   return {
     schema: SNAPSHOT_SCHEMA,
     url,
@@ -99,6 +117,7 @@ export function extractSnapshot(doc: Document): PageSnapshot {
     text: clip(collapse(visibleText(doc)), MAX_TEXT),
     forms,
     secrets,
+    identifierFields,
     favicon: favicon(doc, url),
     logoCandidates: logoCandidates(doc, url),
     links: linkStats(doc, url),
@@ -112,7 +131,7 @@ export function extractSnapshot(doc: Document): PageSnapshot {
 }
 
 /** True when the page asks for any secret: the Stage 2 credential gate. */
-export function hasSecretSurface(snapshot: PageSnapshot): boolean {
+export function hasSecretSurface(snapshot: Pick<PageSnapshot, "secrets">): boolean {
   return Object.values(snapshot.secrets).some((n) => n > 0);
 }
 
@@ -163,6 +182,16 @@ function fieldsIn(doc: Document, elements: Iterable<Element>): FieldInfo[] {
     out.push(field);
   }
   return out;
+}
+
+const IDENTIFIER_HINT = /\b(e-?mail|user(name)?|login|account|phone|mobile)\b/i;
+
+function isIdentifier(f: FieldInfo): boolean {
+  if (f.tag !== "input" || f.secret) return false;
+  if (["username", "email", "tel"].includes(f.autocomplete)) return true;
+  if (f.type === "email") return true;
+  if (f.type !== "text" && f.type !== "tel") return false;
+  return IDENTIFIER_HINT.test(`${f.name} ${f.id} ${f.placeholder} ${f.label}`);
 }
 
 function classify(f: FieldInfo): SecretKind | null {

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { extractSnapshot, hasSecretSurface } from "./extract.ts";
+import { extractFields, extractSnapshot, hasSecretSurface } from "./extract.ts";
 
 /** An inert parsed document: no scripts run and no subresources load. */
 function page(html: string, url = "https://login.example.com/signin") {
@@ -125,5 +125,39 @@ describe("page details", () => {
   it("caps the number of fields per form", () => {
     const snap = extractSnapshot(page(`<body><form>${"<input>".repeat(500)}</form></body>`));
     expect(snap.forms[0]?.fields).toHaveLength(50);
+  });
+});
+
+describe("identifier-only step", () => {
+  it("counts username/email fields when the page has no secret field", () => {
+    const step1 = extractSnapshot(
+      page(`<body><form><input type="email" name="identifier"><button>Next</button></form></body>`),
+    );
+    expect(step1.identifierFields).toBe(1);
+    expect(hasSecretSurface(step1)).toBe(false);
+  });
+
+  it("is zero once a secret field is present, and ignores unrelated text boxes", () => {
+    const login = extractSnapshot(
+      page(`<body><form><input name="username"><input type="password"></form></body>`),
+    );
+    expect(login.identifierFields).toBe(0);
+    const search = extractSnapshot(
+      page(`<body><form><input name="q" placeholder="Search"></form></body>`),
+    );
+    expect(search.identifierFields).toBe(0);
+  });
+
+  it("extractFields matches the full snapshot's form data", () => {
+    const doc = page(
+      `<body><form><input autocomplete="username"><input type="password"></form></body>`,
+    );
+    const full = extractSnapshot(doc);
+    expect(extractFields(doc)).toEqual({
+      url: full.url,
+      forms: full.forms,
+      secrets: full.secrets,
+      identifierFields: full.identifierFields,
+    });
   });
 });
