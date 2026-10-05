@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type Crawler, createCrawler } from "./crawler.ts";
+import { type Crawler, createCrawler, rankLoginLinks } from "./crawler.ts";
 import { createHostGuard, isPrivateAddress } from "./network-guard.ts";
 
 describe("network guard", () => {
@@ -107,6 +107,7 @@ describe("crawler", () => {
     expect(r.status).toBe(200);
     expect(r.snapshot?.title).toBe("Sign in");
     expect(r.snapshot?.secrets.password).toBe(1);
+    expect(r.gated).toBe(true);
     expect(r.snapshot?.forms[0]?.action).toBe(`http://login.${HOST}/s`);
     for (const f of ["record.json", "page.html", "screenshot.png"]) {
       expect(existsSync(path.join(dir, r.id, f)), f).toBe(true);
@@ -157,4 +158,22 @@ describe("crawler", () => {
     expect(r.error).toBeTruthy();
     expect(existsSync(path.join(dir, r.id, "record.json"))).toBe(true);
   }, 30_000);
+});
+
+describe("rankLoginLinks", () => {
+  it("keeps same-site login links, best first, and drops sign-up and other sites", () => {
+    const links = [
+      { href: "https://shop.example.com/account/login", text: "Sign in" },
+      { href: "https://shop.example.com/help", text: "Help" },
+      { href: "https://shop.example.com/register", text: "Create account" },
+      { href: "https://www.example.com/auth?next=/", text: "" },
+      { href: "https://other.example/login", text: "Log in" },
+      { href: "https://shop.example.com/logout", text: "Log out" },
+      { href: "javascript:void(0)", text: "Login" },
+    ];
+    expect(rankLoginLinks(links, "https://www.example.com/")).toEqual([
+      "https://shop.example.com/account/login",
+      "https://www.example.com/auth?next=/",
+    ]);
+  });
 });

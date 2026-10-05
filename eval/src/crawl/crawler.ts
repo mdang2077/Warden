@@ -15,7 +15,8 @@
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { PageSnapshot } from "@warden/shared/page/extract";
+import { hasSecretSurface, type PageSnapshot } from "@warden/shared/page/extract";
+import { registrableDomain } from "@warden/shared/psl";
 import { type Browser, chromium } from "playwright";
 import { extractorScript } from "./extractor-bundle.ts";
 import { createHostGuard, type Resolver } from "./network-guard.ts";
@@ -31,6 +32,8 @@ export interface CrawlTarget {
   label: "benign" | "phish";
   /** Corpus group (benign) or source feed (phish). */
   group: string;
+  /** Also collect same-site "sign in" links (benign corpus discovery only). */
+  discoverLogin?: boolean;
 }
 
 export interface CrawlRecord extends CrawlTarget {
@@ -44,6 +47,10 @@ export interface CrawlRecord extends CrawlTarget {
   /** Every top-frame URL the page went through, first to last (server and client redirects). */
   chain: string[];
   snapshot: PageSnapshot | null;
+  /** True when the snapshot has a secret-entry surface (the Stage 2 gate). */
+  gated: boolean;
+  /** Same-site login link candidates, best first, when `discoverLogin` was set. */
+  login_links?: string[];
   /** Requests the network guard refused (private-network hosts). */
   blocked_requests: number;
   /** 1 for the first try, 2 for the retry. */
@@ -67,6 +74,45 @@ export interface CrawlerOptions {
    * profile in docker/crawler/.
    */
   sandbox?: boolean;
+}
+
+/** Collects link and button candidates as {href, text} from the live page. */
+const COLLECT_LINKS = `[...document.querySelectorAll("a[href]")].slice(0, 2000).map((a) => ({
+  href: a.href,
+  text: [a.textContent, a.getAttribute("aria-label"), a.getAttribute("title")].join(" ").slice(0, 200),
+}))`;
+
+const LOGIN_TEXT =
+  /\b(log\s?in|sign\s?in|signin|login|my\s?account|account|anmelden|connexion|se connecter|iniciar\s?sesi[oó]n|entrar|accedi|inloggen|zaloguj|ログイン|登录|登入|로그인|войти)\b/i;
+const NOT_LOGIN =
+  /\b(sign\s?up|register|create\s?(an\s?)?account|join|log\s?out|sign\s?out|logout|forgot)\b/i;
+
+/** Same-site links that look like login entry points, best first (at most 3). */
+export function rankLoginLinks(links: { href: string; text: string }[], pageUrl: string): string[] {
+  const site = registrableDomain(new URL(pageUrl).hostname);
+  const scored = new Map<string, number>();
+  for (const { href, text } of links) {
+    let url: URL;
+    try {
+      url = new URL(href);
+    } catch {
+      continue;
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+    if (!site || registrableDomain(url.hostname) !== site) continue;
+    const pathText = `${url.pathname} ${url.search}`;
+    if (NOT_LOGIN.test(text) || NOT_LOGIN.test(pathText)) continue;
+    const score =
+      (LOGIN_TEXT.test(text) ? 2 : 0) +
+      (/(log-?in|sign-?in|signin|auth|account)/i.test(pathText) ? 1 : 0);
+    if (score === 0) continue;
+    url.hash = "";
+    scored.set(url.href, Math.max(scored.get(url.href) ?? 0, score));
+  }
+  return [...scored]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([u]) => u);
 }
 
 export function crawlId(url: string): string {
@@ -98,6 +144,7 @@ export async function createCrawler(options: CrawlerOptions) {
       final_url: null,
       chain: [],
       snapshot: null,
+      gated: false,
       blocked_requests: 0,
       attempt,
       duration_ms: 0,
@@ -152,6 +199,10 @@ export async function createCrawler(options: CrawlerOptions) {
       await page.waitForTimeout(settleMs);
       record.final_url = page.url();
       record.snapshot = (await page.evaluate(script)) as PageSnapshot;
+      record.gated = hasSecretSurface(record.snapshot);
+      if (target.discoverLogin) {
+        record.login_links = rankLoginLinks(await page.evaluate(COLLECT_LINKS), record.final_url);
+      }
 
       await mkdir(dir, { recursive: true });
       const html = await page.content();
