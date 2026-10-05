@@ -4,7 +4,7 @@
  * the corpus Stage 2's FP rate is measured on. Also crawls the curated list directly.
  * Benign sites only: safe to run on the host.
  *
- *   node eval/src/crawl/benign-logins.ts [--start 0] [--domains 500] [--concurrency 4]
+ *   node eval/src/crawl/benign-logins.ts [--start 0] [--domains 500] [--concurrency 4] [--no-curated]
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -15,6 +15,7 @@ import { type CrawlRecord, type CrawlTarget, crawlId, createCrawler } from "./cr
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const { values } = parseArgs({
+  allowNegative: true, // --no-curated skips the curated list (e.g. for later chunks)
   options: {
     start: { type: "string", default: "0" },
     domains: { type: "string", default: "500" },
