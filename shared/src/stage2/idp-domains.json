@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "domains": [
+    "microsoftonline.com",
+    "microsoft.com",
+    "live.com",
+    "google.com",
+    "apple.com",
+    "okta.com",
+    "oktapreview.com",
+    "okta-emea.com",
+    "auth0.com",
+    "onelogin.com",
+    "pingidentity.com",
+    "pingone.com",
+    "duosecurity.com",
+    "jumpcloud.com",
+    "cloudflareaccess.com",
+    "salesforce.com",
+    "github.com",
+    "facebook.com",
+    "amazon.com"
+  ]
+}
