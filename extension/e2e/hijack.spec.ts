@@ -139,3 +139,42 @@ test("strict: a script redirect after a non-link click goes back", async ({
   await page.click("#play");
   await expect.poll(() => page.url()).toBe(`${STREAM}/strict-redirect`);
 });
+
+test("the toolbar popup lists blocks and its toggle takes effect without a reload", async ({
+  context,
+  extensionId,
+}) => {
+  await hijackRulesReady(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/hijack-click`);
+  const first = context.waitForEvent("page");
+  await page.click("#play");
+  const firstPopup = await first;
+  await expect.poll(() => firstPopup.isClosed()).toBe(true);
+  await expect.poll(() => badgeFor(context, `${STREAM}/hijack-click`)).toBe("1");
+
+  const tabId = await tabIdFor(context, `${STREAM}/hijack-click`);
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html?tab=${tabId}`);
+  await expect(popup.locator("#site-name")).toHaveText("warden-test.example");
+  await expect(popup.locator("#blocked-summary")).toHaveText("Blocked 1 on this page");
+  await expect(popup.locator("#blocked-list li")).toContainText(["go.popnet-test.example"]);
+
+  await popup.getByLabel("Block popups & redirects").uncheck();
+  await expect
+    .poll(() =>
+      worker(context).evaluate(
+        async () =>
+          (await chrome.declarativeNetRequest.getDynamicRules()).filter((r) => r.id >= 29_900)
+            .length,
+      ),
+    )
+    .toBe(0);
+
+  await page.bringToFront();
+  const second = context.waitForEvent("page");
+  await page.click("#play");
+  const opened = await second;
+  await expect(opened).toHaveTitle("Test page");
+  expect(opened.isClosed()).toBe(false);
+});

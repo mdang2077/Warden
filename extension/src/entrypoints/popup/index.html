@@ -10,6 +10,29 @@
       <p class="brand">Warden</p>
       <p id="status" class="status" data-decision="none">Checking…</p>
       <p id="detail" class="detail"></p>
+      <section class="controls" aria-label="Protection">
+        <label class="toggle">
+          <span>Phishing protection</span>
+          <input type="checkbox" id="toggle-phishing" />
+        </label>
+        <label class="toggle">
+          <span>Block popups &amp; redirects</span>
+          <input type="checkbox" id="toggle-hijack" />
+        </label>
+      </section>
+      <section id="site" class="site" hidden>
+        <p class="site-name">On <span id="site-name"></span></p>
+        <fieldset class="modes">
+          <legend>Popups</legend>
+          <label><input type="radio" name="mode" value="allow" />Allow</label>
+          <label><input type="radio" name="mode" value="standard" />Standard</label>
+          <label><input type="radio" name="mode" value="strict" />Strict</label>
+        </fieldset>
+        <details id="blocked" hidden>
+          <summary id="blocked-summary"></summary>
+          <ul id="blocked-list"></ul>
+        </details>
+      </section>
       <button id="report" type="button" hidden>Report false positive</button>
       <p id="report-done" class="detail" role="status" hidden>
         Thanks. The report was saved on this device.

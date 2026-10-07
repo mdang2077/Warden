@@ -5,7 +5,7 @@ export default defineConfig({
   imports: false,
   manifest: {
     name: "Warden",
-    description: "Blocks known phishing pages using curated threat feeds.",
+    description: "Blocks known phishing pages and the popups and redirects that lead to them.",
     permissions: [
       "webNavigation",
       // Observe-only (no blocking): sees each server-redirect hop of a top-frame navigation.

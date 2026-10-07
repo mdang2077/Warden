@@ -75,3 +75,56 @@ button {
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+.controls,
+.site {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+}
+
+.toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.site-name {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.modes {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  font-size: 0.85rem;
+}
+
+.modes legend {
+  float: left;
+  margin-right: 4px;
+}
+
+#blocked summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+#blocked-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#report {
+  margin-top: 12px;
+}
