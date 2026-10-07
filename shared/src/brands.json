@@ -108,7 +108,7 @@
       "id": "instagram",
       "name": "Instagram",
       "aliases": ["instagram"],
-      "domains": ["instagram.com", "cdninstagram.com"]
+      "domains": ["instagram.com", "cdninstagram.com", "threads.com", "threads.net"]
     },
     {
       "id": "whatsapp",
@@ -286,7 +286,7 @@
       "id": "mailru",
       "name": "Mail.ru",
       "aliases": ["mail.ru"],
-      "domains": ["mail.ru"]
+      "domains": ["mail.ru", "ok.ru"]
     },
     {
       "id": "gmx",
@@ -705,6 +705,52 @@
       "aliases": ["uber"],
       "domains": ["uber.com"],
       "needsContext": true
+    },
+    {
+      "id": "shopee",
+      "name": "Shopee",
+      "aliases": ["shopee"],
+      "domains": [
+        "shopee.com",
+        "shopee.co.id",
+        "shopee.ph",
+        "shopee.vn",
+        "shopee.com.my",
+        "shopee.tw",
+        "shopee.co.th",
+        "shopee.sg",
+        "shopee.com.br"
+      ]
+    },
+    {
+      "id": "codashop",
+      "name": "Codashop",
+      "aliases": ["codashop"],
+      "domains": ["codashop.com"]
+    },
+    {
+      "id": "bet365",
+      "name": "bet365",
+      "aliases": ["bet365"],
+      "domains": ["bet365.com"]
+    },
+    {
+      "id": "rackspace",
+      "name": "Rackspace",
+      "aliases": ["rackspace", "rackspace webmail"],
+      "domains": ["rackspace.com"]
+    },
+    {
+      "id": "imtoken",
+      "name": "imToken",
+      "aliases": ["imtoken"],
+      "domains": ["token.im"]
+    },
+    {
+      "id": "madeinchina",
+      "name": "Made-in-China.com",
+      "aliases": ["made-in-china.com", "made in china"],
+      "domains": ["made-in-china.com"]
     }
   ]
 }
