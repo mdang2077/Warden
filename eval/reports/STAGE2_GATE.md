@@ -1,8 +1,8 @@
 # Stage 2 credential-gate report
 
-- Generated 2026-10-05T02:23:44.151Z
+- Generated 2026-10-07T07:17:14.850Z
 - Benign records: 3116 (corpora/crawl-benign)
-- Phish records: 669 (corpora/docker/crawl)
+- Phish records: 984 (corpora/docker/crawl, droplet crawl only: 19 watch cycles on a DigitalOcean VM, 2026-10-06/07; 300 leftover records from the earlier local Mac crawl excluded)
 
 ## Benign pages
 
@@ -25,6 +25,7 @@ Gate rate on seen phish is the ceiling on Stage 2 recall: a page the gate misses
 
 | Group | Crawled | Intercepted | TLS reset | Page seen | Gated | Gate rate | Identifier-only | Password / OTP / card / seed |
 |---|--:|--:|--:|--:|--:|--:|--:|---|
-| openphish | 300 | 44 | 161 | 25 | 3 | 12.0% | 0.0% | 2 / 1 / 0 / 0 |
-| phishing_database | 369 | 203 | 0 | 12 | 0 | 0.0% | 0.0% | 0 / 0 / 0 / 0 |
-| **all** | 669 | 247 | 161 | 37 | 3 | 8.1% | 0.0% | 2 / 1 / 0 / 0 |
+| openphish | 491 | 57 | 1 | 401 | 76 | 19.0% | 12.5% | 71 / 3 / 4 / 0 |
+| phishing_database | 477 | 1 | 0 | 321 | 0 | 0.0% | 0.0% | 0 / 0 / 0 / 0 |
+| phishstats | 16 | 0 | 0 | 16 | 0 | 0.0% | 25.0% | 0 / 0 / 0 / 0 |
+| **all** | 984 | 58 | 1 | 738 | 76 | 10.3% | 7.3% | 71 / 3 / 4 / 0 |
