@@ -27,8 +27,13 @@ export interface ClaimThresholds {
   minShare: number;
 }
 
+/**
+ * cue A 2 (lowered from the spec's starting 3 on 2026-10-07): phishing kits often name the
+ * brand only in the title. On the droplet corpus: 66.9% of phish login pages vs 2.9% of
+ * benign login pages raw. Shadow only; a warning will also need a second, independent signal.
+ */
 export const DEFAULT_THRESHOLDS: ClaimThresholds = {
-  cueA: 3,
+  cueA: 2,
   cueAWithLinks: 2,
   linksWithA: 2,
   minRefs: 3,

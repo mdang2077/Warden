@@ -52,8 +52,29 @@ describe("cue A: identity text", () => {
     ).toEqual(["title", "logo"]);
   });
 
-  it("a brand in the title alone does not claim without a second location", () => {
-    expect(claim({ title: "PayPal earnings beat estimates" })).toBeNull();
+  it("a brand in the title claims on its own (kits often name the brand only there)", () => {
+    // Decided 2026-10-07: cue A ≥ 2 (66.9% phish vs 2.9% benign raw in shadow mode). A news
+    // headline naming the brand claims too; warnings will need a second, independent signal.
+    expect(claim({ title: "KuCoin" })).toEqual({ brand: "kucoin", cues: ["title"] });
+    expect(claim({ title: "PayPal earnings beat estimates" })?.brand).toBe("paypal");
+  });
+
+  it("a brand in a button or label alone still does not claim", () => {
+    expect(claim({ buttons: ["Pay with PayPal"] })).toBeNull();
+    const field = {
+      tag: "input" as const,
+      type: "email",
+      name: "email",
+      id: "",
+      autocomplete: "",
+      placeholder: "",
+      label: "PayPal email",
+      inputMode: "",
+      maxLength: null,
+      visible: true,
+      secret: null,
+    };
+    expect(claim({ forms: [{ action: "", method: "", loose: true, fields: [field] }] })).toBeNull();
   });
 
   it("ignores social-login and share mentions", () => {
@@ -78,7 +99,8 @@ describe("cue A: identity text", () => {
   });
 
   it("tolerates a schema-1 snapshot", () => {
-    expect(claim({ title: "PayPal" })).toBeNull();
+    // No headings, buttons, or refHosts fields at all: no crash, title still counts.
+    expect(claim({ title: "PayPal" })).toEqual({ brand: "paypal", cues: ["title"] });
     expect(claim({})).toBeNull();
   });
 });
@@ -166,7 +188,8 @@ describe("context-only aliases", () => {
 describe("cost on hostile or heavy pages", () => {
   it("ignores data-URI logos instead of scanning their contents", () => {
     const svg = `data:image/svg+xml,${encodeURIComponent(`<svg>${"paypal ".repeat(4000)}</svg>`)}`;
-    expect(claim({ title: "PayPal", logoCandidates: [svg] })).toBeNull();
+    expect(claim({ title: "PayPal", logoCandidates: [svg] })?.cues).toEqual(["title"]);
+    expect(claim({ logoCandidates: [svg] })).toBeNull();
   });
 
   it("stays fast on a page with thousands of labels", () => {
