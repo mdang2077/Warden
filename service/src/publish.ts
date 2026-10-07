@@ -1,6 +1,7 @@
 /**
  * Publishes a versioned snapshot, a delta from the previous snapshot, the allowlist, the
- * shared-host list, and a manifest that references them all by key + SHA-256. Content
+ * shared-host list, the popup-network list, and a manifest that references them all by
+ * key + SHA-256. Content
  * files are written first and the manifest last, so a client never sees a manifest that
  * points at files that don't exist yet. Nothing is published when nothing changed.
  */
@@ -13,6 +14,7 @@ import {
   type Snapshot,
   sha256Hex,
 } from "@warden/shared/feed-format";
+import type { PopupNetworksFile } from "@warden/shared/popup-networks";
 import type { SharedHostsFile } from "@warden/shared/shared-hosts";
 import { FEED_IDS, type FeedId } from "@warden/shared/types";
 import { enabledFeeds, type FeedConfig } from "./config.ts";
@@ -30,6 +32,7 @@ export interface PublishInput {
   config: FeedConfig;
   allowlistText: string;
   sharedHosts: SharedHostsFile;
+  popupNetworks: PopupNetworksFile;
 }
 
 export interface PublishOutcome {
@@ -49,13 +52,16 @@ export async function publish(store: BlobStore, input: PublishInput): Promise<Pu
   const allowlistSha = await sha256Hex(input.allowlistText);
   const sharedText = JSON.stringify(input.sharedHosts);
   const sharedSha = await sha256Hex(sharedText);
+  const popupText = JSON.stringify(input.popupNetworks);
+  const popupSha = await sha256Hex(popupText);
 
   const unchanged =
     prev &&
     prevSnapshot &&
     JSON.stringify(prevSnapshot.feeds) === JSON.stringify(feeds) &&
     prev.allowlist.sha256 === allowlistSha &&
-    prev.sharedHosts.sha256 === sharedSha;
+    prev.sharedHosts.sha256 === sharedSha &&
+    prev.popupNetworks?.sha256 === popupSha;
   if (prev && unchanged) return { published: false, manifest: { ...prev, feeds: input.config } };
 
   const version = Math.max(input.now, (prev?.version ?? 0) + 1);
@@ -67,6 +73,10 @@ export async function publish(store: BlobStore, input: PublishInput): Promise<Pu
   const sharedKey = `v1/shared-hosts/${input.sharedHosts.version}-${sharedSha.slice(0, 16)}.json`;
   if ((await store.get(sharedKey)) === null) {
     await store.put(sharedKey, sharedText, "application/json");
+  }
+  const popupKey = `v1/popup-networks/${input.popupNetworks.version}-${popupSha.slice(0, 16)}.json`;
+  if ((await store.get(popupKey)) === null) {
+    await store.put(popupKey, popupText, "application/json");
   }
 
   const snapshot: Snapshot = { schema: FORMAT_SCHEMA, version, created: input.now, feeds };
@@ -103,6 +113,7 @@ export async function publish(store: BlobStore, input: PublishInput): Promise<Pu
       count: input.allowlistText.split("\n").filter(Boolean).length,
     },
     sharedHosts: { key: sharedKey, sha256: sharedSha, version: input.sharedHosts.version },
+    popupNetworks: { key: popupKey, sha256: popupSha, version: input.popupNetworks.version },
     feeds: input.config,
   };
   await store.put(MANIFEST_KEY, JSON.stringify(manifest), "application/json");

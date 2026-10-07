@@ -53,6 +53,8 @@ describe("runPipeline", () => {
       "evil.example/login",
     ]);
     expect(Object.keys(snapshot?.feeds ?? {})).toEqual(["openphish"]);
+    // EasyList answers 404 in the fake fetch, so the bundled list is published.
+    expect(manifest.popupNetworks?.version).toBe(1);
   });
 
   it("publishes nothing without an allowlist", async () => {

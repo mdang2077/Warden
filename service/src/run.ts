@@ -3,6 +3,7 @@
  * quality log. Platform-neutral; the Worker cron and the Node CLI both call this.
  */
 import { parseAllowlist } from "@warden/shared/allowlist";
+import { bundledPopupNetworksFile } from "@warden/shared/popup-networks";
 import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
 import type { FeedId } from "@warden/shared/types";
 import { refreshAllowlist } from "./allowlist-source.ts";
@@ -13,6 +14,7 @@ import { phishingDatabase } from "./feeds/phishing-database.ts";
 import { createPhishStats } from "./feeds/phishstats.ts";
 import type { Ingestor } from "./feeds/types.ts";
 import { type CleanEntry, cleanFeed } from "./pipeline.ts";
+import { refreshPopupNetworks } from "./popup-networks-source.ts";
 import { publish } from "./publish.ts";
 import { dropRatio, type QualityLog, recordQuality } from "./quality.ts";
 import type { BlobStore } from "./storage.ts";
@@ -75,12 +77,17 @@ export async function runPipeline(options: RunOptions): Promise<QualityLog> {
     };
   }
 
+  const popupOut = await refreshPopupNetworks(store, options.fetch, now);
+  if (popupOut.error)
+    console.warn(`[warden-feeds] popup-network refresh failed: ${popupOut.error}`);
+
   const published = await publish(store, {
     now,
     feeds,
     config,
     allowlistText: allowlistOut.text,
     sharedHosts: bundledSharedHostsFile,
+    popupNetworks: popupOut.file ?? bundledPopupNetworksFile,
   });
   log.published = published.published;
   log.version = published.manifest.version;

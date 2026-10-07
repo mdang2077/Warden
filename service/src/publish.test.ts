@@ -5,6 +5,7 @@ import {
   type Snapshot,
   sha256Hex,
 } from "@warden/shared/feed-format";
+import { bundledPopupNetworksFile } from "@warden/shared/popup-networks";
 import { bundledSharedHostsFile as sharedHostsFile } from "@warden/shared/shared-hosts";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FEED_CONFIG, type FeedConfig } from "./config.ts";
@@ -23,10 +24,30 @@ function input(now: number, openphish: CleanEntry[], config: FeedConfig = DEFAUL
     config,
     allowlistText: "google.com\n",
     sharedHosts: sharedHostsFile,
+    popupNetworks: bundledPopupNetworksFile,
   };
 }
 
 describe("publish", () => {
+  it("publishes the popup-network list and republishes when only it changes", async () => {
+    const store = memoryStore();
+    const first = await publish(store, input(100, [entry("aa")]));
+    const ref = first.manifest.popupNetworks;
+    if (!ref) throw new Error("no popupNetworks in manifest");
+    const text = await store.get(ref.key);
+    expect(text).not.toBeNull();
+    expect(await sha256Hex(text as string)).toBe(ref.sha256);
+    expect(ref.version).toBe(bundledPopupNetworksFile.version);
+
+    const changed = {
+      ...input(200, [entry("aa")]),
+      popupNetworks: { ...bundledPopupNetworksFile, version: 2, domains: ["new.example"] },
+    };
+    const second = await publish(store, changed);
+    expect(second.published).toBe(true);
+    expect(second.manifest.popupNetworks?.version).toBe(2);
+  });
+
   it("writes a snapshot, allowlist, shared hosts, and a manifest with checksums", async () => {
     const store = memoryStore();
     const { published, manifest } = await publish(store, input(100, [entry("aa")]));

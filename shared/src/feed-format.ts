@@ -58,6 +58,8 @@ export interface Manifest {
   deltas: (FileRef & { from: number; to: number })[];
   allowlist: FileRef & { count: number };
   sharedHosts: FileRef & { version: number };
+  /** Absent from manifests published before the hijack guard; clients keep the bundled list. */
+  popupNetworks?: FileRef & { version: number };
   /** Live feed config (kill switch). The Worker overlays the current config when serving. */
   feeds: Record<FeedId, FeedSettings>;
 }
