@@ -153,46 +153,54 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
       await deps.lists.setFeedConfig(feed, settings ?? { enabled: false, tier: "B" });
     }
 
-    if (manifest.version !== state.version) {
-      const chain = state.version === null ? null : deltaChain(manifest, state.version);
-      if (chain) {
-        for (const ref of chain) {
-          const delta = JSON.parse(await fetchVerified(ref)) as Delta;
-          for (const feed of FEED_IDS) {
-            const d = delta.feeds[feed];
-            if (d) await deps.lists.applyDelta(feed, d.added, d.removed);
+    // Once the config is applied, the DNR rules are rebuilt even if a data step fails, so
+    // the kill switch also reaches DNR (which runs before the worker) within one sync.
+    let dataError: unknown = null;
+    try {
+      if (manifest.version !== state.version) {
+        const chain = state.version === null ? null : deltaChain(manifest, state.version);
+        if (chain) {
+          for (const ref of chain) {
+            const delta = JSON.parse(await fetchVerified(ref)) as Delta;
+            for (const feed of FEED_IDS) {
+              const d = delta.feeds[feed];
+              if (d) await deps.lists.applyDelta(feed, d.added, d.removed);
+            }
+            state.version = delta.to;
+            await deps.storage.set({ [STATE_KEY]: state });
+            report.deltas++;
           }
-          state.version = delta.to;
+          report.applied = "deltas";
+        } else {
+          const snapshot = JSON.parse(await fetchVerified(manifest.snapshot)) as Snapshot;
+          for (const feed of FEED_IDS)
+            await deps.lists.replaceFeed(feed, snapshot.feeds[feed] ?? []);
+          state.version = snapshot.version;
           await deps.storage.set({ [STATE_KEY]: state });
-          report.deltas++;
+          report.applied = "snapshot";
         }
-        report.applied = "deltas";
-      } else {
-        const snapshot = JSON.parse(await fetchVerified(manifest.snapshot)) as Snapshot;
-        for (const feed of FEED_IDS) await deps.lists.replaceFeed(feed, snapshot.feeds[feed] ?? []);
-        state.version = snapshot.version;
-        await deps.storage.set({ [STATE_KEY]: state });
-        report.applied = "snapshot";
+        report.version = state.version;
       }
-      report.version = state.version;
-    }
 
-    if (manifest.sharedHosts.sha256 !== state.sharedHostsSha) {
-      const file = JSON.parse(await fetchVerified(manifest.sharedHosts)) as SharedHostsFile;
-      loadSharedHosts(file); // throws on a malformed list, before it's stored
-      await deps.storage.set({ [SHARED_HOSTS_KEY]: file });
-      state.sharedHostsSha = manifest.sharedHosts.sha256;
-      report.sharedHostsUpdated = true;
-    }
+      if (manifest.sharedHosts.sha256 !== state.sharedHostsSha) {
+        const file = JSON.parse(await fetchVerified(manifest.sharedHosts)) as SharedHostsFile;
+        loadSharedHosts(file); // throws on a malformed list, before it's stored
+        await deps.storage.set({ [SHARED_HOSTS_KEY]: file });
+        state.sharedHostsSha = manifest.sharedHosts.sha256;
+        report.sharedHostsUpdated = true;
+      }
 
-    if (manifest.allowlist.sha256 !== state.allowlistSha) {
-      const text = await fetchVerified(manifest.allowlist);
-      await deps.storage.set({ [ALLOWLIST_KEY]: text });
-      state.allowlistSha = manifest.allowlist.sha256;
-      report.allowlistUpdated = true;
-    }
+      if (manifest.allowlist.sha256 !== state.allowlistSha) {
+        const text = await fetchVerified(manifest.allowlist);
+        await deps.storage.set({ [ALLOWLIST_KEY]: text });
+        state.allowlistSha = manifest.allowlist.sha256;
+        report.allowlistUpdated = true;
+      }
 
-    await deps.lists.pruneExpired(now());
+      await deps.lists.pruneExpired(now());
+    } catch (err) {
+      dataError = err;
+    }
 
     const { shared, allowlist } = await loadLocalData(deps.storage, deps.bundledShared);
     const tierA: DnrEntry[] = [];
@@ -215,6 +223,7 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
     report.dnrRules = rules.length;
     report.dnrSkipped = skipped;
 
+    if (dataError) throw dataError;
     state.lastError = null;
   } catch (err) {
     report.error = err instanceof Error ? err.message : String(err);

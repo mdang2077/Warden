@@ -231,6 +231,27 @@ describe("syncFeeds", () => {
     expect(dnr.rules).toEqual([]);
   });
 
+  it("applies the kill switch to DNR rules even when the rest of the sync fails", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(100, { openphish: [await pub("https://a.example/")] });
+    const { deps, dnr } = setup(service);
+    await syncFeeds(deps);
+    expect(dnr.rules).toHaveLength(1);
+
+    await service.publishDelta(200, {
+      openphish: { added: [await pub("https://b.example/")], removed: [] },
+    });
+    service.files.set("v1/deltas/100-200.json", '{"tampered":true}');
+    service.manifest = {
+      ...(service.manifest as Manifest),
+      feeds: { ...FEEDS_CONFIG, openphish: { enabled: false, tier: "A" } },
+    };
+    const report = await syncFeeds(deps);
+    expect(report.error).toContain("checksum mismatch");
+    expect(await matches("https://a.example/")).toEqual([]);
+    expect(dnr.rules).toEqual([]);
+  });
+
   it("keeps allowlisted and user-trusted hosts out of DNR rules", async () => {
     const service = new FakeService();
     await service.publishSnapshot(
