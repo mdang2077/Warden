@@ -7,6 +7,8 @@
  *
  * Each URL is retried at most once per worker lifetime: ERR_BLOCKED_BY_CLIENT can also
  * come from another extension, and Warden must not loop fighting it.
+ *
+ * Blocks of pop-network URLs (the hijack guard's rules) go to the hijack action instead.
  */
 import type { Decision } from "@warden/shared/types";
 import { shouldEvaluate } from "./navigation.ts";
@@ -16,6 +18,9 @@ export interface DnrHealDeps {
   evaluate: (url: string, tabId: number) => Promise<Decision>;
   allow: (url: string) => Promise<void>;
   reload: (tabId: number, url: string) => Promise<void>;
+  /** True for pop-network URLs: those blocks belong to the hijack guard and are never healed. */
+  isHijack?: (url: string) => boolean;
+  onHijack?: (details: NavigationError) => Promise<void>;
 }
 
 export interface NavigationError {
@@ -28,9 +33,13 @@ export interface NavigationError {
 export function createDnrHealer(deps: DnrHealDeps) {
   const retried = new Set<string>();
 
-  return async (details: NavigationError): Promise<"healed" | "skipped"> => {
+  return async (details: NavigationError): Promise<"healed" | "skipped" | "hijack"> => {
     if (details.frameId !== 0 || !details.error.includes("ERR_BLOCKED_BY_CLIENT")) return "skipped";
     if (!shouldEvaluate(details.url)) return "skipped";
+    if (deps.isHijack?.(details.url)) {
+      await deps.onHijack?.(details);
+      return "hijack";
+    }
     const key = details.url.split("#")[0] as string;
     if (retried.has(key)) return "skipped";
     retried.add(key);
