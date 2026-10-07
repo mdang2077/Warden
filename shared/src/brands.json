@@ -1,0 +1,710 @@
+{
+  "version": 1,
+  "brands": [
+    {
+      "id": "microsoft",
+      "name": "Microsoft",
+      "aliases": [
+        "microsoft",
+        "outlook",
+        "office 365",
+        "office365",
+        "microsoft 365",
+        "onedrive",
+        "hotmail",
+        "sharepoint",
+        "microsoft teams"
+      ],
+      "domains": [
+        "microsoft.com",
+        "microsoftonline.com",
+        "live.com",
+        "outlook.com",
+        "office.com",
+        "office365.com",
+        "hotmail.com",
+        "msn.com",
+        "onedrive.com",
+        "msauth.net",
+        "msftauth.net",
+        "live.net",
+        "skype.com",
+        "xbox.com",
+        "bing.com"
+      ]
+    },
+    {
+      "id": "google",
+      "name": "Google",
+      "aliases": ["google", "gmail", "google account", "google drive", "google docs"],
+      "domains": [
+        "google.com",
+        "gmail.com",
+        "gstatic.com",
+        "youtube.com",
+        "google.co.uk",
+        "google.de",
+        "google.fr",
+        "google.co.in",
+        "google.com.br"
+      ]
+    },
+    {
+      "id": "apple",
+      "name": "Apple",
+      "aliases": ["apple", "apple id", "icloud", "itunes"],
+      "domains": ["apple.com", "icloud.com", "me.com", "mac.com", "mzstatic.com", "cdn-apple.com"],
+      "needsContext": true
+    },
+    {
+      "id": "amazon",
+      "name": "Amazon",
+      "aliases": ["amazon", "amazon prime", "prime video", "amazon web services"],
+      "domains": [
+        "amazon.com",
+        "amazon.co.uk",
+        "amazon.de",
+        "amazon.fr",
+        "amazon.it",
+        "amazon.es",
+        "amazon.ca",
+        "amazon.co.jp",
+        "amazon.in",
+        "amazon.com.br",
+        "amazon.com.mx",
+        "amazon.com.au",
+        "amazon.nl",
+        "media-amazon.com",
+        "ssl-images-amazon.com",
+        "primevideo.com"
+      ]
+    },
+    {
+      "id": "paypal",
+      "name": "PayPal",
+      "aliases": ["paypal"],
+      "domains": ["paypal.com", "paypalobjects.com", "paypal.me"]
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook",
+      "aliases": [
+        "facebook",
+        "meta for business",
+        "meta business suite",
+        "meta business",
+        "messenger"
+      ],
+      "domains": [
+        "facebook.com",
+        "fb.com",
+        "fbcdn.net",
+        "facebook.net",
+        "messenger.com",
+        "meta.com"
+      ]
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "aliases": ["instagram"],
+      "domains": ["instagram.com", "cdninstagram.com"]
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp",
+      "aliases": ["whatsapp"],
+      "domains": ["whatsapp.com", "whatsapp.net"]
+    },
+    {
+      "id": "netflix",
+      "name": "Netflix",
+      "aliases": ["netflix"],
+      "domains": ["netflix.com", "nflxext.com", "nflximg.net", "nflxvideo.net"]
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "aliases": ["dropbox"],
+      "domains": ["dropbox.com", "dropboxstatic.com", "db.tt"]
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "aliases": ["linkedin"],
+      "domains": ["linkedin.com", "licdn.com"]
+    },
+    {
+      "id": "twitter",
+      "name": "X (Twitter)",
+      "aliases": ["twitter"],
+      "domains": ["twitter.com", "x.com", "twimg.com"]
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "aliases": ["tiktok"],
+      "domains": ["tiktok.com", "tiktokcdn.com"]
+    },
+    {
+      "id": "yahoo",
+      "name": "Yahoo",
+      "aliases": ["yahoo", "yahoo mail"],
+      "domains": ["yahoo.com", "yimg.com"]
+    },
+    {
+      "id": "aol",
+      "name": "AOL",
+      "aliases": ["aol", "aol mail"],
+      "domains": ["aol.com"],
+      "needsContext": true
+    },
+    {
+      "id": "adobe",
+      "name": "Adobe",
+      "aliases": ["adobe", "adobe document cloud", "adobe acrobat"],
+      "domains": ["adobe.com", "adobelogin.com"]
+    },
+    {
+      "id": "docusign",
+      "name": "DocuSign",
+      "aliases": ["docusign"],
+      "domains": ["docusign.com", "docusign.net"]
+    },
+    {
+      "id": "wetransfer",
+      "name": "WeTransfer",
+      "aliases": ["wetransfer"],
+      "domains": ["wetransfer.com", "we.tl"]
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "aliases": ["steam", "steamcommunity"],
+      "domains": ["steampowered.com", "steamcommunity.com", "steamstatic.com"],
+      "needsContext": true
+    },
+    {
+      "id": "roblox",
+      "name": "Roblox",
+      "aliases": ["roblox"],
+      "domains": ["roblox.com", "rbxcdn.com"]
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "aliases": ["discord"],
+      "domains": ["discord.com", "discordapp.com", "discord.gg"]
+    },
+    {
+      "id": "epicgames",
+      "name": "Epic Games",
+      "aliases": ["epic games"],
+      "domains": ["epicgames.com"]
+    },
+    {
+      "id": "playstation",
+      "name": "PlayStation",
+      "aliases": ["playstation", "psn"],
+      "domains": ["playstation.com", "playstation.net"]
+    },
+    {
+      "id": "nintendo",
+      "name": "Nintendo",
+      "aliases": ["nintendo"],
+      "domains": ["nintendo.com"]
+    },
+    {
+      "id": "garena",
+      "name": "Garena / Free Fire",
+      "aliases": ["garena", "free fire"],
+      "domains": ["garena.com"]
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "aliases": ["spotify"],
+      "domains": ["spotify.com", "scdn.co"]
+    },
+    {
+      "id": "disneyplus",
+      "name": "Disney+",
+      "aliases": ["disney+", "disney plus"],
+      "domains": ["disneyplus.com"]
+    },
+    {
+      "id": "hbomax",
+      "name": "HBO Max",
+      "aliases": ["hbo max"],
+      "domains": ["max.com", "hbomax.com"]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "aliases": ["github"],
+      "domains": ["github.com", "githubassets.com"]
+    },
+    {
+      "id": "okta",
+      "name": "Okta",
+      "aliases": ["okta"],
+      "domains": ["okta.com", "oktacdn.com"]
+    },
+    {
+      "id": "zoom",
+      "name": "Zoom",
+      "aliases": ["zoom"],
+      "domains": ["zoom.us"],
+      "needsContext": true
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "aliases": ["slack"],
+      "domains": ["slack.com", "slack-edge.com"],
+      "needsContext": true
+    },
+    {
+      "id": "proton",
+      "name": "Proton Mail",
+      "aliases": ["proton mail", "protonmail"],
+      "domains": ["proton.me", "protonmail.com"]
+    },
+    {
+      "id": "zoho",
+      "name": "Zoho",
+      "aliases": ["zoho", "zoho mail"],
+      "domains": ["zoho.com"]
+    },
+    {
+      "id": "yandex",
+      "name": "Yandex",
+      "aliases": ["yandex"],
+      "domains": ["yandex.ru", "yandex.com"]
+    },
+    {
+      "id": "mailru",
+      "name": "Mail.ru",
+      "aliases": ["mail.ru"],
+      "domains": ["mail.ru"]
+    },
+    {
+      "id": "gmx",
+      "name": "GMX",
+      "aliases": ["gmx"],
+      "domains": ["gmx.net", "gmx.de", "gmx.com"]
+    },
+    {
+      "id": "coinbase",
+      "name": "Coinbase",
+      "aliases": ["coinbase"],
+      "domains": ["coinbase.com"]
+    },
+    {
+      "id": "binance",
+      "name": "Binance",
+      "aliases": ["binance"],
+      "domains": ["binance.com", "binance.us"]
+    },
+    {
+      "id": "metamask",
+      "name": "MetaMask",
+      "aliases": ["metamask"],
+      "domains": ["metamask.io"]
+    },
+    {
+      "id": "ledger",
+      "name": "Ledger",
+      "aliases": ["ledger", "ledger live"],
+      "domains": ["ledger.com"],
+      "needsContext": true
+    },
+    {
+      "id": "trezor",
+      "name": "Trezor",
+      "aliases": ["trezor"],
+      "domains": ["trezor.io"]
+    },
+    {
+      "id": "exodus",
+      "name": "Exodus",
+      "aliases": ["exodus", "exodus wallet"],
+      "domains": ["exodus.com"],
+      "needsContext": true
+    },
+    {
+      "id": "kucoin",
+      "name": "KuCoin",
+      "aliases": ["kucoin"],
+      "domains": ["kucoin.com"]
+    },
+    {
+      "id": "kraken",
+      "name": "Kraken",
+      "aliases": ["kraken"],
+      "domains": ["kraken.com"],
+      "needsContext": true
+    },
+    {
+      "id": "cryptocom",
+      "name": "Crypto.com",
+      "aliases": ["crypto.com"],
+      "domains": ["crypto.com"]
+    },
+    {
+      "id": "trustwallet",
+      "name": "Trust Wallet",
+      "aliases": ["trust wallet"],
+      "domains": ["trustwallet.com"]
+    },
+    {
+      "id": "blockchaincom",
+      "name": "Blockchain.com",
+      "aliases": ["blockchain.com"],
+      "domains": ["blockchain.com"]
+    },
+    {
+      "id": "chase",
+      "name": "Chase",
+      "aliases": ["chase", "chase bank", "jpmorgan chase"],
+      "domains": ["chase.com", "jpmorganchase.com", "jpmorgan.com"],
+      "needsContext": true
+    },
+    {
+      "id": "bankofamerica",
+      "name": "Bank of America",
+      "aliases": ["bank of america", "bofa"],
+      "domains": ["bankofamerica.com"]
+    },
+    {
+      "id": "wellsfargo",
+      "name": "Wells Fargo",
+      "aliases": ["wells fargo"],
+      "domains": ["wellsfargo.com", "wf.com"]
+    },
+    {
+      "id": "citi",
+      "name": "Citi",
+      "aliases": ["citi", "citibank"],
+      "domains": ["citi.com", "citibank.com"],
+      "needsContext": true
+    },
+    {
+      "id": "capitalone",
+      "name": "Capital One",
+      "aliases": ["capital one"],
+      "domains": ["capitalone.com"]
+    },
+    {
+      "id": "usbank",
+      "name": "U.S. Bank",
+      "aliases": ["u.s. bank", "us bank"],
+      "domains": ["usbank.com"]
+    },
+    {
+      "id": "navyfederal",
+      "name": "Navy Federal",
+      "aliases": ["navy federal"],
+      "domains": ["navyfederal.org"]
+    },
+    {
+      "id": "amex",
+      "name": "American Express",
+      "aliases": ["american express", "amex"],
+      "domains": ["americanexpress.com", "aexp-static.com"]
+    },
+    {
+      "id": "discover",
+      "name": "Discover",
+      "aliases": ["discover"],
+      "domains": ["discover.com"],
+      "needsContext": true
+    },
+    {
+      "id": "hsbc",
+      "name": "HSBC",
+      "aliases": ["hsbc"],
+      "domains": ["hsbc.com", "hsbc.co.uk"]
+    },
+    {
+      "id": "barclays",
+      "name": "Barclays",
+      "aliases": ["barclays"],
+      "domains": ["barclays.co.uk", "barclays.com"]
+    },
+    {
+      "id": "lloyds",
+      "name": "Lloyds Bank",
+      "aliases": ["lloyds bank", "lloyds"],
+      "domains": ["lloydsbank.com"]
+    },
+    {
+      "id": "natwest",
+      "name": "NatWest",
+      "aliases": ["natwest"],
+      "domains": ["natwest.com"]
+    },
+    {
+      "id": "santander",
+      "name": "Santander",
+      "aliases": ["santander"],
+      "domains": ["santander.com", "santander.co.uk", "santander.com.br"]
+    },
+    {
+      "id": "bbva",
+      "name": "BBVA",
+      "aliases": ["bbva"],
+      "domains": ["bbva.com", "bbva.es", "bbva.mx"]
+    },
+    {
+      "id": "bancolombia",
+      "name": "Bancolombia",
+      "aliases": ["bancolombia"],
+      "domains": ["bancolombia.com"]
+    },
+    {
+      "id": "itau",
+      "name": "Itaú",
+      "aliases": ["itau", "itaú"],
+      "domains": ["itau.com.br"]
+    },
+    {
+      "id": "bancodobrasil",
+      "name": "Banco do Brasil",
+      "aliases": ["banco do brasil"],
+      "domains": ["bb.com.br"]
+    },
+    {
+      "id": "caixa",
+      "name": "Caixa",
+      "aliases": ["caixa"],
+      "domains": ["caixa.gov.br"],
+      "needsContext": true
+    },
+    {
+      "id": "nubank",
+      "name": "Nubank",
+      "aliases": ["nubank"],
+      "domains": ["nubank.com.br"]
+    },
+    {
+      "id": "ing",
+      "name": "ING",
+      "aliases": ["ing"],
+      "domains": ["ing.com", "ing.nl"],
+      "needsContext": true
+    },
+    {
+      "id": "deutschebank",
+      "name": "Deutsche Bank",
+      "aliases": ["deutsche bank"],
+      "domains": ["deutsche-bank.de", "db.com"]
+    },
+    {
+      "id": "commbank",
+      "name": "Commonwealth Bank",
+      "aliases": ["commonwealth bank", "commbank", "netbank"],
+      "domains": ["commbank.com.au"]
+    },
+    {
+      "id": "scotiabank",
+      "name": "Scotiabank",
+      "aliases": ["scotiabank"],
+      "domains": ["scotiabank.com"]
+    },
+    {
+      "id": "rbc",
+      "name": "RBC Royal Bank",
+      "aliases": ["rbc royal bank", "rbc"],
+      "domains": ["rbcroyalbank.com", "rbc.com"],
+      "needsContext": true
+    },
+    {
+      "id": "td",
+      "name": "TD Bank",
+      "aliases": ["td bank", "td easyweb"],
+      "domains": ["td.com", "tdbank.com"]
+    },
+    {
+      "id": "venmo",
+      "name": "Venmo",
+      "aliases": ["venmo"],
+      "domains": ["venmo.com"]
+    },
+    {
+      "id": "cashapp",
+      "name": "Cash App",
+      "aliases": ["cash app"],
+      "domains": ["cash.app"]
+    },
+    {
+      "id": "zelle",
+      "name": "Zelle",
+      "aliases": ["zelle"],
+      "domains": ["zellepay.com"]
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "aliases": ["stripe"],
+      "domains": ["stripe.com"],
+      "needsContext": true
+    },
+    {
+      "id": "mastercard",
+      "name": "Mastercard",
+      "aliases": ["mastercard"],
+      "domains": ["mastercard.com"]
+    },
+    {
+      "id": "visa",
+      "name": "Visa",
+      "aliases": ["visa"],
+      "domains": ["visa.com"],
+      "needsContext": true
+    },
+    {
+      "id": "dhl",
+      "name": "DHL",
+      "aliases": ["dhl", "dhl express"],
+      "domains": ["dhl.com", "dhl.de"]
+    },
+    {
+      "id": "usps",
+      "name": "USPS",
+      "aliases": ["usps", "us postal service"],
+      "domains": ["usps.com"]
+    },
+    {
+      "id": "ups",
+      "name": "UPS",
+      "aliases": ["ups"],
+      "domains": ["ups.com"],
+      "needsContext": true
+    },
+    {
+      "id": "fedex",
+      "name": "FedEx",
+      "aliases": ["fedex"],
+      "domains": ["fedex.com"]
+    },
+    {
+      "id": "royalmail",
+      "name": "Royal Mail",
+      "aliases": ["royal mail"],
+      "domains": ["royalmail.com"]
+    },
+    {
+      "id": "canadapost",
+      "name": "Canada Post",
+      "aliases": ["canada post", "postes canada"],
+      "domains": ["canadapost.ca", "canadapost-postescanada.ca"]
+    },
+    {
+      "id": "laposte",
+      "name": "La Poste",
+      "aliases": ["la poste"],
+      "domains": ["laposte.fr"]
+    },
+    {
+      "id": "correos",
+      "name": "Correos",
+      "aliases": ["correos"],
+      "domains": ["correos.es"]
+    },
+    {
+      "id": "evri",
+      "name": "Evri",
+      "aliases": ["evri"],
+      "domains": ["evri.com"]
+    },
+    {
+      "id": "irs",
+      "name": "IRS",
+      "aliases": ["irs", "internal revenue service"],
+      "domains": ["irs.gov"],
+      "needsContext": true
+    },
+    {
+      "id": "mhrs",
+      "name": "MHRS",
+      "aliases": ["mhrs"],
+      "domains": ["mhrs.gov.tr"]
+    },
+    {
+      "id": "att",
+      "name": "AT&T",
+      "aliases": ["at&t", "att mail"],
+      "domains": ["att.com", "att.net"]
+    },
+    {
+      "id": "verizon",
+      "name": "Verizon",
+      "aliases": ["verizon"],
+      "domains": ["verizon.com"]
+    },
+    {
+      "id": "xfinity",
+      "name": "Xfinity",
+      "aliases": ["xfinity", "comcast"],
+      "domains": ["xfinity.com", "comcast.net"]
+    },
+    {
+      "id": "spectrum",
+      "name": "Spectrum",
+      "aliases": ["spectrum"],
+      "domains": ["spectrum.net", "spectrum.com"],
+      "needsContext": true
+    },
+    {
+      "id": "tmobile",
+      "name": "T-Mobile",
+      "aliases": ["t-mobile"],
+      "domains": ["t-mobile.com"]
+    },
+    {
+      "id": "orange",
+      "name": "Orange",
+      "aliases": ["orange"],
+      "domains": ["orange.fr", "orange.com"],
+      "needsContext": true
+    },
+    {
+      "id": "ebay",
+      "name": "eBay",
+      "aliases": ["ebay"],
+      "domains": ["ebay.com", "ebay.co.uk", "ebay.de", "ebayimg.com", "ebaystatic.com"]
+    },
+    {
+      "id": "walmart",
+      "name": "Walmart",
+      "aliases": ["walmart"],
+      "domains": ["walmart.com"]
+    },
+    {
+      "id": "costco",
+      "name": "Costco",
+      "aliases": ["costco"],
+      "domains": ["costco.com"]
+    },
+    {
+      "id": "booking",
+      "name": "Booking.com",
+      "aliases": ["booking.com"],
+      "domains": ["booking.com", "bstatic.com"]
+    },
+    {
+      "id": "airbnb",
+      "name": "Airbnb",
+      "aliases": ["airbnb"],
+      "domains": ["airbnb.com", "muscache.com"]
+    },
+    {
+      "id": "uber",
+      "name": "Uber",
+      "aliases": ["uber"],
+      "domains": ["uber.com"],
+      "needsContext": true
+    }
+  ]
+}
