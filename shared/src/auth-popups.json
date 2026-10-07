@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hosts": [
+    "accounts.google.com",
+    "appleid.apple.com",
+    "checkout.stripe.com",
+    "github.com",
+    "hooks.stripe.com",
+    "login.live.com",
+    "login.microsoftonline.com",
+    "www.facebook.com",
+    "www.paypal.com"
+  ]
+}
