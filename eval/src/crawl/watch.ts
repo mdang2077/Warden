@@ -83,10 +83,9 @@ async function main() {
   await mkdir(crawlDir, { recursive: true });
 
   const stateFile = path.join(values.data, "watch-state.json");
-  const state = existsSync(stateFile)
+  let state = existsSync(stateFile)
     ? (JSON.parse(await readFile(stateFile, "utf8")) as { initializedAt: number })
-    : { initializedAt: Date.now() };
-  await writeFile(stateFile, JSON.stringify(state));
+    : null;
 
   const priorCrawl = (url: string): PriorCrawl | null => {
     const file = path.join(crawlDir, crawlId(url), "record.json");
@@ -102,6 +101,12 @@ async function main() {
   let firstCycle = true;
   for (;;) {
     const now = Date.now();
+    // The first ingest stamps every URL first_seen = now, so initializing to the same
+    // timestamp makes that whole first pull backlog (selectTargets uses a strict >).
+    if (!state) {
+      state = { initializedAt: now };
+      await writeFile(stateFile, JSON.stringify(state));
+    }
     const records: FeedRecord[] = [];
     const feedErrors: Record<string, string> = {};
     for (const feed of FEED_IDS) {

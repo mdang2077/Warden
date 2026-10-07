@@ -75,6 +75,15 @@ describe("selectTargets", () => {
     expect(selectTargets(backlog, () => null, base)).toEqual([]);
   });
 
+  it("treats URLs first seen at initialization as backlog", () => {
+    // The watcher's first ingest stamps every URL first_seen = initializedAt.
+    const firstPull = Array.from({ length: 5 }, (_, i) => rec(`https://f${i}.example/`, T0));
+    const fresh = rec("https://fresh.example/", T0 + MIN);
+    expect(selectTargets([...firstPull, fresh], () => null, base)).toEqual([
+      { target: { url: "https://fresh.example/", label: "phish", group: "openphish" }, attempt: 1 },
+    ]);
+  });
+
   it("caps the number of crawls per cycle", () => {
     const many = Array.from({ length: 10 }, (_, i) => rec(`https://n${i}.example/`, T0 + i));
     expect(selectTargets(many, () => null, { ...base, maxPerCycle: 3 })).toHaveLength(3);

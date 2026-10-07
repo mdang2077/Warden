@@ -106,7 +106,7 @@ await writeFile(path.join(values.out, "TIER_B.md"), result.tierB);
 const stamp = new Date(now).toISOString().replace(/[:.]/g, "-");
 await writeFile(
   path.join(values.out, "runs", `${stamp}.json`),
-  JSON.stringify(result.stats, null, 2),
+  `${JSON.stringify(result.stats, null, 2)}\n`,
 );
 
 log(`gate: ${result.gatePassed ? "PASS" : "FAIL"} (${result.benignBlocks.length} benign blocks)`);
