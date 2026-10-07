@@ -5,6 +5,18 @@ import { startFeedServer } from "./feed-server.ts";
 
 const EXTENSION_PATH = path.resolve(import.meta.dirname, "../.output/chrome-mv3-e2e");
 
+/** Test pages by path, served on any test host. */
+export const TEST_PAGES: Record<string, string> = {
+  "/hijack-click":
+    '<!doctype html><title>Video</title><button id="play">Play</button>' +
+    '<script>document.addEventListener("click", () => window.open("https://go.popnet-test.example/pop", "_blank"));</script>',
+  "/tab-under":
+    '<!doctype html><title>Video</title><button id="play">Play</button>' +
+    '<script>document.getElementById("play").onclick = () => {' +
+    ' window.open(location.origin + "/content", "_blank");' +
+    ' location.href = "https://go.popnet-test.example/under"; };</script>',
+};
+
 export const test = base.extend<
   { context: BrowserContext; extensionId: string },
   { feedServer: Server }
@@ -25,22 +37,27 @@ export const test = base.extend<
       args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],
     });
     // Serve the fake test hosts locally; nothing goes to the network.
-    await context.route(/^https:\/\/[^/]*\.warden-test\.example\//, (route) => {
-      const url = new URL(route.request().url());
-      // https://redirect.warden-test.example/?to=<url> answers with a 302.
-      const to = url.hostname === "redirect.warden-test.example" && url.searchParams.get("to");
-      if (to) return route.fulfill({ status: 302, headers: { location: to } });
-      if (url.pathname === "/login") {
+    await context.route(
+      /^https:\/\/[^/]*\.(warden-test|popnet-test|other-test)\.example\//,
+      (route) => {
+        const url = new URL(route.request().url());
+        // https://redirect.warden-test.example/?to=<url> answers with a 302.
+        const to = url.hostname === "redirect.warden-test.example" && url.searchParams.get("to");
+        if (to) return route.fulfill({ status: 302, headers: { location: to } });
+        const testPage = TEST_PAGES[url.pathname];
+        if (testPage) return route.fulfill({ contentType: "text/html", body: testPage });
+        if (url.pathname === "/login") {
+          return route.fulfill({
+            contentType: "text/html",
+            body: '<!doctype html><title>Sign in</title><form><input name="user"><input type="password" name="pw"></form>',
+          });
+        }
         return route.fulfill({
           contentType: "text/html",
-          body: '<!doctype html><title>Sign in</title><form><input name="user"><input type="password" name="pw"></form>',
+          body: "<!doctype html><title>Test page</title><h1>Test page</h1>",
         });
-      }
-      return route.fulfill({
-        contentType: "text/html",
-        body: "<!doctype html><title>Test page</title><h1>Test page</h1>",
-      });
-    });
+      },
+    );
     await use(context);
     await context.close();
   },

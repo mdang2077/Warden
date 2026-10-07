@@ -52,6 +52,22 @@ describe("DNR healer", () => {
     expect(deps.reload).not.toHaveBeenCalled();
   });
 
+  it("heals a pop-network URL the browser itself started (typed, bookmark)", async () => {
+    const isHijack = vi.fn((_url: string, tabId: number) => tabId !== 3);
+    const deps = {
+      evaluate: vi.fn(async () => "allow" as const),
+      allow: vi.fn(async () => {}),
+      reload: vi.fn(async () => {}),
+      isHijack,
+      onHijack: vi.fn(async () => {}),
+    };
+    const heal = createDnrHealer(deps);
+    expect(await heal(blocked("https://go.popads.net/typed"))).toBe("healed");
+    expect(isHijack).toHaveBeenCalledWith("https://go.popads.net/typed", 3);
+    expect(deps.onHijack).not.toHaveBeenCalled();
+    expect(deps.reload).toHaveBeenCalledWith(3, "https://go.popads.net/typed");
+  });
+
   it("retries a URL only once, so it can't loop against another blocker", async () => {
     const { deps, heal } = setup("allow");
     await heal(blocked("https://ads.example/x#a"));

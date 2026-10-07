@@ -11,6 +11,9 @@ export const FEED_SERVER_PORT = 47123;
 export const FEED_SERVER_URL = `http://127.0.0.1:${FEED_SERVER_PORT}`;
 /** Bare-host entry, so it compiles to a `||host/` DNR rule. */
 export const FEED_BLOCKED_HOST = "phish-feed.warden-test.example";
+/** The one popup-network domain the e2e feed publishes. */
+export const POPNET_DOMAIN = "popnet-test.example";
+export const POPNET_HOST = `go.${POPNET_DOMAIN}`;
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
@@ -44,6 +47,13 @@ function buildFiles(): Map<string, string> {
     sharedHosts: {
       ...put("v1/shared-hosts/1.json", sharedText),
       version: JSON.parse(sharedText).version,
+    },
+    popupNetworks: {
+      ...put(
+        "v1/popup-networks/1.json",
+        JSON.stringify({ version: 1, generatedAt: "", sources: [], domains: [POPNET_DOMAIN] }),
+      ),
+      version: 1,
     },
     feeds: {
       openphish: { enabled: true, tier: "A" },

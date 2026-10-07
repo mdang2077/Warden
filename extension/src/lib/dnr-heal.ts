@@ -18,8 +18,12 @@ export interface DnrHealDeps {
   evaluate: (url: string, tabId: number) => Promise<Decision>;
   allow: (url: string) => Promise<void>;
   reload: (tabId: number, url: string) => Promise<void>;
-  /** True for pop-network URLs: those blocks belong to the hijack guard and are never healed. */
-  isHijack?: (url: string) => boolean;
+  /**
+   * True for a pop-network URL that a page navigated to: that block belongs to the hijack
+   * guard and is never healed. False when the browser started it (typed, bookmark): DNR's
+   * `domainType: "thirdParty"` also matches those, so they heal like a stale rule.
+   */
+  isHijack?: (url: string, tabId: number) => boolean;
   onHijack?: (details: NavigationError) => Promise<void>;
 }
 
@@ -36,7 +40,7 @@ export function createDnrHealer(deps: DnrHealDeps) {
   return async (details: NavigationError): Promise<"healed" | "skipped" | "hijack"> => {
     if (details.frameId !== 0 || !details.error.includes("ERR_BLOCKED_BY_CLIENT")) return "skipped";
     if (!shouldEvaluate(details.url)) return "skipped";
-    if (deps.isHijack?.(details.url)) {
+    if (deps.isHijack?.(details.url, details.tabId)) {
       await deps.onHijack?.(details);
       return "hijack";
     }
