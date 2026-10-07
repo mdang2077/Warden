@@ -11,3 +11,5 @@ eval/corpora/
 playwright-report/
 test-results/
 service/out/
+.worktrees/
+.superpowers/
