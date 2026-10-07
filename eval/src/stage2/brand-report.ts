@@ -25,10 +25,10 @@ import {
   detectBrandClaim,
 } from "@warden/shared/stage2/brand-claim";
 import { brandMismatch } from "@warden/shared/stage2/brand-mismatch";
-import { Window } from "happy-dom";
 import type { CrawlRecord } from "../crawl/crawler.ts";
 import { classifyInterception } from "../crawl/interception.ts";
 import { loadRecords } from "./gate-report.ts";
+import { parseSavedPage } from "./saved-page.ts";
 
 export interface BrandRow {
   group: string;
@@ -134,32 +134,6 @@ export function renderBrandReport(
     ...sweep,
     "",
   ].join("\n");
-}
-
-/**
- * One inert window per page (scripts and subresources never load), closed right after the
- * page is extracted: a single shared window keeps every parsed document alive. `<link>`
- * tags are stripped first: happy-dom preloads `rel=preload` targets, which would fetch from
- * the phish site, and the brand detector never reads them. `body.innerText` is blanked so
- * the extractor falls back to `textContent`: happy-dom's innerText can spin forever on some
- * pages, and the page text isn't a brand cue.
- */
-function parseSavedPage(html: string, url: string): { doc: Document; close: () => Promise<void> } {
-  const inert = html.replace(/<link\b[^>]*>/gi, "");
-  const window = new Window({
-    url,
-    settings: {
-      disableJavaScriptEvaluation: true,
-      disableJavaScriptFileLoading: true,
-      disableCSSFileLoading: true,
-      disableIframePageLoading: true,
-    },
-  });
-  const doc = new window.DOMParser().parseFromString(inert, "text/html") as unknown as Document;
-  Object.defineProperty(doc, "URL", { value: url });
-  Object.defineProperty(doc, "location", { value: new URL(url) });
-  if (doc.body) Object.defineProperty(doc.body, "innerText", { get: () => "" });
-  return { doc, close: () => window.happyDOM.close() };
 }
 
 export async function rowsFor(
