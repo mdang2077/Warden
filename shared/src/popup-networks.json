@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-06T00:00:00Z",
+  "sources": [
+    {
+      "name": "Warden curated",
+      "license": "see THIRD_PARTY_NOTICES",
+      "url": "https://github.com/mdang2077/Warden"
+    }
+  ],
+  "domains": [
+    "adcash.com",
+    "clickadu.com",
+    "exoclick.com",
+    "hilltopads.net",
+    "onclickads.net",
+    "popads.net",
+    "popcash.net",
+    "propellerads.com"
+  ]
+}
