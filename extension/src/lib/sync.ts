@@ -28,7 +28,13 @@ import {
   type SharedHostsFile,
 } from "@warden/shared/shared-hosts";
 import { FEED_IDS } from "@warden/shared/types";
-import { compileDnrRules, type DnrApi, type DnrEntry, replaceDynamicRules } from "./dnr.ts";
+import {
+  compileDnrRules,
+  type DnrApi,
+  type DnrEntry,
+  PHISHING_RULE_IDS,
+  replaceRuleRange,
+} from "./dnr.ts";
 import type { ListStore } from "./list-store.ts";
 import type { KeyValueArea } from "./overrides.ts";
 
@@ -219,7 +225,7 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
       return (allowlist?.allows(host) ?? false) || (domain !== null && userTrusted.has(domain));
     };
     const { rules, skipped } = compileDnrRules(tierA, shared, { trusted });
-    await replaceDynamicRules(deps.dnr, rules);
+    await replaceRuleRange(deps.dnr, PHISHING_RULE_IDS, rules);
     report.dnrRules = rules.length;
     report.dnrSkipped = skipped;
 

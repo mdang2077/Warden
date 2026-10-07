@@ -44,6 +44,19 @@ export interface DnrEntry {
 
 /** Chrome's guaranteed minimum for dynamic rules (MAX_NUMBER_OF_DYNAMIC_RULES). */
 export const MAX_DYNAMIC_RULES = 30_000;
+
+export interface RuleRange {
+  first: number;
+  last: number;
+}
+
+/**
+ * Dynamic rule ids are split so each compiler replaces only its own rules. The phishing
+ * rules give up the top 100 ids to the hijack guard (extension/src/lib/hijack-rules.ts).
+ */
+export const PHISHING_RULE_IDS: RuleRange = { first: 1, last: 29_899 };
+export const HIJACK_RULE_IDS: RuleRange = { first: 29_900, last: 29_999 };
+export const MAX_PHISHING_RULES = PHISHING_RULE_IDS.last - PHISHING_RULE_IDS.first + 1;
 export const BLOCK_PRIORITY = 1;
 /** Session bypass rules outrank every block rule. */
 export const BYPASS_PRIORITY = 2;
@@ -68,7 +81,7 @@ export function compileDnrRules(
   shared: SharedHostList,
   options: CompileOptions = {},
 ): CompileResult {
-  const maxRules = options.maxRules ?? MAX_DYNAMIC_RULES;
+  const maxRules = options.maxRules ?? MAX_PHISHING_RULES;
   const trusted = options.trusted ?? (() => false);
   const filters = new Set<string>();
   let skipped = 0;
@@ -164,16 +177,32 @@ export async function bypassRuleId(rawUrl: string): Promise<number> {
   );
 }
 
+/** Any rule this module installs; only the id matters for range bookkeeping. */
+export interface DnrRuleLike {
+  id: number;
+}
+
 /** The subset of chrome.declarativeNetRequest the sync needs. */
 export interface DnrApi {
   getDynamicRules(): Promise<{ id: number }[]>;
-  updateDynamicRules(options: { removeRuleIds: number[]; addRules: DnrRule[] }): Promise<void>;
+  updateDynamicRules(options: { removeRuleIds: number[]; addRules: DnrRuleLike[] }): Promise<void>;
 }
 
-/** Replaces every dynamic rule with `rules` in one atomic update. */
-export async function replaceDynamicRules(api: DnrApi, rules: DnrRule[]): Promise<void> {
+const inRange = (id: number, range: RuleRange) => id >= range.first && id <= range.last;
+
+/** Replaces the dynamic rules in `range` with `rules`, in one atomic update. */
+export async function replaceRuleRange(
+  api: DnrApi,
+  range: RuleRange,
+  rules: readonly DnrRuleLike[],
+): Promise<void> {
+  const outside = rules.find((r) => !inRange(r.id, range));
+  if (outside) throw new Error(`DNR rule id ${outside.id} outside ${range.first}..${range.last}`);
   const existing = await api.getDynamicRules();
-  await api.updateDynamicRules({ removeRuleIds: existing.map((r) => r.id), addRules: rules });
+  await api.updateDynamicRules({
+    removeRuleIds: existing.filter((r) => inRange(r.id, range)).map((r) => r.id),
+    addRules: [...rules],
+  });
 }
 
 /** The subset of chrome.declarativeNetRequest session-rule calls the bypass needs. */

@@ -78,16 +78,16 @@ class FakeService {
   });
 }
 
-function fakeDnr() {
-  let rules: DnrRule[] = [];
+function fakeDnr(initial: DnrRule[] = []) {
+  let rules: DnrRule[] = initial;
   return {
     get rules() {
       return rules;
     },
     getDynamicRules: vi.fn(async () => rules),
     updateDynamicRules: vi.fn(
-      async ({ addRules }: { removeRuleIds: number[]; addRules: DnrRule[] }) => {
-        rules = addRules;
+      async ({ removeRuleIds, addRules }: { removeRuleIds: number[]; addRules: DnrRule[] }) => {
+        rules = [...rules.filter((r) => !removeRuleIds.includes(r.id)), ...addRules];
       },
     ),
   };

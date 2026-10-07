@@ -8,7 +8,11 @@ import {
   compileDnrRules,
   type DnrEntry,
   type DnrRule,
-  replaceDynamicRules,
+  HIJACK_RULE_IDS,
+  MAX_DYNAMIC_RULES,
+  MAX_PHISHING_RULES,
+  PHISHING_RULE_IDS,
+  replaceRuleRange,
 } from "./dnr.ts";
 
 /**
@@ -281,15 +285,49 @@ describe("trusted hosts", () => {
   });
 });
 
-describe("replaceDynamicRules", () => {
-  it("removes all existing rules and adds the new ones in one call", async () => {
-    const api = {
-      getDynamicRules: vi.fn(async () => [{ id: 1 }, { id: 5 }]),
-      updateDynamicRules: vi.fn(async () => {}),
+describe("replaceRuleRange", () => {
+  function fakeApi(initial: number[]) {
+    let ids = initial;
+    return {
+      ids: () => [...ids].sort((a, b) => a - b),
+      getDynamicRules: vi.fn(async () => ids.map((id) => ({ id }))),
+      updateDynamicRules: vi.fn(
+        async (o: { removeRuleIds: number[]; addRules: { id: number }[] }) => {
+          ids = [
+            ...ids.filter((id) => !o.removeRuleIds.includes(id)),
+            ...o.addRules.map((r) => r.id),
+          ];
+        },
+      ),
     };
+  }
+
+  it("replaces only the rules in its own range, in one call", async () => {
+    const api = fakeApi([1, 5, 29_900, 29_950]);
     const { rules } = compile("evil.example/");
-    await replaceDynamicRules(api, rules);
+    await replaceRuleRange(api, PHISHING_RULE_IDS, rules);
+    expect(api.updateDynamicRules).toHaveBeenCalledTimes(1);
     expect(api.updateDynamicRules).toHaveBeenCalledWith({ removeRuleIds: [1, 5], addRules: rules });
+    expect(api.ids()).toEqual([1, 29_900, 29_950]);
+  });
+
+  it("leaves phishing rules alone when replacing the hijack range", async () => {
+    const api = fakeApi([1, 2, 29_900]);
+    await replaceRuleRange(api, HIJACK_RULE_IDS, [{ id: 29_901 }]);
+    expect(api.ids()).toEqual([1, 2, 29_901]);
+  });
+
+  it("rejects a rule outside the range without touching DNR", async () => {
+    const api = fakeApi([1]);
+    await expect(replaceRuleRange(api, HIJACK_RULE_IDS, [{ id: 5 }])).rejects.toThrow(/outside/);
+    expect(api.updateDynamicRules).not.toHaveBeenCalled();
+  });
+
+  it("keeps the ranges disjoint and within Chrome's dynamic-rule limit", () => {
+    expect(PHISHING_RULE_IDS.first).toBe(1);
+    expect(MAX_PHISHING_RULES).toBe(PHISHING_RULE_IDS.last);
+    expect(PHISHING_RULE_IDS.last).toBeLessThan(HIJACK_RULE_IDS.first);
+    expect(HIJACK_RULE_IDS.last).toBeLessThanOrEqual(MAX_DYNAMIC_RULES);
   });
 });
 
