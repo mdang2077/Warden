@@ -178,3 +178,16 @@ test("the toolbar popup lists blocks and its toggle takes effect without a reloa
   await expect(opened).toHaveTitle("Test page");
   expect(opened.isClosed()).toBe(false);
 });
+
+test("strict: a visible link that server-redirects to another site still works", async ({
+  context,
+  extensionId: _,
+}) => {
+  await setStrict(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/strict-outlink`);
+  await page.click("#download");
+  await expect(page).toHaveURL("https://cdn.other-test.example/file");
+  await page.waitForTimeout(500); // Warden had its chance to send the tab back
+  expect(page.url()).toBe("https://cdn.other-test.example/file");
+});

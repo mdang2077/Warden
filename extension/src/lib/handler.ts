@@ -25,6 +25,11 @@ export interface HandlerDeps {
    * navigation must not evaluate it with an empty allowlist.
    */
   ready?: () => Promise<void>;
+  /**
+   * False while the user has phishing protection off. Async: a worker woken by a
+   * navigation must read the stored setting before deciding.
+   */
+  enabled?: () => Promise<boolean>;
   /** Called only for blocks the user hasn't already clicked through. */
   onBlock: (ctx: NavigationContext, sources: SourceId[]) => void | Promise<void>;
   isBypassed: (url: string, sources: readonly SourceId[]) => Promise<boolean>;
@@ -52,6 +57,7 @@ export function createNavigationHandler(deps: HandlerDeps) {
 
   return async (details: TopFrameNavigation): Promise<CascadeResult | null> => {
     if (details.frameId !== 0 || !shouldEvaluate(details.url)) return null;
+    if (deps.enabled && !(await deps.enabled())) return null;
 
     const key = `${details.tabId}|${details.url}`;
     const t = now();

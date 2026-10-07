@@ -97,6 +97,23 @@ describe("isHijack: same-tab navigations", () => {
     expect(isHijack(SITE, nav("https://ads.example/"), [click(null)])).toBe(true);
   });
 
+  it("allows a visible link whose request server-redirects to another site", () => {
+    const event: StrictEvent = {
+      ...nav("https://cdn.files.example/f.zip"),
+      kind: "navigation",
+      chain: ["https://stream.example/download/123", "https://cdn.files.example/f.zip"],
+    } as StrictEvent;
+    expect(isHijack(SITE, event, [click("https://stream.example/download/123#top")])).toBe(false);
+    // A redirect chain doesn't excuse a click that wasn't on a link at all.
+    expect(isHijack(SITE, event, [click(null)])).toBe(true);
+  });
+
+  it("allows a same-tab redirect to a sign-in host after a button click", () => {
+    expect(isHijack(SITE, nav("https://accounts.google.com/o/oauth2/auth"), [click(null)])).toBe(
+      false,
+    );
+  });
+
   it("allows a link navigation with no click record (lost to a worker restart)", () => {
     expect(isHijack(SITE, nav("https://ads.example/"), [])).toBe(false);
   });

@@ -23,6 +23,9 @@ export const TEST_PAGES: Record<string, string> = {
     '<!doctype html><title>Video</title><button id="signin">Sign in</button>' +
     '<script>document.getElementById("signin").onclick = () =>' +
     ' window.open("https://accounts.google.com/o/oauth2/auth", "_blank", "popup");</script>',
+  "/strict-outlink":
+    "<!doctype html><title>Video</title>" +
+    '<a id="download" href="https://redirect.warden-test.example/?to=https://cdn.other-test.example/file">Download</a>',
   "/strict-redirect":
     '<!doctype html><title>Video</title><button id="play">Play</button>' +
     '<script>document.getElementById("play").onclick = () => {' +

@@ -198,6 +198,10 @@ export default defineBackground({
     const handle = createNavigationHandler({
       stages: () => stages,
       ready: () => localReady,
+      enabled: async () => {
+        await prefsReady;
+        return prefs.phishing;
+      },
       onBlock: showInterstitial,
       isBypassed: overrides.isBypassed,
       onResult: logResult,
@@ -229,27 +233,50 @@ export default defineBackground({
         if (sender.tab?.id !== undefined) clicks.add(sender.tab.id, click);
         return;
       }
-      if (!prefs.phishing) return;
-      void recordShadow(message, {
-        tabId: sender.tab?.id,
-        frameId: sender.frameId,
-        url: sender.url,
-      }).catch((err) => console.error("[Warden] shadow log failed", err));
+      void prefsReady
+        .then(() => {
+          if (!prefs.phishing) return;
+          return recordShadow(message, {
+            tabId: sender.tab?.id,
+            frameId: sender.frameId,
+            url: sender.url,
+          });
+        })
+        .catch((err) => console.error("[Warden] shadow log failed", err));
     });
     const run = (details: Parameters<typeof handle>[0]) => {
-      if (!prefs.phishing) return;
       handle(details).catch((err) => console.error("[Warden] navigation handler failed", err));
     };
 
     // Every top-frame hop is evaluated, and blocks carry the chain that led there.
     const redirects = createRedirectTracker();
     const mainFrame = { urls: ["<all_urls>"], types: ["main_frame" as const] };
-    // Last main-frame request per tab: a page started it (initiator) or the browser did.
-    const mainFrameRequests = new Map<number, { url: string; initiator: string | undefined }>();
+    // Last main-frame request per tab: who started it (a page's initiator, or none for the
+    // browser), when, and its server-redirect hops. A redirect keeps the requestId.
+    interface MainFrameRequest {
+      requestId: string;
+      url: string;
+      initiator: string | undefined;
+      startedAt: number;
+      hops: string[];
+    }
+    const mainFrameRequests = new Map<number, MainFrameRequest>();
     browser.webRequest.onBeforeRequest.addListener((d) => {
       if (d.tabId >= 0) {
         redirects.startRequest(d.tabId, d.requestId, d.url);
-        mainFrameRequests.set(d.tabId, { url: d.url, initiator: d.initiator });
+        const prev = mainFrameRequests.get(d.tabId);
+        // A redirect keeps the requestId; a restarted request for the last hop is the same
+        // navigation too.
+        const redirected = prev?.requestId === d.requestId;
+        const restarted = !redirected && prev?.hops.at(-1) === d.url;
+        const continues = prev && (redirected || restarted);
+        mainFrameRequests.set(d.tabId, {
+          requestId: d.requestId,
+          url: d.url,
+          initiator: continues ? prev.initiator : d.initiator,
+          startedAt: continues ? prev.startedAt : d.timeStamp,
+          hops: !continues ? [d.url] : redirected ? [...prev.hops, d.url] : prev.hops,
+        });
       }
       return undefined;
     }, mainFrame);
@@ -290,18 +317,23 @@ export default defineBackground({
       void hijack.recordOpener(d.tabId, d.sourceTabId).catch(logHijackError);
     });
     browser.webNavigation.onCommitted.addListener((d) => {
-      // A blocked pop-network load is not the page the counts belong to.
-      if (d.frameId !== 0 || isPopupNetworkUrl(local.popupNetworks, d.url)) return;
+      if (d.frameId !== 0) return;
       void (async () => {
+        await Promise.all([localReady, prefsReady]);
+        // A blocked pop-network load is not the page the counts belong to.
+        if (isPopupNetworkUrl(local.popupNetworks, d.url)) return;
         // Strict mode: a cross-site navigation away from a strict site may be a hijack.
         const before = await getHijackRecord(session, d.tabId);
         const site = before?.siteKey && isStrict(prefs, before.siteKey) ? before.siteKey : null;
         if (site && siteKey(d.url) !== site) {
-          const initiator = mainFrameRequests.get(d.tabId)?.initiator;
+          const request = mainFrameRequests.get(d.tabId);
+          const initiator = request?.initiator;
           const event = {
             kind: "navigation" as const,
             url: d.url,
-            at: d.timeStamp,
+            // When the request started: a slow server must not push the click out of the window.
+            at: request?.startedAt ?? d.timeStamp,
+            ...(request ? { chain: request.hops } : {}),
             transitionType: d.transitionType,
             transitionQualifiers: d.transitionQualifiers,
             ...(initiator ? { initiator } : {}),
@@ -318,9 +350,11 @@ export default defineBackground({
 
     // Strict mode: a new tab opened from a strict site without a click on a link to it.
     browser.webNavigation.onBeforeNavigate.addListener((d) => {
-      // Pop networks are the Standard layer's (DNR) job.
-      if (d.frameId !== 0 || isPopupNetworkUrl(local.popupNetworks, d.url)) return;
+      if (d.frameId !== 0) return;
       void (async () => {
+        await Promise.all([localReady, prefsReady]);
+        // Pop networks are the Standard layer's (DNR) job.
+        if (isPopupNetworkUrl(local.popupNetworks, d.url)) return;
         const opener = await hijack.openerOf(d.tabId);
         if (!opener) return;
         const source = await browser.tabs.get(opener.sourceTabId).catch(() => null);
@@ -349,8 +383,14 @@ export default defineBackground({
       },
       // A navigation the browser started (typed, bookmark) to a listed network is the user's
       // choice; DNR blocked it anyway (thirdParty matches no-initiator loads), so it heals.
-      isHijack: (url, tabId) =>
-        prefs.hijack && isPopupNetworkUrl(local.popupNetworks, url) && !browserStarted(tabId, url),
+      // Waits for the synced list and prefs: after a worker wake, the event that woke it
+      // arrives while `local` still holds only the bundled fallback list.
+      isHijack: async (url, tabId) => {
+        await Promise.all([localReady, prefsReady]);
+        return (
+          prefs.hijack && isPopupNetworkUrl(local.popupNetworks, url) && !browserStarted(tabId, url)
+        );
+      },
       onHijack: async (d) => {
         await hijack.handle({ tabId: d.tabId, url: d.url, layer: "standard" });
       },

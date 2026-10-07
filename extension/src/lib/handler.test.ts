@@ -72,6 +72,20 @@ describe("createNavigationHandler", () => {
     );
   });
 
+  it("skips evaluation while protection is off, waiting for the stored setting", async () => {
+    const d = deps([blockAll]);
+    const out = await createNavigationHandler({
+      ...d,
+      enabled: async () => {
+        await new Promise((r) => setTimeout(r, 10));
+        return false;
+      },
+    })(nav("https://phish.example/"));
+    expect(out).toBeNull();
+    expect(d.onBlock).not.toHaveBeenCalled();
+    expect(d.onVerdict).not.toHaveBeenCalled();
+  });
+
   it("waits for stage data before evaluating", async () => {
     const order: string[] = [];
     const stage: Stage = {

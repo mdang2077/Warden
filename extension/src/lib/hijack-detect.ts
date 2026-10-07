@@ -30,7 +30,11 @@ export type StrictEvent =
       transitionType: string;
       transitionQualifiers: readonly string[];
       initiator?: string;
+      /** URLs of the request's server-redirect hops, first to last. */
+      chain?: readonly string[];
     };
+
+const withoutFragment = (url: string) => url.split("#")[0] as string;
 
 const BROWSER_STARTED_TYPES = new Set([
   "typed",
@@ -65,14 +69,19 @@ export function isHijack(
   if (destination === site) return false;
 
   const recent = clicks.filter((c) => Math.abs(event.at - c.at) <= CLICK_WINDOW_MS);
+  // A visible link to the destination's site, or to a hop that server-redirected there
+  // (download links, outbound /out?u= links, shorteners).
+  const hops = event.kind === "navigation" ? (event.chain ?? []).map(withoutFragment) : [];
   const linkedThere = recent.some((c) => {
     const linkHost = c.linkHref ? webHost(c.linkHref) : null;
-    return linkHost !== null && siteOf(linkHost) === destination;
+    if (linkHost === null || !c.linkHref) return false;
+    return siteOf(linkHost) === destination || hops.includes(withoutFragment(c.linkHref));
   });
   if (linkedThere) return false;
+  // Sign-in and payment pages, as a popup or a same-tab redirect from a button.
+  if (isAuthPopupHost(host)) return false;
 
   if (event.kind === "new-tab") {
-    if (isAuthPopupHost(host)) return false;
     // No click at all: Chrome's popup blocker already stops gesture-less window.open.
     return recent.length > 0;
   }
