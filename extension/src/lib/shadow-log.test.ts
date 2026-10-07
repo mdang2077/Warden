@@ -1,3 +1,4 @@
+import { loadBrands } from "@warden/shared/brands";
 import { describe, expect, it } from "vitest";
 import {
   appendShadowEntry,
@@ -101,5 +102,67 @@ describe("shadow recorder", () => {
     const log = await listShadowEntries(area);
     expect(log).toHaveLength(MAX_SHADOW_ENTRIES);
     expect(log[0]?.at).toBe(5);
+  });
+});
+
+const testBrands = loadBrands({
+  version: 1,
+  brands: [
+    { id: "chase", name: "Chase", aliases: ["chase"], domains: ["chase.com"], needsContext: true },
+  ],
+});
+const CLAIM = { brand: "chase", cues: ["title", "heading"] };
+
+describe("brand mismatch in the shadow log", () => {
+  it("accepts messages without a claim and drops a malformed claim", () => {
+    expect(parseFieldsMessage(msg())).toEqual(msg());
+    expect(parseFieldsMessage({ ...msg(), brandClaim: CLAIM })).toEqual({
+      ...msg(),
+      brandClaim: CLAIM,
+    });
+    for (const bad of [
+      { brand: "Chase!", cues: ["title"] },
+      { brand: "chase", cues: ["title", "telepathy"] },
+      { brand: "chase", cues: "title" },
+      "chase",
+    ]) {
+      expect(parseFieldsMessage({ ...msg(), brandClaim: bad })).toEqual(msg());
+    }
+  });
+
+  it("records a mismatch when the page isn't on the brand's domains", async () => {
+    const area = memoryArea();
+    const record = createShadowRecorder({
+      area,
+      allowlisted: () => false,
+      stage1For: async () => "allow",
+      brands: testBrands,
+      now: () => 0,
+    });
+    const entry = await record(
+      { ...msg(), brandClaim: CLAIM },
+      sender("https://chase-verify.example/login"),
+    );
+    expect(entry?.brandMismatch).toEqual(CLAIM);
+    const own = await record(
+      { ...msg(), brandClaim: CLAIM },
+      sender("https://secure.chase.com/login"),
+    );
+    expect(own).not.toHaveProperty("brandMismatch");
+  });
+
+  it("records no mismatch when brands are unavailable", async () => {
+    const record = createShadowRecorder({
+      area: memoryArea(),
+      allowlisted: () => false,
+      stage1For: async () => "allow",
+      brands: null,
+      now: () => 0,
+    });
+    const entry = await record(
+      { ...msg(), brandClaim: CLAIM },
+      sender("https://chase-verify.example/"),
+    );
+    expect(entry).not.toHaveProperty("brandMismatch");
   });
 });

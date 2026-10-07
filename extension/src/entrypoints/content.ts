@@ -3,8 +3,14 @@
  * values) for a secret-entry surface or an identifier-only login step, and tells the
  * background the counts. Login forms injected after load are caught by a time-boxed
  * MutationObserver. Nothing is shown to the user.
+ *
+ * On a login page (gated or identifier step) it also reads the title, headings, buttons,
+ * labels, logo hints, and the hosts the page links to, to find which protected brand the
+ * page claims (S2.6). Only the brand id and cue names are sent, and only on the device.
  */
-import { extractFields, hasSecretSurface } from "@warden/shared/page/extract";
+import { bundledBrands } from "@warden/shared/brands";
+import { extractFields, extractSnapshot, hasSecretSurface } from "@warden/shared/page/extract";
+import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import type { FieldsMessage } from "../lib/shadow-log.ts";
@@ -28,6 +34,17 @@ export default defineContentScript({
       });
     };
 
+    /** On login pages only: which protected brand the page presents itself as. */
+    const withClaim = (message: FieldsMessage): FieldsMessage => {
+      if (!bundledBrands) return message;
+      try {
+        const claim = detectBrandClaim(extractSnapshot(document), bundledBrands);
+        return claim ? { ...message, brandClaim: claim } : message;
+      } catch {
+        return message; // no signal; the counts still go out
+      }
+    };
+
     const check = () => {
       if (sentGate) return;
       const fields = extractFields(document);
@@ -39,11 +56,11 @@ export default defineContentScript({
       if (hasSecretSurface(fields)) {
         sentGate = true;
         observer.disconnect();
-        send(message);
+        send(withClaim(message));
       } else if (fields.identifierFields > 0 && !sentIdentifier) {
         // Keep watching: a two-step login may reveal the password field on this same page.
         sentIdentifier = true;
-        send(message);
+        send(withClaim(message));
       }
     };
 
