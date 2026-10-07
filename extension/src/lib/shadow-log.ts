@@ -2,7 +2,7 @@
  * Stage 2 shadow log: what Stage 2 saw, kept on this device only (telemetry is local-only by
  * decision). Entries hold the origin and path, never the query, page text, or anything typed.
  * When Stage 2's brand signal fires they also hold a brand id and cue names, never the text
- * those came from.
+ * those came from; when the exfil signal fires, only its kind (never the URL or host).
  */
 import { type BrandList, bundledBrands } from "@warden/shared/brands";
 import { canonicalize } from "@warden/shared/canonicalize";
@@ -10,6 +10,8 @@ import type { SecretKind } from "@warden/shared/page/extract";
 import { registrableDomain } from "@warden/shared/psl";
 import type { BrandClaim, BrandCue } from "@warden/shared/stage2/brand-claim";
 import { brandMismatch } from "@warden/shared/stage2/brand-mismatch";
+import type { ExfilEndpoint, ExfilScan } from "@warden/shared/stage2/exfil-scan";
+import { type ExfilSignal, exfilSignal } from "@warden/shared/stage2/exfil-signal";
 import type { Decision } from "@warden/shared/types";
 import { shouldEvaluate } from "./navigation.ts";
 import type { KeyValueArea } from "./overrides.ts";
@@ -29,14 +31,38 @@ export interface ShadowEntry {
   stage1: Decision | null;
   /** S2.6: the page claims this brand on a domain the brand doesn't own. */
   brandMismatch?: BrandClaim;
+  /** S2.7: where credentials go (kind only), plus the supporting IP-lookup flag. */
+  exfil?: ExfilSignal;
 }
 
-/** What the content script sends: counts, plus a brand id and cue names on login pages. */
+/**
+ * What the content script sends: counts, plus (on login pages) a brand id and cue names,
+ * and the exfil scan. The scan's form hosts are used to decide cross-site posting here and
+ * are never stored.
+ */
 export interface FieldsMessage {
   type: "warden:fields";
   secrets: Record<SecretKind, number>;
   identifierFields: number;
   brandClaim?: BrandClaim;
+  exfil?: ExfilScan;
+}
+
+const ENDPOINTS = new Set<ExfilEndpoint>(["telegram", "discord", "formService"]);
+const HOST = /^[a-z0-9.-]+$/;
+
+function parseExfil(raw: unknown): ExfilScan | null {
+  const e = raw as { endpoint?: unknown; ip?: unknown; formHosts?: unknown } | null;
+  if (e?.endpoint !== null && !ENDPOINTS.has(e?.endpoint as ExfilEndpoint)) return null;
+  if (typeof e?.ip !== "boolean" || !Array.isArray(e.formHosts) || e.formHosts.length > 10) {
+    return null;
+  }
+  if (!e.formHosts.every((h) => typeof h === "string" && HOST.test(h))) return null;
+  return {
+    endpoint: e.endpoint as ExfilEndpoint | null,
+    ip: e.ip,
+    formHosts: e.formHosts as string[],
+  };
 }
 
 const CUES = new Set<BrandCue>(["title", "heading", "logo", "button", "label", "links"]);
@@ -77,11 +103,13 @@ export function parseFieldsMessage(msg: unknown): FieldsMessage | null {
   const identifierFields = count(m.identifierFields);
   if (identifierFields === null) return null;
   const claim = parseClaim((m as { brandClaim?: unknown }).brandClaim);
+  const exfil = parseExfil((m as { exfil?: unknown }).exfil);
   return {
     type: "warden:fields",
     secrets,
     identifierFields,
     ...(claim ? { brandClaim: claim } : {}),
+    ...(exfil ? { exfil } : {}),
   };
 }
 
@@ -121,6 +149,7 @@ export function createShadowRecorder(deps: RecorderDeps) {
     if (last !== undefined && t - last < 10 * 60_000) return null;
     seen.set(key, t);
 
+    const exfil = msg.exfil ? exfilSignal(msg.exfil, url.host) : null;
     const entry: ShadowEntry = {
       at: t,
       page,
@@ -133,6 +162,7 @@ export function createShadowRecorder(deps: RecorderDeps) {
       ...(msg.brandClaim && brands && brandMismatch(msg.brandClaim, url.host, brands)
         ? { brandMismatch: msg.brandClaim }
         : {}),
+      ...(exfil ? { exfil } : {}),
     };
     await appendShadowEntry(deps.area, entry);
     return entry;

@@ -134,3 +134,23 @@ test("Stage 2 shadow mode records a brand claimed on someone else's domain", asy
   // No page text in the log.
   expect(JSON.stringify(await readLog())).not.toContain("Chase Online");
 });
+
+test("Stage 2 shadow mode records credentials sent to a Telegram bot", async ({
+  context,
+  extensionId: _,
+}) => {
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error("no service worker");
+  const page = await context.newPage();
+  await page.goto("https://ok.warden-test.example/exfil-login");
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  const readLog = () =>
+    worker.evaluate(
+      async () => ((await chrome.storage.local.get("shadow_log")).shadow_log ?? []) as unknown[],
+    );
+  await expect
+    .poll(async () => (await readLog()).find((e) => JSON.stringify(e).includes("exfil-login")))
+    .toMatchObject({ kind: "gate", exfil: { kind: "telegram", ip: false } });
+  // Only the kind: never the bot URL or token.
+  expect(JSON.stringify(await readLog())).not.toContain("TOKEN");
+});

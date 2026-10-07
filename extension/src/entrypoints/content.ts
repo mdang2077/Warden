@@ -7,15 +7,20 @@
  * On a login page (gated or identifier step) it also reads the title, headings, buttons,
  * labels, logo hints, and the hosts the page links to, to find which protected brand the
  * page claims (S2.6). Only the brand id and cue names are sent, and only on the device.
+ * It also scans the page's scripts and form targets for where credentials would go (S2.7):
+ * the endpoint kind and the hosts login forms post to go to the background, which stores
+ * only the kind.
  */
 import { bundledBrands } from "@warden/shared/brands";
 import {
   extractBrandInput,
+  extractExfilScripts,
   extractFields,
   type FormInfo,
   hasSecretSurface,
 } from "@warden/shared/page/extract";
 import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
+import { scanExfil } from "@warden/shared/stage2/exfil-scan";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import type { FieldsMessage } from "../lib/shadow-log.ts";
@@ -39,15 +44,27 @@ export default defineContentScript({
       });
     };
 
-    /** On login pages only: which protected brand the page presents itself as. */
+    /**
+     * On login pages only: which protected brand the page presents itself as (S2.6), and
+     * where credentials would be sent (S2.7). Each part fails on its own, to no signal.
+     */
     const withClaim = (message: FieldsMessage, forms: FormInfo[]): FieldsMessage => {
-      if (!bundledBrands) return message;
-      try {
-        const claim = detectBrandClaim(extractBrandInput(document, forms), bundledBrands);
-        return claim ? { ...message, brandClaim: claim } : message;
-      } catch {
-        return message; // no signal; the counts still go out
+      let out = message;
+      if (bundledBrands) {
+        try {
+          const claim = detectBrandClaim(extractBrandInput(document, forms), bundledBrands);
+          if (claim) out = { ...out, brandClaim: claim };
+        } catch {
+          // no brand signal; the counts still go out
+        }
       }
+      try {
+        const exfil = scanExfil({ forms, ...extractExfilScripts(document) });
+        if (exfil.endpoint || exfil.ip || exfil.formHosts.length) out = { ...out, exfil };
+      } catch {
+        // no exfil signal
+      }
+      return out;
     };
 
     const check = () => {

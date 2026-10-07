@@ -166,3 +166,39 @@ describe("brand mismatch in the shadow log", () => {
     expect(entry).not.toHaveProperty("brandMismatch");
   });
 });
+
+describe("credential exfiltration in the shadow log", () => {
+  const SCAN = { endpoint: "telegram", ip: true, formHosts: ["collect.other.example"] };
+
+  it("parses the scan and drops a malformed one", () => {
+    expect(parseFieldsMessage({ ...msg(), exfil: SCAN })).toEqual({ ...msg(), exfil: SCAN });
+    for (const bad of [
+      { ...SCAN, endpoint: "carrier-pigeon" },
+      { ...SCAN, ip: "yes" },
+      { ...SCAN, formHosts: "collect.other.example" },
+      { ...SCAN, formHosts: ["not a host!"] },
+      { ...SCAN, formHosts: Array.from({ length: 11 }, (_, i) => `h${i}.example`) },
+    ]) {
+      expect(parseFieldsMessage({ ...msg(), exfil: bad })).toEqual(msg());
+    }
+  });
+
+  it("records the kind of exfiltration, never the hosts", async () => {
+    const { record } = setup();
+    const entry = await record(
+      { ...msg(), exfil: { endpoint: null, ip: false, formHosts: ["collect.other.example"] } },
+      sender("https://secure-login.evil.example/"),
+    );
+    expect(entry?.exfil).toEqual({ kind: "crossSiteForm", ip: false });
+    expect(JSON.stringify(entry)).not.toContain("collect.other.example");
+  });
+
+  it("records nothing for a same-site form with no endpoint", async () => {
+    const { record } = setup();
+    const entry = await record(
+      { ...msg(), exfil: { endpoint: null, ip: false, formHosts: ["auth.example.com"] } },
+      sender("https://login.example.com/"),
+    );
+    expect(entry).not.toHaveProperty("exfil");
+  });
+});

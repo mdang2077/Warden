@@ -7,6 +7,11 @@ const EXTENSION_PATH = path.resolve(import.meta.dirname, "../.output/chrome-mv3-
 
 /** Test pages by path, served on any test host. */
 export const TEST_PAGES: Record<string, string> = {
+  "/exfil-login":
+    "<!doctype html><title>Webmail</title>" +
+    '<form id="f"><input name="email" type="email"><input type="password" name="pw">' +
+    "<button>Sign in</button></form>" +
+    '<script>const BOT = "https://api.telegram.org/bot123:TOKEN/sendMessage";</script>',
   "/chase-login":
     "<!doctype html><title>Chase Online - Sign In</title><h1>Chase Online sign in</h1>" +
     '<form><input name="user"><input type="password" name="pw"><button>Sign in</button></form>',
