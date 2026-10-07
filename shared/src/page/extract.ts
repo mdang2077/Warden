@@ -7,13 +7,15 @@
  * capped, so a hostile page can't make the snapshot unbounded.
  */
 
-export const SNAPSHOT_SCHEMA = 1;
+export const SNAPSHOT_SCHEMA = 2;
 
 const MAX_TEXT = 20_000;
 const MAX_FORMS = 20;
 const MAX_FIELDS = 50;
 const MAX_ATTR = 200;
 const MAX_LIST = 50;
+const MAX_REF_HOSTS = 50;
+const MAX_SHORT_LIST = 10;
 
 export type SecretKind = "password" | "otp" | "card" | "seed";
 
@@ -61,6 +63,12 @@ export interface PageSnapshot {
   /** img/svg sources or alt texts whose attributes mention "logo". */
   logoCandidates: string[];
   links: { total: number; external: number; empty: number };
+  /** Off-site hostnames that links, form actions, and images point to; top 50 by count. */
+  refHosts: { host: string; count: number }[];
+  /** h1–h3 texts, up to 10, each clipped. */
+  headings: string[];
+  /** Button and submit/button-input texts, up to 10, each clipped. */
+  buttons: string[];
   iframes: string[];
   scripts: { inline: number; external: string[] };
   metaRefresh: string | null;
@@ -121,6 +129,19 @@ export function extractSnapshot(doc: Document): PageSnapshot {
     favicon: favicon(doc, url),
     logoCandidates: logoCandidates(doc, url),
     links: linkStats(doc, url),
+    refHosts: refHosts(doc, url),
+    headings: textsOf([...doc.querySelectorAll("h1, h2, h3")], (el) => el.textContent ?? ""),
+    buttons: textsOf(
+      [...doc.querySelectorAll("button, input")].filter(
+        (el) =>
+          el.tagName.toLowerCase() === "button" ||
+          ["submit", "button"].includes((el.getAttribute("type") ?? "").toLowerCase()),
+      ),
+      (el) =>
+        el.tagName.toLowerCase() === "button"
+          ? (el.textContent ?? "")
+          : (el.getAttribute("value") ?? ""),
+    ),
     iframes: [...doc.querySelectorAll("iframe[src]")]
       .slice(0, MAX_LIST)
       .map((f) => absolute(f.getAttribute("src") ?? "", url))
@@ -308,6 +329,34 @@ function linkStats(doc: Document, url: string): PageSnapshot["links"] {
     if (target && target !== host) external++;
   }
   return { total, external, empty };
+}
+
+function refHosts(doc: Document, url: string): PageSnapshot["refHosts"] {
+  const own = hostOf(url);
+  const counts = new Map<string, number>();
+  const add = (raw: string | null) => {
+    const value = (raw ?? "").trim();
+    if (!value || value === "#") return;
+    const host = hostOf(absolute(value, url));
+    if (host && host !== own) counts.set(host, (counts.get(host) ?? 0) + 1);
+  };
+  for (const a of doc.querySelectorAll("a[href]")) add(a.getAttribute("href"));
+  for (const f of doc.querySelectorAll("form[action]")) add(f.getAttribute("action"));
+  for (const img of doc.querySelectorAll("img[src]")) add(img.getAttribute("src"));
+  return [...counts]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, MAX_REF_HOSTS)
+    .map(([host, count]) => ({ host, count }));
+}
+
+function textsOf(elements: Element[], text: (el: Element) => string): string[] {
+  const out: string[] = [];
+  for (const el of elements) {
+    if (out.length >= MAX_SHORT_LIST) break;
+    const t = clip(collapse(text(el)), MAX_ATTR);
+    if (t) out.push(t);
+  }
+  return out;
 }
 
 function scriptStats(doc: Document, url: string): PageSnapshot["scripts"] {

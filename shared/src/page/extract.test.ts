@@ -163,3 +163,41 @@ describe("identifier-only step", () => {
     });
   });
 });
+
+describe("snapshot schema 2", () => {
+  it("counts off-site hosts from links, form actions, and images", () => {
+    const snap = extractSnapshot(
+      page(
+        `<body>
+          <a href="https://www.paypal.com/help">Help</a>
+          <a href="https://www.paypal.com/privacy">Privacy</a>
+          <a href="/local">Local</a><a href="mailto:x@y.example">Mail</a><a href="#">Top</a>
+          <form action="https://collect.evil.example/post"><input type="password"></form>
+          <img src="https://www.paypalobjects.com/logo.png"><img src="/own.png">
+        </body>`,
+        "https://login.example.com/signin",
+      ),
+    );
+    expect(snap.schema).toBe(2);
+    expect(snap.refHosts).toEqual([
+      { host: "www.paypal.com", count: 2 },
+      { host: "collect.evil.example", count: 1 },
+      { host: "www.paypalobjects.com", count: 1 },
+    ]);
+  });
+
+  it("keeps h1-h3 headings and button texts, capped and clipped", () => {
+    const many = Array.from({ length: 12 }, (_, i) => `<h2>Heading ${i}</h2>`).join("");
+    const snap = extractSnapshot(
+      page(`<body><h1>  Sign in to  PayPal </h1><h4>Ignored</h4>${many}
+        <form><button type="submit">Log In</button><input type="submit" value="Continue">
+        <input type="button" value="Help"><input type="text" value="not a button"></form>
+        <button>${"x".repeat(300)}</button></body>`),
+    );
+    expect(snap.headings[0]).toBe("Sign in to PayPal");
+    expect(snap.headings).toHaveLength(10);
+    expect(snap.headings).not.toContain("Ignored");
+    expect(snap.buttons.slice(0, 3)).toEqual(["Log In", "Continue", "Help"]);
+    expect(snap.buttons.every((b) => b.length <= 200)).toBe(true);
+  });
+});
