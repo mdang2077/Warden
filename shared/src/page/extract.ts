@@ -137,6 +137,34 @@ export function extractBrandInput(doc: Document, forms?: FormInfo[]): BrandInput
   };
 }
 
+/** Inline script text past this is not collected (the S2.7 scan reads only this much). */
+const MAX_INLINE_SCRIPT = 200_000;
+const JS_TYPES = ["", "text/javascript", "application/javascript", "module"];
+
+/**
+ * What the S2.7 exfil scan reads: external script URLs and inline JavaScript text, capped.
+ * Data blocks (`application/ld+json` etc.) are skipped. Runs only on login pages.
+ */
+export function extractExfilScripts(doc: Document): {
+  scriptSrcs: string[];
+  inlineScript: string;
+} {
+  const url = doc.location?.href ?? doc.URL;
+  const scriptSrcs: string[] = [];
+  let inlineScript = "";
+  for (const s of doc.querySelectorAll("script")) {
+    const src = s.getAttribute("src");
+    if (src) {
+      if (scriptSrcs.length < MAX_LIST) scriptSrcs.push(absolute(src, url));
+      continue;
+    }
+    if (!JS_TYPES.includes((s.getAttribute("type") ?? "").trim().toLowerCase())) continue;
+    if (inlineScript.length >= MAX_INLINE_SCRIPT) continue;
+    inlineScript = `${inlineScript}${s.textContent ?? ""}\n`.slice(0, MAX_INLINE_SCRIPT);
+  }
+  return { scriptSrcs: scriptSrcs.filter(Boolean), inlineScript };
+}
+
 export function extractSnapshot(doc: Document): PageSnapshot {
   const { url, forms, secrets, identifierFields } = extractFields(doc);
   return {

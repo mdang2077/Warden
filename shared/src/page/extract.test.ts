@@ -1,6 +1,12 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { extractBrandInput, extractFields, extractSnapshot, hasSecretSurface } from "./extract.ts";
+import {
+  extractBrandInput,
+  extractExfilScripts,
+  extractFields,
+  extractSnapshot,
+  hasSecretSurface,
+} from "./extract.ts";
 
 /** An inert parsed document: no scripts run and no subresources load. */
 function page(html: string, url = "https://login.example.com/signin") {
@@ -222,5 +228,18 @@ describe("snapshot schema 2", () => {
       { host: "www.paypalobjects.com", count: 1 },
     ]);
     expect(input.forms?.[0]?.fields.map((f) => f.label)).toEqual(["Email", ""]);
+  });
+
+  it("collects script URLs and inline script text for the exfil scan, capped", () => {
+    const big = "x".repeat(300_000);
+    const doc = page(`<body><script src="https://cdn.example/a.js"></script>
+      <script>var bot = "https://api.telegram.org/bot1";</script>
+      <script type="application/ld+json">{"name":"ignored"}</script>
+      <script>${big}</script></body>`);
+    const out = extractExfilScripts(doc);
+    expect(out.scriptSrcs).toEqual(["https://cdn.example/a.js"]);
+    expect(out.inlineScript).toContain("api.telegram.org/bot1");
+    expect(out.inlineScript).not.toContain("ignored");
+    expect(out.inlineScript.length).toBeLessThanOrEqual(200_000);
   });
 });
