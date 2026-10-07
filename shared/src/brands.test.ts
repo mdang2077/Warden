@@ -30,6 +30,8 @@ describe("brand list", () => {
     const bad: BrandsFile["brands"][] = [
       [paypal, { ...paypal }],
       [{ ...paypal, aliases: ["PayPal"] }],
+      [{ ...paypal, contextAliases: ["Outlook"] }],
+      [{ ...paypal, contextAliases: [""] }],
       [{ ...paypal, aliases: [" paypal"] }],
       [{ ...paypal, aliases: [] }],
       [{ ...paypal, domains: [] }],

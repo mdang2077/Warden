@@ -6,7 +6,6 @@
       "name": "Microsoft",
       "aliases": [
         "microsoft",
-        "outlook",
         "office 365",
         "office365",
         "microsoft 365",
@@ -30,8 +29,10 @@
         "live.net",
         "skype.com",
         "xbox.com",
-        "bing.com"
-      ]
+        "bing.com",
+        "microsoft365.com"
+      ],
+      "contextAliases": ["outlook"]
     },
     {
       "id": "google",
@@ -76,7 +77,8 @@
         "amazon.nl",
         "media-amazon.com",
         "ssl-images-amazon.com",
-        "primevideo.com"
+        "primevideo.com",
+        "amazon.com.tr"
       ]
     },
     {
@@ -88,13 +90,7 @@
     {
       "id": "facebook",
       "name": "Facebook",
-      "aliases": [
-        "facebook",
-        "meta for business",
-        "meta business suite",
-        "meta business",
-        "messenger"
-      ],
+      "aliases": ["facebook", "meta for business", "meta business suite", "meta business"],
       "domains": [
         "facebook.com",
         "fb.com",
@@ -150,7 +146,7 @@
       "id": "yahoo",
       "name": "Yahoo",
       "aliases": ["yahoo", "yahoo mail"],
-      "domains": ["yahoo.com", "yimg.com"]
+      "domains": ["yahoo.com", "yimg.com", "yahoo.co.jp"]
     },
     {
       "id": "aol",
@@ -242,13 +238,13 @@
       "id": "github",
       "name": "GitHub",
       "aliases": ["github"],
-      "domains": ["github.com", "githubassets.com"]
+      "domains": ["github.com", "githubassets.com", "ghe.com"]
     },
     {
       "id": "okta",
       "name": "Okta",
       "aliases": ["okta"],
-      "domains": ["okta.com", "oktacdn.com"]
+      "domains": ["okta.com", "oktacdn.com", "okta-emea.com"]
     },
     {
       "id": "zoom",
@@ -424,13 +420,13 @@
       "id": "hsbc",
       "name": "HSBC",
       "aliases": ["hsbc"],
-      "domains": ["hsbc.com", "hsbc.co.uk"]
+      "domains": ["hsbc.com", "hsbc.co.uk", "hsbc.com.hk", "hsbcnet.com"]
     },
     {
       "id": "barclays",
       "name": "Barclays",
       "aliases": ["barclays"],
-      "domains": ["barclays.co.uk", "barclays.com"]
+      "domains": ["barclays.co.uk", "barclays.com", "barclaysus.com"]
     },
     {
       "id": "lloyds",
@@ -448,7 +444,16 @@
       "id": "santander",
       "name": "Santander",
       "aliases": ["santander"],
-      "domains": ["santander.com", "santander.co.uk", "santander.com.br"]
+      "domains": [
+        "santander.com",
+        "santander.co.uk",
+        "santander.com.br",
+        "santanderbank.com",
+        "bancosantander.es",
+        "santander.com.mx",
+        "santander.pt",
+        "santander.pl"
+      ]
     },
     {
       "id": "bbva",
@@ -503,8 +508,9 @@
     {
       "id": "commbank",
       "name": "Commonwealth Bank",
-      "aliases": ["commonwealth bank", "commbank", "netbank"],
-      "domains": ["commbank.com.au"]
+      "aliases": ["commonwealth bank", "commbank"],
+      "domains": ["commbank.com.au"],
+      "contextAliases": ["netbank"]
     },
     {
       "id": "scotiabank",
@@ -604,7 +610,7 @@
       "id": "laposte",
       "name": "La Poste",
       "aliases": ["la poste"],
-      "domains": ["laposte.fr"]
+      "domains": ["laposte.fr", "laposte.net"]
     },
     {
       "id": "correos",
@@ -666,7 +672,7 @@
       "id": "orange",
       "name": "Orange",
       "aliases": ["orange"],
-      "domains": ["orange.fr", "orange.com"],
+      "domains": ["orange.fr", "orange.com", "orange.es", "orange.pl", "orange.be"],
       "needsContext": true
     },
     {

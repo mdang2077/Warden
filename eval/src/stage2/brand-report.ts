@@ -15,7 +15,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { parseAllowlist } from "@warden/shared/allowlist";
 import { type BrandList, bundledBrands } from "@warden/shared/brands";
-import { extractSnapshot } from "@warden/shared/page/extract";
+import { extractBrandInput } from "@warden/shared/page/extract";
 import { bundledSharedHosts } from "@warden/shared/shared-hosts";
 import {
   type BrandClaim,
@@ -178,7 +178,7 @@ export async function rowsFor(
     const url = r.final_url ?? r.url;
     const host = new URL(url).hostname;
     const page = parseSavedPage(readFileSync(file, "utf8"), url);
-    const snap = extractSnapshot(page.doc);
+    const snap = extractBrandInput(page.doc);
     await page.close();
     const started = performance.now();
     detectBrandClaim(snap, bundledBrands as BrandList);

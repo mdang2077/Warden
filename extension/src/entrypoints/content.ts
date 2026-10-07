@@ -9,7 +9,12 @@
  * page claims (S2.6). Only the brand id and cue names are sent, and only on the device.
  */
 import { bundledBrands } from "@warden/shared/brands";
-import { extractFields, extractSnapshot, hasSecretSurface } from "@warden/shared/page/extract";
+import {
+  extractBrandInput,
+  extractFields,
+  type FormInfo,
+  hasSecretSurface,
+} from "@warden/shared/page/extract";
 import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
@@ -35,10 +40,10 @@ export default defineContentScript({
     };
 
     /** On login pages only: which protected brand the page presents itself as. */
-    const withClaim = (message: FieldsMessage): FieldsMessage => {
+    const withClaim = (message: FieldsMessage, forms: FormInfo[]): FieldsMessage => {
       if (!bundledBrands) return message;
       try {
-        const claim = detectBrandClaim(extractSnapshot(document), bundledBrands);
+        const claim = detectBrandClaim(extractBrandInput(document, forms), bundledBrands);
         return claim ? { ...message, brandClaim: claim } : message;
       } catch {
         return message; // no signal; the counts still go out
@@ -56,11 +61,11 @@ export default defineContentScript({
       if (hasSecretSurface(fields)) {
         sentGate = true;
         observer.disconnect();
-        send(withClaim(message));
+        send(withClaim(message, fields.forms));
       } else if (fields.identifierFields > 0 && !sentIdentifier) {
         // Keep watching: a two-step login may reveal the password field on this same page.
         sentIdentifier = true;
-        send(withClaim(message));
+        send(withClaim(message, fields.forms));
       }
     };
 

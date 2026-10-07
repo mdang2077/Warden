@@ -115,6 +115,28 @@ export function extractFields(doc: Document): FieldsSnapshot {
   return { url, forms, secrets, identifierFields };
 }
 
+/** What the S2.6 brand detector reads. */
+export type BrandInputSnapshot = Pick<
+  PageSnapshot,
+  "title" | "headings" | "buttons" | "logoCandidates" | "forms" | "refHosts"
+>;
+
+/**
+ * Just the brand detector's inputs. The content script runs this on login pages, so it
+ * skips the page text (innerText forces a layout), scripts, iframes, and link stats.
+ */
+export function extractBrandInput(doc: Document, forms?: FormInfo[]): BrandInputSnapshot {
+  const url = doc.location?.href ?? doc.URL;
+  return {
+    title: clip(doc.title ?? "", MAX_ATTR),
+    headings: headingsOf(doc),
+    buttons: buttonsOf(doc),
+    logoCandidates: logoCandidates(doc, url),
+    forms: forms ?? collectForms(doc, url),
+    refHosts: refHosts(doc, url),
+  };
+}
+
 export function extractSnapshot(doc: Document): PageSnapshot {
   const { url, forms, secrets, identifierFields } = extractFields(doc);
   return {
@@ -130,18 +152,8 @@ export function extractSnapshot(doc: Document): PageSnapshot {
     logoCandidates: logoCandidates(doc, url),
     links: linkStats(doc, url),
     refHosts: refHosts(doc, url),
-    headings: textsOf([...doc.querySelectorAll("h1, h2, h3")], (el) => el.textContent ?? ""),
-    buttons: textsOf(
-      [...doc.querySelectorAll("button, input")].filter(
-        (el) =>
-          el.tagName.toLowerCase() === "button" ||
-          ["submit", "button"].includes((el.getAttribute("type") ?? "").toLowerCase()),
-      ),
-      (el) =>
-        el.tagName.toLowerCase() === "button"
-          ? (el.textContent ?? "")
-          : (el.getAttribute("value") ?? ""),
-    ),
+    headings: headingsOf(doc),
+    buttons: buttonsOf(doc),
     iframes: [...doc.querySelectorAll("iframe[src]")]
       .slice(0, MAX_LIST)
       .map((f) => absolute(f.getAttribute("src") ?? "", url))
@@ -347,6 +359,24 @@ function refHosts(doc: Document, url: string): PageSnapshot["refHosts"] {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_REF_HOSTS)
     .map(([host, count]) => ({ host, count }));
+}
+
+function headingsOf(doc: Document): string[] {
+  return textsOf([...doc.querySelectorAll("h1, h2, h3")], (el) => el.textContent ?? "");
+}
+
+function buttonsOf(doc: Document): string[] {
+  return textsOf(
+    [...doc.querySelectorAll("button, input")].filter(
+      (el) =>
+        el.tagName.toLowerCase() === "button" ||
+        ["submit", "button"].includes((el.getAttribute("type") ?? "").toLowerCase()),
+    ),
+    (el) =>
+      el.tagName.toLowerCase() === "button"
+        ? (el.textContent ?? "")
+        : (el.getAttribute("value") ?? ""),
+  );
 }
 
 function textsOf(elements: Element[], text: (el: Element) => string): string[] {

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { extractFields, extractSnapshot, hasSecretSurface } from "./extract.ts";
+import { extractBrandInput, extractFields, extractSnapshot, hasSecretSurface } from "./extract.ts";
 
 /** An inert parsed document: no scripts run and no subresources load. */
 function page(html: string, url = "https://login.example.com/signin") {
@@ -199,5 +199,28 @@ describe("snapshot schema 2", () => {
     expect(snap.headings).not.toContain("Ignored");
     expect(snap.buttons.slice(0, 3)).toEqual(["Log In", "Continue", "Help"]);
     expect(snap.buttons.every((b) => b.length <= 200)).toBe(true);
+  });
+
+  it("extracts just the brand inputs, without reading page text (no layout)", () => {
+    const doc = page(`<head><title>PayPal - Log in</title></head><body>
+      <h1>PayPal</h1><img alt="logo" src="https://www.paypalobjects.com/paypal-logo.svg">
+      <a href="https://www.paypal.com/help">Help</a>
+      <form action="/x"><label>Email <input name="e" type="email"></label>
+      <input type="password"><button>Log In</button></form></body>`);
+    Object.defineProperty(doc.body, "innerText", {
+      get() {
+        throw new Error("innerText forces layout; the brand input must not read it");
+      },
+    });
+    const input = extractBrandInput(doc);
+    expect(input.title).toBe("PayPal - Log in");
+    expect(input.headings).toEqual(["PayPal"]);
+    expect(input.buttons).toEqual(["Log In"]);
+    expect(input.logoCandidates).toEqual(["https://www.paypalobjects.com/paypal-logo.svg"]);
+    expect(input.refHosts).toEqual([
+      { host: "www.paypal.com", count: 1 },
+      { host: "www.paypalobjects.com", count: 1 },
+    ]);
+    expect(input.forms?.[0]?.fields.map((f) => f.label)).toEqual(["Email", ""]);
   });
 });

@@ -20,7 +20,8 @@ const brands = loadBrands({
     {
       id: "microsoft",
       name: "Microsoft",
-      aliases: ["microsoft", "outlook"],
+      aliases: ["microsoft"],
+      contextAliases: ["outlook"],
       domains: ["microsoft.com"],
     },
     { id: "chase", name: "Chase", aliases: ["chase"], domains: ["chase.com"], needsContext: true },
@@ -83,16 +84,29 @@ describe("cue A: identity text", () => {
 });
 
 describe("cue B: references", () => {
-  it("claims a brand most of the page's references point to", () => {
+  it("claims a brand most of the page's references point to, with some brand text", () => {
     expect(
       claim({
+        buttons: ["Log in to PayPal"],
         refHosts: [
           { host: "www.paypal.com", count: 5 },
           { host: "www.paypalobjects.com", count: 2 },
           { host: "cdn.other.example", count: 3 },
         ],
       }),
-    ).toEqual({ brand: "paypal", cues: ["links"] });
+    ).toEqual({ brand: "paypal", cues: ["button", "links"] });
+  });
+
+  it("links alone don't claim (social and video links on an ordinary login page)", () => {
+    expect(
+      claim({
+        title: "Acme - Log in",
+        refHosts: [
+          { host: "www.google.com", count: 5 },
+          { host: "cdn.acme.example", count: 1 },
+        ],
+      }),
+    ).toBeNull();
   });
 
   it("does not claim when another site gets more references", () => {
@@ -123,4 +137,56 @@ describe("ties", () => {
       }),
     ).toBeNull();
   });
+});
+
+describe("social-login exclusions beyond English", () => {
+  it("ignores localized and hyphenated 'sign in with' mentions", () => {
+    for (const input of [
+      { title: "Acme", headings: ["Inicia sesión con Google"], buttons: ["Continuar con Google"] },
+      { title: "Acme", headings: ["Mit Google anmelden"], buttons: ["Mit Google anmelden"] },
+      { title: "Acme", headings: ["Sign-in with Google"], buttons: ["Sign-in with Google"] },
+      { title: "Acme", headings: ["Google ile giriş yap"], buttons: ["Google ile giriş yap"] },
+      { title: "Acme", headings: ["Masuk dengan Google"], buttons: ["Masuk dengan Google"] },
+      { title: "Acme", headings: ["Entrar com Google"], buttons: ["Entrar com Google"] },
+    ]) {
+      expect(claim(input), JSON.stringify(input)).toBeNull();
+    }
+  });
+});
+
+describe("context-only aliases", () => {
+  it("count a generic product name only next to a login word", () => {
+    expect(claim({ title: "Outlook", headings: ["Outlook"] })).toBeNull();
+    expect(
+      claim({ title: "Outlook Web App - Sign in", headings: ["Outlook sign in"] })?.brand,
+    ).toBe("microsoft");
+  });
+});
+
+describe("cost on hostile or heavy pages", () => {
+  it("ignores data-URI logos instead of scanning their contents", () => {
+    const svg = `data:image/svg+xml,${encodeURIComponent(`<svg>${"paypal ".repeat(4000)}</svg>`)}`;
+    expect(claim({ title: "PayPal", logoCandidates: [svg] })).toBeNull();
+  });
+
+  it("stays fast on a page with thousands of labels", () => {
+    const fields = Array.from({ length: 2000 }, (_, i) => ({
+      tag: "input" as const,
+      type: "text",
+      name: `f${i}`,
+      id: "",
+      autocomplete: "",
+      placeholder: `Field number ${i} for your account details`,
+      label: `Label ${i} with some ordinary words in it`,
+      inputMode: "",
+      maxLength: null,
+      visible: true,
+      secret: null,
+    }));
+    claim({ title: "x", forms: [{ action: "", method: "", loose: true, fields }] }); // warm up
+    const started = performance.now();
+    claim({ title: "x", forms: [{ action: "", method: "", loose: true, fields }] });
+    expect(performance.now() - started).toBeLessThan(150);
+  });
+  // First use in a fresh process: eval/src/stage2/brand-claim-cold.test.ts (needs Node types).
 });

@@ -1,9 +1,9 @@
 # Stage 2 brand–domain mismatch report (S2.6)
 
-- Generated 2026-10-07T17:02:03.755Z
+- Generated 2026-10-07T17:22:16.729Z
 - Benign login pages: 374 (corpora/crawl-benign)
 - Phish login pages: 130 (corpora/docker/crawl, filtered by --index)
-- Brands: 109; detector time: 3.26 ms/page average
+- Brands: 109; detector time: 0.22 ms/page average
 
 Login pages = the crawl found the page gated (secret field) or at an identifier step. Shadow mode only: a mismatch is an anchor signal, not a warning.
 
@@ -11,10 +11,10 @@ Login pages = the crawl found the page gated (secret field) or at an identifier 
 
 | Group | Login pages | Claims | Mismatch (raw) | Mismatch (excl. allowlisted) | Raw rate |
 |---|--:|--:|--:|--:|--:|
-| tranco-home | 26 | 8 | 0 | 0 | 0.0% |
-| tranco-login | 314 | 28 | 3 | 0 | 1.0% |
-| banks | 12 | 11 | 0 | 0 | 0.0% |
-| consumer-accounts | 9 | 7 | 0 | 0 | 0.0% |
+| tranco-home | 26 | 7 | 0 | 0 | 0.0% |
+| tranco-login | 314 | 23 | 2 | 0 | 0.6% |
+| banks | 12 | 8 | 0 | 0 | 0.0% |
+| consumer-accounts | 9 | 6 | 0 | 0 | 0.0% |
 | universities | 4 | 0 | 0 | 0 | 0.0% |
 | identity-providers | 9 | 6 | 0 | 0 | 0.0% |
 
@@ -22,18 +22,17 @@ Login pages = the crawl found the page gated (secret field) or at an identifier 
 
 | Group | Login pages | Claims | Mismatch (raw) | Mismatch (excl. allowlisted) | Raw rate |
 |---|--:|--:|--:|--:|--:|
-| openphish | 126 | 36 | 31 | 30 | 24.6% |
+| openphish | 126 | 38 | 33 | 32 | 26.2% |
 | phishstats | 4 | 4 | 4 | 4 | 100.0% |
 
-## Benign firings (3)
+## Benign firings (2)
 
 | Group | Host | Brand | Cues | Allowlisted | Title |
 |---|---|---|---|---|---|
-| tranco-login | packzy.com | facebook | links | yes | Merchant sign-in \| Steadfast Courier |
 | tranco-login | www.theblowers.com | facebook | logo, links | yes | TheBlowers.com - Connection to your member area on The Blowers |
 | tranco-login | fatalmodel.com | google | button, links | yes | Contratante |
 
-## Phish misses (95)
+## Phish misses (93)
 
 | Group | Host | Title |
 |---|---|---|
@@ -42,12 +41,10 @@ Login pages = the crawl found the page gated (secret field) or at an identifier 
 | openphish | mirianlopesdossantos1790964700376.0711032.meusitehostgator.com.br | Netflix - Entrar |
 | openphish | cuddly-disco-alpha.vercel.app | Autenticación Bancolombia |
 | openphish | clone-facebook-ui.vercel.app | Facebook |
-| openphish | polverino-kazem68421397.vercel.app | Métadonnées pour les entreprises - Attrait de la page |
 | openphish | yogeshkumar9155.github.io | Ledger — Personal Finance & Multi-Device Wealth Tracker |
 | openphish | instabest.vercel.app | Instagram |
 | openphish | hensonracingengines.com | Web Mail |
 | openphish | sllrdandadadads.duckdns.org | MHRS \| Randevu Al |
-| openphish | polverino-kazem68421397.vercel.app | Métadonnées pour les entreprises - Attrait de la page |
 | openphish | enescelenk522-hub.github.io | Instagram |
 | openphish | www.facebook.com | Facebook |
 | openphish | junctioncitymainstreetorg.s3.us-east-2.amazonaws.com | Dropbox - Document Access |
@@ -137,15 +134,15 @@ Login pages = the crawl found the page gated (secret field) or at an identifier 
 
 | Cue A threshold | Cue B min share | Phish mismatches | Benign mismatches (raw) | Benign excl. allowlisted |
 |--:|--:|--:|--:|--:|
-| 2 | 0.2 | 85 (65.4%) | 13 (3.5%) | 0 |
-| 2 | 0.3 | 85 (65.4%) | 12 (3.2%) | 0 |
-| 2 | 0.4 | 85 (65.4%) | 12 (3.2%) | 0 |
-| 2 | 0.5 | 85 (65.4%) | 11 (2.9%) | 0 |
-| 3 | 0.2 | 35 (26.9%) | 4 (1.1%) | 0 |
-| 3 | 0.3 | 35 (26.9%) | 3 (0.8%) | 0 |
-| 3 | 0.4 | 35 (26.9%) | 3 (0.8%) | 0 |
-| 3 | 0.5 | 35 (26.9%) | 2 (0.5%) | 0 |
-| 4 | 0.2 | 36 (27.7%) | 4 (1.1%) | 0 |
-| 4 | 0.3 | 36 (27.7%) | 3 (0.8%) | 0 |
-| 4 | 0.4 | 36 (27.7%) | 3 (0.8%) | 0 |
-| 4 | 0.5 | 36 (27.7%) | 2 (0.5%) | 0 |
+| 2 | 0.2 | 87 (66.9%) | 12 (3.2%) | 0 |
+| 2 | 0.3 | 87 (66.9%) | 11 (2.9%) | 0 |
+| 2 | 0.4 | 87 (66.9%) | 11 (2.9%) | 0 |
+| 2 | 0.5 | 87 (66.9%) | 11 (2.9%) | 0 |
+| 3 | 0.2 | 37 (28.5%) | 3 (0.8%) | 0 |
+| 3 | 0.3 | 37 (28.5%) | 2 (0.5%) | 0 |
+| 3 | 0.4 | 37 (28.5%) | 2 (0.5%) | 0 |
+| 3 | 0.5 | 37 (28.5%) | 2 (0.5%) | 0 |
+| 4 | 0.2 | 34 (26.2%) | 3 (0.8%) | 0 |
+| 4 | 0.3 | 34 (26.2%) | 2 (0.5%) | 0 |
+| 4 | 0.4 | 34 (26.2%) | 2 (0.5%) | 0 |
+| 4 | 0.5 | 34 (26.2%) | 2 (0.5%) | 0 |

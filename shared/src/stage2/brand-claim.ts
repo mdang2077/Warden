@@ -68,15 +68,53 @@ export function normalizeText(s: string): string {
   return out.replace(/\s+/g, " ").trim();
 }
 
-const LOGIN_WORDS =
-  /(?<![\p{L}\p{N}])(sign[\s-]?in|log[\s-]?in|login|log on|iniciar sesi[oó]n|entrar|connexion|se connecter|anmelden|accedi|acceso|giriş|masuk)(?![\p{L}\p{N}])/u;
+/*
+ * Matching is plain string search over texts normalized once per call: no per-brand
+ * regexes. A content script starts cold on every page, and compiling ~200 Unicode-aware
+ * regexes cost ~400 ms of main-thread time on first use.
+ */
 
-const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Letters and digits in any script: an alias must not sit inside a longer word. */
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+const isBoundary = (ch: string | undefined) => ch === undefined || !WORD_CHAR.test(ch);
+
+/** Login words in the languages the crawl sees most (for context-only names). */
+const LOGIN_WORDS =
+  /(?:^|[^\p{L}\p{N}])(sign[\s-]?in|log[\s-]?in|login|log on|inicia(?:r)? sesi[oó]n|entrar|connexion|se connecter|anmelden|accedi|acceso|giriş|masuk)(?=$|[^\p{L}\p{N}])/u;
+
+/** "with" in "sign in with Google", in the same languages. */
+const WITH_WORDS = new Set(["with", "using", "via", "con", "avec", "mit", "com", "ile", "dengan"]);
+const SOCIAL_ACTION =
+  /sign[\s-]?(?:in|up)|log[\s-]?(?:in|on)|login|continue|connect|inicia(?:r)? sesi[oó]n|continuar|entrar|acceder|connexion|se connecter|continuer|anmelden|accedi|giriş|masuk|daftar/u;
+const SHARE_BEFORE =
+  /(?:share on|follow us on|get it on|download on(?: the)?|available on(?: the)?) $/;
+
+/** "Continue with Google", "Mit Google anmelden", "Share on Facebook": a mention, not an identity. */
+function socialMention(text: string, start: number, end: number): boolean {
+  const before = text.slice(Math.max(0, start - 30), start);
+  if (SHARE_BEFORE.test(before)) return true;
+  const prev = before.trimEnd().split(" ").pop() ?? "";
+  const next = text.slice(end).trimStart().split(" ")[0] ?? "";
+  return (WITH_WORDS.has(prev) || WITH_WORDS.has(next)) && SOCIAL_ACTION.test(text);
+}
+
+/** `alias` occurs in `text` as a whole word, outside a social-login or share phrase. */
+function mentions(text: string, alias: string): boolean {
+  for (let i = text.indexOf(alias); i !== -1; i = text.indexOf(alias, i + 1)) {
+    const end = i + alias.length;
+    if (isBoundary(text[i - 1]) && isBoundary(text[end]) && !socialMention(text, i, end)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 interface Compiled {
   brand: Brand;
-  alias: RegExp;
-  social: RegExp;
+  /** Count anywhere (unless the brand needsContext). */
+  names: string[];
+  /** Count only in the title or a heading that also has a login word. */
+  contextNames: string[];
 }
 
 const compiledCache = new WeakMap<BrandList, Compiled[]>();
@@ -85,20 +123,22 @@ function compile(brands: BrandList): Compiled[] {
   const cached = compiledCache.get(brands);
   if (cached) return cached;
   const out = brands.brands.map((brand) => {
-    const names = brand.aliases.map((a) => escapeRegExp(normalizeText(a))).join("|");
-    const word = `(?<![\\p{L}\\p{N}])(?:${names})(?![\\p{L}\\p{N}])`;
-    const social =
-      `(?:(?:sign|log)\\s?(?:in|up)|login|continue|connect)\\s+(?:with|using|via)\\s+${word}` +
-      `|share\\s+on\\s+${word}|follow\\s+us\\s+on\\s+${word}|get\\s+it\\s+on\\s+${word}` +
-      `|(?:download|available)\\s+on\\s+(?:the\\s+)?${word}`;
-    return { brand, alias: new RegExp(word, "u"), social: new RegExp(social, "gu") };
+    const all = brand.aliases.map(normalizeText);
+    const extra = (brand.contextAliases ?? []).map(normalizeText);
+    return brand.needsContext
+      ? { brand, names: [], contextNames: [...all, ...extra] }
+      : { brand, names: all, contextNames: extra };
   });
   compiledCache.set(brands, out);
   return out;
 }
 
-/** A logo candidate is a URL (use its file name) or alt text. */
+const MAX_TEXTS = 50;
+const MAX_TEXT_LENGTH = 200;
+
+/** A logo candidate is a URL (use its file name) or alt text; data URIs carry no name. */
 function logoText(candidate: string): string {
+  if (/^data:/i.test(candidate)) return "";
   try {
     const name = new URL(candidate).pathname.split("/").pop() ?? "";
     return decodeURIComponent(name).replace(/[-_.]+/g, " ");
@@ -107,16 +147,24 @@ function logoText(candidate: string): string {
   }
 }
 
+/** Each text normalized once, capped in count and length. */
+function prep(list: readonly string[]): string[] {
+  return list
+    .slice(0, MAX_TEXTS)
+    .map((s) => normalizeText(s.slice(0, MAX_TEXT_LENGTH * 2)).slice(0, MAX_TEXT_LENGTH))
+    .filter(Boolean);
+}
+
 function texts(input: BrandInput): Record<TextCue, string[]> {
-  const labels = (input.forms ?? []).flatMap((f) =>
-    f.fields.flatMap((field) => [field.label, field.placeholder]),
-  );
+  const labels = (input.forms ?? [])
+    .flatMap((f) => f.fields.flatMap((field) => [field.label, field.placeholder]))
+    .filter(Boolean);
   return {
-    title: [input.title ?? ""],
-    heading: input.headings ?? [],
-    logo: (input.logoCandidates ?? []).map(logoText),
-    button: input.buttons ?? [],
-    label: labels,
+    title: prep([input.title ?? ""]),
+    heading: prep(input.headings ?? []),
+    logo: prep((input.logoCandidates ?? []).map(logoText)),
+    button: prep(input.buttons ?? []),
+    label: prep(labels),
   };
 }
 
@@ -124,12 +172,12 @@ function cueA(c: Compiled, byCue: Record<TextCue, string[]>): { score: number; c
   let score = 0;
   const cues: BrandCue[] = [];
   for (const cue of Object.keys(WEIGHTS) as TextCue[]) {
-    if (c.brand.needsContext && cue !== "title" && cue !== "heading") continue;
-    const hit = byCue[cue].some((raw) => {
-      const t = normalizeText(raw).replace(c.social, " ");
-      if (!c.alias.test(t)) return false;
-      return !c.brand.needsContext || LOGIN_WORDS.test(t);
-    });
+    const identityText = cue === "title" || cue === "heading";
+    const hit = byCue[cue].some(
+      (t) =>
+        c.names.some((a) => mentions(t, a)) ||
+        (identityText && c.contextNames.some((a) => mentions(t, a)) && LOGIN_WORDS.test(t)),
+    );
     if (hit) {
       score += WEIGHTS[cue];
       cues.push(cue);
@@ -174,8 +222,12 @@ export function detectBrandClaim(
       refs.all > 0 &&
       brandRefs / refs.all >= t.minShare &&
       rivals.every((n) => n < brandRefs);
+    // Links support a claim but can't make one alone: ordinary login pages link to
+    // Facebook, YouTube, and the like far more than to anything else off-site.
     const qualifies =
-      a.score >= t.cueA || strongB || (a.score >= t.cueAWithLinks && brandRefs >= t.linksWithA);
+      a.score >= t.cueA ||
+      (strongB && a.score >= 1) ||
+      (a.score >= t.cueAWithLinks && brandRefs >= t.linksWithA);
     if (!qualifies) continue;
     const cues: BrandCue[] = [...a.cues];
     if (strongB || brandRefs >= t.linksWithA) cues.push("links");

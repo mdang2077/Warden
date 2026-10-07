@@ -16,6 +16,11 @@ export interface Brand {
   domains: string[];
   /** Short or common-word names: only count in a title/heading next to a login word. */
   needsContext?: boolean;
+  /**
+   * Extra names with the needsContext rule even when the brand's main names don't need it
+   * (e.g. Microsoft's "outlook", Commonwealth Bank's "netbank").
+   */
+  contextAliases?: string[];
 }
 
 export interface BrandsFile {
@@ -43,7 +48,8 @@ export function loadBrands(file: BrandsFile): BrandList {
   for (const b of file.brands) {
     if (!ID.test(b.id) || ids.has(b.id)) throw new Error(`brands: bad or duplicate id ${b.id}`);
     if (!b.name) throw new Error(`brands: ${b.id} has no name`);
-    if (!b.aliases.length || b.aliases.some((a) => !a || a !== a.trim().toLowerCase())) {
+    const badAlias = (a: string) => !a || a !== a.trim().toLowerCase();
+    if (!b.aliases.length || b.aliases.some(badAlias) || (b.contextAliases ?? []).some(badAlias)) {
       throw new Error(`brands: ${b.id} aliases must be non-empty, trimmed, lowercase`);
     }
     if (!b.domains.length) throw new Error(`brands: ${b.id} has no domains`);
