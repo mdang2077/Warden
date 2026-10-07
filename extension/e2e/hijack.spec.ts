@@ -40,6 +40,14 @@ async function hijackRulesReady(context: BrowserContext, allowed: string[] = [])
     .toEqual([{ domains: ["popnet-test.example"], allowed }]);
 }
 
+async function setStrict(context: BrowserContext) {
+  await worker(context).evaluate(() =>
+    chrome.storage.local.set({
+      popup_prefs: { phishing: true, hijack: true, sites: { "warden-test.example": "strict" } },
+    }),
+  );
+}
+
 test("a page's popup to a pop network is closed and counted", async ({
   context,
   extensionId: _,
@@ -49,7 +57,8 @@ test("a page's popup to a pop network is closed and counted", async ({
   await page.goto(`${STREAM}/hijack-click`);
   const popup = context.waitForEvent("page");
   await page.click("#play");
-  await (await popup).waitForEvent("close");
+  const opened = await popup;
+  await expect.poll(() => opened.isClosed()).toBe(true);
   await expect.poll(() => badgeFor(context, `${STREAM}/hijack-click`)).toBe("1");
 });
 
@@ -91,4 +100,42 @@ test("Allow on a site lets its popups through", async ({ context, extensionId: _
   const opened = await popup;
   await expect(opened).toHaveTitle("Test page");
   expect(opened.isClosed()).toBe(false);
+});
+
+test("strict: a click on an invisible full-screen link doesn't open a tab", async ({
+  context,
+  extensionId: _,
+}) => {
+  await setStrict(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/strict-overlay`);
+  const popup = context.waitForEvent("page");
+  await page.mouse.click(200, 200);
+  // Polled: the tab can close before a "close" listener would attach.
+  const opened = await popup;
+  await expect.poll(() => opened.isClosed()).toBe(true);
+  await expect.poll(() => badgeFor(context, `${STREAM}/strict-overlay`)).toBe("1");
+});
+
+test("strict: a sign-in popup from a button stays open", async ({ context, extensionId: _ }) => {
+  await setStrict(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/strict-auth`);
+  const popup = context.waitForEvent("page");
+  await page.click("#signin");
+  const opened = await popup;
+  await expect(opened).toHaveTitle("Sign in");
+  await page.waitForTimeout(500); // past CLICK_WAIT_MS: Warden had its chance to close it
+  expect(opened.isClosed()).toBe(false);
+});
+
+test("strict: a script redirect after a non-link click goes back", async ({
+  context,
+  extensionId: _,
+}) => {
+  await setStrict(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/strict-redirect`);
+  await page.click("#play");
+  await expect.poll(() => page.url()).toBe(`${STREAM}/strict-redirect`);
 });

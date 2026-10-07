@@ -7,6 +7,7 @@ import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import { isStrictQuery, parseClickMessage } from "../lib/click-capture.ts";
 import {
   addSessionBypass,
   type DnrApi,
@@ -16,17 +17,20 @@ import {
 } from "../lib/dnr.ts";
 import { createDnrHealer } from "../lib/dnr-heal.ts";
 import { CASCADE_BUDGET_MS, createNavigationHandler } from "../lib/handler.ts";
-import { createHijackAction } from "../lib/hijack-action.ts";
+import { createHijackAction, getHijackRecord } from "../lib/hijack-action.ts";
+import { CLICK_WAIT_MS, CLICK_WINDOW_MS, createClickLog, isHijack } from "../lib/hijack-detect.ts";
 import { compileHijackRules, installHijackRules } from "../lib/hijack-rules.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import {
   DEFAULT_PREFS,
+  isStrict,
   normalizePrefs,
   type PopupPrefs,
   PREFS_KEY,
   readPrefs,
+  siteKey,
 } from "../lib/popup-prefs.ts";
 import { createRedirectTracker } from "../lib/redirects.ts";
 import { createSafeBrowsingClient } from "../lib/safe-browsing.ts";
@@ -172,6 +176,12 @@ export default defineBackground({
       },
     });
     const logHijackError = (err: unknown) => console.error("[Warden] hijack guard failed", err);
+    // Hijack guard, strict mode: clicks reported by the hijack-clicks content script.
+    const clicks = createClickLog();
+    const strictSite = (url: string | undefined) => {
+      const site = url ? siteKey(url) : null;
+      return site !== null && isStrict(prefs, site) ? site : null;
+    };
 
     browser.storage.onChanged.addListener((changes, areaName) => {
       const change = changes[PREFS_KEY];
@@ -196,6 +206,7 @@ export default defineBackground({
     browser.tabs.onRemoved.addListener((tabId) => {
       void clearTabVerdict(session, tabId);
       void hijack.forgetTab(tabId);
+      clicks.forget(tabId);
     });
 
     // Stage 2 shadow mode: the content script reports secret-entry surfaces; nothing is shown.
@@ -208,7 +219,16 @@ export default defineBackground({
         return verdict && strip(verdict.url) === strip(url) ? verdict.decision : null;
       },
     });
-    browser.runtime.onMessage.addListener((message, sender) => {
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (isStrictQuery(message)) {
+        void prefsReady.then(() => sendResponse(strictSite(sender.tab?.url) !== null));
+        return true; // answered asynchronously
+      }
+      const click = parseClickMessage(message);
+      if (click) {
+        if (sender.tab?.id !== undefined) clicks.add(sender.tab.id, click);
+        return;
+      }
       if (!prefs.phishing) return;
       void recordShadow(message, {
         tabId: sender.tab?.id,
@@ -272,7 +292,47 @@ export default defineBackground({
     browser.webNavigation.onCommitted.addListener((d) => {
       // A blocked pop-network load is not the page the counts belong to.
       if (d.frameId !== 0 || isPopupNetworkUrl(local.popupNetworks, d.url)) return;
-      void hijack.onCommitted(d.tabId, d.url).catch(logHijackError);
+      void (async () => {
+        // Strict mode: a cross-site navigation away from a strict site may be a hijack.
+        const before = await getHijackRecord(session, d.tabId);
+        const site = before?.siteKey && isStrict(prefs, before.siteKey) ? before.siteKey : null;
+        if (site && siteKey(d.url) !== site) {
+          const initiator = mainFrameRequests.get(d.tabId)?.initiator;
+          const event = {
+            kind: "navigation" as const,
+            url: d.url,
+            at: d.timeStamp,
+            transitionType: d.transitionType,
+            transitionQualifiers: d.transitionQualifiers,
+            ...(initiator ? { initiator } : {}),
+          };
+          if (isHijack(site, event, clicks.recent(d.tabId))) {
+            // Not recorded as the tab's new site: the go-back returns it to `site`.
+            await hijack.handle({ tabId: d.tabId, url: d.url, layer: "strict" });
+            return;
+          }
+        }
+        await hijack.onCommitted(d.tabId, d.url);
+      })().catch(logHijackError);
+    });
+
+    // Strict mode: a new tab opened from a strict site without a click on a link to it.
+    browser.webNavigation.onBeforeNavigate.addListener((d) => {
+      // Pop networks are the Standard layer's (DNR) job.
+      if (d.frameId !== 0 || isPopupNetworkUrl(local.popupNetworks, d.url)) return;
+      void (async () => {
+        const opener = await hijack.openerOf(d.tabId);
+        if (!opener) return;
+        const source = await browser.tabs.get(opener.sourceTabId).catch(() => null);
+        const site = strictSite(source?.url);
+        if (!site) return;
+        await clicks.waitFor(opener.sourceTabId, opener.at - CLICK_WINDOW_MS, CLICK_WAIT_MS);
+        const event = { kind: "new-tab" as const, url: d.url, at: opener.at };
+        if (isHijack(site, event, clicks.recent(opener.sourceTabId))) {
+          const openedBy = opener.sourceTabId;
+          await hijack.handle({ tabId: d.tabId, url: d.url, layer: "strict", openedBy });
+        }
+      })().catch(logHijackError);
     });
 
     // A DNR rule the worker disagrees with (stale since the last sync) gets one retry.

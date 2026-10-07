@@ -100,6 +100,22 @@ describe("hijack action", () => {
     expect(tabs.remove).not.toHaveBeenCalled();
   });
 
+  it("closes a tab strict mode judged new, even after its first commit cleared the opener", async () => {
+    const { area, tabs, action } = setup();
+    await action.recordOpener(2, 1);
+    await action.onCommitted(2, "https://ads.example/"); // commits while strict mode decides
+    const outcome = await action.handle({
+      tabId: 2,
+      url: "https://ads.example/",
+      layer: "strict",
+      openedBy: 1,
+    });
+    expect(outcome).toBe("closed");
+    expect(tabs.remove).toHaveBeenCalledWith(2);
+    expect(tabs.goBack).not.toHaveBeenCalled();
+    expect((await getHijackRecord(area, 1))?.blocks[0]?.kind).toBe("new-tab");
+  });
+
   it("survives a worker restart between the new tab and the block", async () => {
     const area = memoryArea();
     await setup(area).action.recordOpener(2, 1);

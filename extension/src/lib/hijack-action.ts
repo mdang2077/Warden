@@ -111,14 +111,23 @@ export function createHijackAction(deps: HijackDeps) {
 
     openerOf,
 
-    async handle(ev: { tabId: number; url: string; layer: HijackLayer }): Promise<HijackOutcome> {
+    /**
+     * `openedBy`: the source tab when the caller already judged this a new tab (strict
+     * mode), since the tab's first commit can clear the opener record while it decides.
+     */
+    async handle(ev: {
+      tabId: number;
+      url: string;
+      layer: HijackLayer;
+      openedBy?: number;
+    }): Promise<HijackOutcome> {
       const destinationHost = new URL(ev.url).hostname;
       const at = now();
-      const opener = await openerOf(ev.tabId);
-      if (opener) {
+      const sourceTabId = ev.openedBy ?? (await openerOf(ev.tabId))?.sourceTabId;
+      if (sourceTabId !== undefined) {
         await clearOpener(ev.tabId);
         await quietly(() => deps.tabs.remove(ev.tabId));
-        await addBlock(opener.sourceTabId, {
+        await addBlock(sourceTabId, {
           destinationHost,
           kind: "new-tab",
           layer: ev.layer,

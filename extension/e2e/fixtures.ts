@@ -15,6 +15,18 @@ export const TEST_PAGES: Record<string, string> = {
     '<script>document.getElementById("play").onclick = () => {' +
     ' window.open(location.origin + "/content", "_blank");' +
     ' location.href = "https://go.popnet-test.example/under"; };</script>',
+  "/strict-overlay":
+    "<!doctype html><title>Video</title><p>Video</p>" +
+    '<a id="overlay" href="https://ads.other-test.example/" target="_blank"' +
+    ' style="position:fixed;inset:0;opacity:0"></a>',
+  "/strict-auth":
+    '<!doctype html><title>Video</title><button id="signin">Sign in</button>' +
+    '<script>document.getElementById("signin").onclick = () =>' +
+    ' window.open("https://accounts.google.com/o/oauth2/auth", "_blank", "popup");</script>',
+  "/strict-redirect":
+    '<!doctype html><title>Video</title><button id="play">Play</button>' +
+    '<script>document.getElementById("play").onclick = () => {' +
+    ' location.href = "https://ads.other-test.example/landing"; };</script>',
 };
 
 export const test = base.extend<
@@ -57,6 +69,9 @@ export const test = base.extend<
           body: "<!doctype html><title>Test page</title><h1>Test page</h1>",
         });
       },
+    );
+    await context.route(/^https:\/\/accounts\.google\.com\//, (route) =>
+      route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Sign in</title>" }),
     );
     await use(context);
     await context.close();
