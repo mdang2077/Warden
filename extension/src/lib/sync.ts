@@ -5,6 +5,7 @@
  *  2. Bring the local lists to the manifest version: the delta chain when there is one
  *     from our version, otherwise the full snapshot.
  *  3. Refresh the allowlist and shared-host list when their checksums changed.
+ *  3b. Refresh the popup-network list when its checksum changed.
  *  4. Rebuild the Tier A DNR block rules.
  *
  * Every file is checked against the manifest's SHA-256 before it is used. Any failure
@@ -21,6 +22,12 @@ import {
   type Snapshot,
   sha256Hex,
 } from "@warden/shared/feed-format";
+import {
+  bundledPopupNetworksFile,
+  loadPopupNetworks,
+  type PopupNetworkList,
+  type PopupNetworksFile,
+} from "@warden/shared/popup-networks";
 import { registrableDomain } from "@warden/shared/psl";
 import {
   loadSharedHosts,
@@ -44,11 +51,13 @@ const FETCH_TIMEOUT_MS = 30_000;
 const STATE_KEY = "sync_state";
 const ALLOWLIST_KEY = "allowlist_text";
 const SHARED_HOSTS_KEY = "shared_hosts_file";
+const POPUP_NETWORKS_KEY = "popup_networks_file";
 
 export interface SyncState {
   version: number | null;
   allowlistSha: string | null;
   sharedHostsSha: string | null;
+  popupNetworksSha: string | null;
   lastSyncAt: number | null;
   lastError: string | null;
 }
@@ -59,6 +68,7 @@ export interface SyncReport {
   deltas: number;
   allowlistUpdated: boolean;
   sharedHostsUpdated: boolean;
+  popupNetworksUpdated: boolean;
   dnrRules: number;
   dnrSkipped: number;
   error?: string;
@@ -68,6 +78,7 @@ export interface SyncReport {
 export interface LocalData {
   allowlist: Allowlist | null;
   shared: SharedHostList;
+  popupNetworks: PopupNetworkList;
 }
 
 export interface SyncDeps {
@@ -82,6 +93,8 @@ export interface SyncDeps {
   bundledShared: SharedHostsFile;
   /** Registrable domains the user marked safe; never compiled into DNR block rules. */
   userTrusted?: () => ReadonlySet<string>;
+  /** False while the user has phishing protection off: the phishing DNR range is emptied. */
+  phishingEnabled?: () => boolean;
   now?: () => number;
 }
 
@@ -89,6 +102,7 @@ const EMPTY_STATE: SyncState = {
   version: null,
   allowlistSha: null,
   sharedHostsSha: null,
+  popupNetworksSha: null,
   lastSyncAt: null,
   lastError: null,
 };
@@ -104,6 +118,7 @@ async function read<T>(storage: KeyValueArea, key: string): Promise<T | null> {
 export async function loadLocalData(
   storage: KeyValueArea,
   bundledShared: SharedHostsFile,
+  bundledPopup: PopupNetworksFile = bundledPopupNetworksFile,
 ): Promise<LocalData> {
   let sharedFile = bundledShared;
   const synced = await read<SharedHostsFile>(storage, SHARED_HOSTS_KEY);
@@ -115,7 +130,16 @@ export async function loadLocalData(
     shared = loadSharedHosts(bundledShared);
   }
   const text = await read<string>(storage, ALLOWLIST_KEY);
-  return { allowlist: text ? parseAllowlist(text, shared) : null, shared };
+  let popupNetworks = loadPopupNetworks(bundledPopup);
+  const syncedPopup = await read<PopupNetworksFile>(storage, POPUP_NETWORKS_KEY);
+  if (syncedPopup && syncedPopup.version >= bundledPopup.version) {
+    try {
+      popupNetworks = loadPopupNetworks(syncedPopup);
+    } catch {
+      // keep the bundled list
+    }
+  }
+  return { allowlist: text ? parseAllowlist(text, shared) : null, shared, popupNetworks };
 }
 
 export async function readSyncState(storage: KeyValueArea): Promise<SyncState> {
@@ -131,6 +155,7 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
     deltas: 0,
     allowlistUpdated: false,
     sharedHostsUpdated: false,
+    popupNetworksUpdated: false,
     dnrRules: 0,
     dnrSkipped: 0,
   };
@@ -196,6 +221,15 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
         report.sharedHostsUpdated = true;
       }
 
+      const popupRef = manifest.popupNetworks;
+      if (popupRef && popupRef.sha256 !== state.popupNetworksSha) {
+        const file = JSON.parse(await fetchVerified(popupRef)) as PopupNetworksFile;
+        loadPopupNetworks(file); // throws on a malformed list, before it's stored
+        await deps.storage.set({ [POPUP_NETWORKS_KEY]: file });
+        state.popupNetworksSha = popupRef.sha256;
+        report.popupNetworksUpdated = true;
+      }
+
       if (manifest.allowlist.sha256 !== state.allowlistSha) {
         const text = await fetchVerified(manifest.allowlist);
         await deps.storage.set({ [ALLOWLIST_KEY]: text });
@@ -224,10 +258,11 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
       const domain = registrableDomain(host);
       return (allowlist?.allows(host) ?? false) || (domain !== null && userTrusted.has(domain));
     };
-    const { rules, skipped } = compileDnrRules(tierA, shared, { trusted });
+    const compiled = compileDnrRules(tierA, shared, { trusted });
+    const rules = (deps.phishingEnabled?.() ?? true) ? compiled.rules : [];
     await replaceRuleRange(deps.dnr, PHISHING_RULE_IDS, rules);
     report.dnrRules = rules.length;
-    report.dnrSkipped = skipped;
+    report.dnrSkipped = compiled.skipped;
 
     if (dataError) throw dataError;
     state.lastError = null;

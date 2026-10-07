@@ -8,6 +8,7 @@ import {
   type Snapshot,
   sha256Hex,
 } from "@warden/shared/feed-format";
+import { bundledPopupNetworksFile, type PopupNetworksFile } from "@warden/shared/popup-networks";
 import { bundledSharedHostsFile } from "@warden/shared/shared-hosts";
 import type { FeedId } from "@warden/shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -59,6 +60,13 @@ class FakeService {
       },
       feeds: FEEDS_CONFIG,
     };
+  }
+
+  async publishPopupNetworks(file: PopupNetworksFile, corrupt = false) {
+    const m = this.manifest as Manifest;
+    const ref = await this.put(`v1/popup-networks/${file.version}.json`, file);
+    if (corrupt) this.files.set(ref.key, "{}");
+    this.manifest = { ...m, popupNetworks: { ...ref, version: file.version } };
   }
 
   async publishDelta(to: number, feeds: Delta["feeds"]) {
@@ -285,5 +293,52 @@ describe("syncFeeds", () => {
     expect(dnr.rules.map((r) => r.condition.urlFilter)).toEqual(["||a.example/"]);
     const tierB = await matches("https://b.example/");
     expect(tierB.map((m) => `${m.feed as FeedId}:${m.tier}`)).toEqual(["phishing_database:B"]);
+  });
+});
+
+describe("popup-network list sync", () => {
+  const synced: PopupNetworksFile = {
+    version: 5,
+    generatedAt: "",
+    sources: [],
+    domains: ["popnet.example"],
+  };
+
+  it("downloads, verifies, and serves the list", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(100, {});
+    await service.publishPopupNetworks(synced);
+    const { deps, storage } = setup(service);
+    const report = await syncFeeds(deps);
+    expect(report.popupNetworksUpdated).toBe(true);
+    const local = await loadLocalData(storage, bundledSharedHostsFile);
+    expect(local.popupNetworks.has("go.popnet.example")).toBe(true);
+    expect((await syncFeeds(deps)).popupNetworksUpdated).toBe(false);
+  });
+
+  it("keeps the bundled list on a checksum mismatch or an old manifest", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(100, {});
+    const { deps, storage } = setup(service);
+    await syncFeeds(deps); // manifest without popupNetworks
+    let local = await loadLocalData(storage, bundledSharedHostsFile);
+    expect(local.popupNetworks.domains).toEqual([...bundledPopupNetworksFile.domains].sort());
+
+    await service.publishPopupNetworks(synced, true);
+    const report = await syncFeeds(deps);
+    expect(report.error).toMatch(/checksum/);
+    local = await loadLocalData(storage, bundledSharedHostsFile);
+    expect(local.popupNetworks.has("popnet.example")).toBe(false);
+  });
+
+  it("installs no phishing rules while phishing protection is off, leaving hijack rules", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(100, { openphish: [await pub("https://evil.example/")] });
+    const { deps, dnr } = setup(service);
+    const hijackRule = { id: 29_900 } as unknown as DnrRule;
+    await dnr.updateDynamicRules({ removeRuleIds: [], addRules: [hijackRule] });
+    const report = await syncFeeds({ ...deps, phishingEnabled: () => false });
+    expect(report.dnrRules).toBe(0);
+    expect(dnr.rules.map((r) => r.id)).toEqual([29_900]);
   });
 });

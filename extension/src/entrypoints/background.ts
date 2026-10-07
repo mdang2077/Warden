@@ -1,6 +1,7 @@
 import { createAllowlistStage } from "@warden/shared/allowlist";
 import type { CascadeResult } from "@warden/shared/cascade";
 import { runCascade } from "@warden/shared/cascade";
+import { bundledPopupNetworks } from "@warden/shared/popup-networks";
 import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
 import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
@@ -32,7 +33,11 @@ const listStore = openListStore().catch((err: unknown) => {
   return null;
 });
 /** Allowlist and shared-host list from the last good sync, swapped in after each sync. */
-let local: LocalData = { allowlist: null, shared: bundledSharedHosts };
+let local: LocalData = {
+  allowlist: null,
+  shared: bundledSharedHosts,
+  popupNetworks: bundledPopupNetworks,
+};
 const localReady = refreshLocalData();
 
 async function refreshLocalData() {
