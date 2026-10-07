@@ -128,3 +128,38 @@ button {
 #report {
   margin-top: 12px;
 }
+
+.hint {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.trusted {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+}
+
+.trusted summary {
+  cursor: pointer;
+}
+
+#trusted-list {
+  margin: 6px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+#trusted-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+#trusted-list button {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}

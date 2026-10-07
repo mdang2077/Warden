@@ -32,7 +32,18 @@
           <summary id="blocked-summary"></summary>
           <ul id="blocked-list"></ul>
         </details>
+        <label class="toggle">
+          <span>Trust this site</span>
+          <input type="checkbox" id="toggle-trust" />
+        </label>
+        <p class="hint">
+          Warden won't flag this site's login pages. Sites on phishing lists are still blocked.
+        </p>
       </section>
+      <details id="trusted" class="trusted" hidden>
+        <summary id="trusted-summary"></summary>
+        <ul id="trusted-list"></ul>
+      </details>
       <button id="report" type="button" hidden>Report false positive</button>
       <p id="report-done" class="detail" role="status" hidden>
         Thanks. The report was saved on this device.

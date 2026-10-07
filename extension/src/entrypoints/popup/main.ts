@@ -12,6 +12,7 @@ import {
 } from "../../lib/popup-prefs.ts";
 import { blockedView } from "../../lib/popup-view.ts";
 import { getTabVerdict, type TabVerdict } from "../../lib/tab-state.ts";
+import { listTrusted, setTrusted } from "../../lib/trusted-sites.ts";
 
 const status = document.getElementById("status") as HTMLElement;
 const detail = document.getElementById("detail") as HTMLElement;
@@ -33,6 +34,50 @@ function sourceList(verdict: TabVerdict): string {
   return verdict.sources.map((s) => SOURCE_LABELS[s]).join(", ");
 }
 
+/**
+ * "Trust this site" for the current site, and the list of every trusted site with a
+ * Remove button each, so a site can be untrusted without visiting it.
+ */
+async function renderTrust(site: string | null) {
+  const area = browser.storage.local;
+  const toggle = document.getElementById("toggle-trust") as HTMLInputElement;
+  const details = document.getElementById("trusted") as HTMLDetailsElement;
+  const summary = document.getElementById("trusted-summary") as HTMLElement;
+  const list = document.getElementById("trusted-list") as HTMLUListElement;
+
+  const draw = async () => {
+    const sites = await listTrusted(area);
+    toggle.checked = site !== null && sites.includes(site);
+    details.hidden = sites.length === 0;
+    summary.textContent = `Trusted sites (${sites.length})`;
+    list.replaceChildren(
+      ...sites.map((s) => {
+        const li = document.createElement("li");
+        const name = document.createElement("span");
+        name.textContent = s; // textContent only: site names come from web pages
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Remove";
+        remove.setAttribute("aria-label", `Remove ${s}`);
+        remove.addEventListener("click", async () => {
+          await setTrusted(area, s, false);
+          await draw();
+        });
+        li.append(name, remove);
+        return li;
+      }),
+    );
+  };
+
+  if (site !== null) {
+    toggle.addEventListener("change", async () => {
+      await setTrusted(area, site, toggle.checked);
+      await draw();
+    });
+  }
+  await draw();
+}
+
 /** Toggles, the per-site popup mode, and the "blocked on this page" list. */
 async function renderControls(
   tab: { id?: number | undefined; url?: string | undefined } | undefined,
@@ -51,6 +96,7 @@ async function renderControls(
   });
 
   const site = tab?.url ? siteKey(tab.url) : null;
+  await renderTrust(site);
   if (site === null || tab?.id === undefined) return;
   (document.getElementById("site") as HTMLElement).hidden = false;
   (document.getElementById("site-name") as HTMLElement).textContent = site;

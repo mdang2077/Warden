@@ -33,6 +33,8 @@ export interface ShadowEntry {
   brandMismatch?: BrandClaim;
   /** S2.7: where credentials go (kind only), plus the supporting IP-lookup flag. */
   exfil?: ExfilSignal;
+  /** The user trusts this site: Stage 2 never flags or warns on it. Logged, but marked. */
+  trusted?: true;
 }
 
 /**
@@ -119,6 +121,8 @@ export interface RecorderDeps {
   stage1For: (tabId: number, url: string) => Promise<Decision | null>;
   /** Defaults to the bundled list; null disables the brand signal. */
   brands?: BrandList | null;
+  /** True for hosts on sites the user trusts (trusted-sites.ts). */
+  trusted?: (host: string) => Promise<boolean>;
   now?: () => number;
 }
 
@@ -163,6 +167,7 @@ export function createShadowRecorder(deps: RecorderDeps) {
         ? { brandMismatch: msg.brandClaim }
         : {}),
       ...(exfil ? { exfil } : {}),
+      ...((await deps.trusted?.(url.host)) ? { trusted: true as const } : {}),
     };
     await appendShadowEntry(deps.area, entry);
     return entry;

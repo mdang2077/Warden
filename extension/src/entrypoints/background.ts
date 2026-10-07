@@ -38,6 +38,7 @@ import { createShadowRecorder } from "../lib/shadow-log.ts";
 import { type LocalData, loadLocalData, SYNC_PERIOD_MINUTES, syncFeeds } from "../lib/sync.ts";
 import { clearTabVerdict, getTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
 import { e2eTestStage } from "../lib/test-stage.ts";
+import { readTrusted } from "../lib/trusted-sites.ts";
 
 /**
  * Feed service base URL, set at build time (`WXT_FEED_SERVICE_URL=https://… wxt build`).
@@ -86,6 +87,8 @@ const lists: LocalLists = {
 const stages: Stage[] = [
   createAllowlistStage({
     allowlist: () => local.allowlist,
+    // Deliberately empty: a user-trusted site (trusted-sites.ts) must not reach Stage 0,
+    // or Stage 1 would skip the phishing lists for it. Trust only covers Stage 2+.
     userDomains: () => new Set(),
     shared: () => local.shared,
   }),
@@ -217,6 +220,10 @@ export default defineBackground({
     const recordShadow = createShadowRecorder({
       area: browser.storage.local,
       allowlisted: (host) => local.allowlist?.allows(host) ?? false,
+      trusted: async (host) => {
+        const site = siteKey(`https://${host}/`);
+        return site !== null && (await readTrusted(browser.storage.local)).has(site);
+      },
       stage1For: async (tabId, url) => {
         const verdict = await getTabVerdict(session, tabId);
         const strip = (u: string) => u.split("#")[0];

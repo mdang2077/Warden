@@ -202,3 +202,19 @@ describe("credential exfiltration in the shadow log", () => {
     expect(entry).not.toHaveProperty("exfil");
   });
 });
+
+describe("trusted sites in the shadow log", () => {
+  it("marks entries for sites the user trusts, and only those", async () => {
+    const record = createShadowRecorder({
+      area: memoryArea(),
+      allowlisted: () => false,
+      stage1For: async () => "allow",
+      trusted: async (host) => host.endsWith("shop.example"),
+      now: () => 0,
+    });
+    expect((await record(msg(), sender("https://www.shop.example/login")))?.trusted).toBe(true);
+    expect(await record(msg(), sender("https://other.example/login"))).not.toHaveProperty(
+      "trusted",
+    );
+  });
+});
