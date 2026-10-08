@@ -12,6 +12,15 @@ export const TEST_PAGES: Record<string, string> = {
     '<form id="f"><input name="email" type="email"><input type="password" name="pw">' +
     "<button>Sign in</button></form>" +
     '<script>const BOT = "https://api.telegram.org/bot123:TOKEN/sendMessage";</script>',
+  // A webmail kit's pattern: the form is in the page from the start but hidden behind a
+  // "loading" overlay, then revealed by a style change alone (no nodes added or removed).
+  "/late-login":
+    '<!doctype html><title>Mail</title><div id="loading">Loading mail settings...</div>' +
+    '<form id="f" style="display:none"><input name="email" type="email">' +
+    '<input type="password" name="pw"><button>Sign in</button></form>' +
+    "<script>setTimeout(() => {" +
+    ' document.getElementById("loading").style.display = "none";' +
+    ' document.getElementById("f").style.display = "block"; }, 1500);</script>',
   "/chase-login":
     "<!doctype html><title>Chase Online - Sign In</title><h1>Chase Online sign in</h1>" +
     '<form><input name="user"><input type="password" name="pw"><button>Sign in</button></form>',

@@ -112,6 +112,25 @@ test("Stage 2 shadow mode logs a login page locally, without the query", async (
   expect(page.url()).toBe("https://ok.warden-test.example/login?session=SECRET");
 });
 
+test("Stage 2 shadow mode catches a login form revealed after load", async ({
+  context,
+  extensionId: _,
+}) => {
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error("no service worker");
+  const page = await context.newPage();
+  await page.goto("https://late.warden-test.example/late-login");
+  await expect(page.locator('input[type="password"]')).toBeVisible();
+
+  const readLog = () =>
+    worker.evaluate(
+      async () => ((await chrome.storage.local.get("shadow_log")).shadow_log ?? []) as unknown[],
+    );
+  await expect
+    .poll(async () => (await readLog()).some((e) => (e as { kind?: string }).kind === "gate"))
+    .toBe(true);
+});
+
 test("Stage 2 shadow mode records a brand claimed on someone else's domain", async ({
   context,
   extensionId: _,

@@ -1,8 +1,9 @@
 /**
  * Stage 2 content script, shadow mode. Checks the page's form fields (no text, links, or
  * values) for a secret-entry surface or an identifier-only login step, and tells the
- * background the counts. Login forms injected after load are caught by a time-boxed
- * MutationObserver. Nothing is shown to the user.
+ * background the counts. Forms injected or revealed after load (a fake loading bar, a
+ * human-verification step, a "Log in" click) are caught by field-watch.ts. Nothing is shown
+ * to the user.
  *
  * On a login page (gated or identifier step) it also reads the title, headings, buttons,
  * labels, logo hints, and the hosts the page links to, to find which protected brand the
@@ -23,11 +24,8 @@ import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
 import { scanExfil } from "@warden/shared/stage2/exfil-scan";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { watchFields } from "../lib/field-watch.ts";
 import type { FieldsMessage } from "../lib/shadow-log.ts";
-
-/** Watch for injected forms this long after load. */
-const WATCH_MS = 10_000;
-const DEBOUNCE_MS = 300;
 
 export default defineContentScript({
   matches: ["http://*/*", "https://*/*"],
@@ -36,7 +34,6 @@ export default defineContentScript({
   main() {
     let sentIdentifier = false;
     let sentGate = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
 
     const send = (message: FieldsMessage) => {
       browser.runtime.sendMessage(message).catch(() => {
@@ -67,8 +64,9 @@ export default defineContentScript({
       return out;
     };
 
-    const check = () => {
-      if (sentGate) return;
+    /** True once the gate has fired: nothing more to watch for on this page. */
+    const check = (): boolean => {
+      if (sentGate) return true;
       const fields = extractFields(document);
       const message: FieldsMessage = {
         type: "warden:fields",
@@ -77,26 +75,15 @@ export default defineContentScript({
       };
       if (hasSecretSurface(fields)) {
         sentGate = true;
-        observer.disconnect();
         send(withClaim(message, fields.forms));
       } else if (fields.identifierFields > 0 && !sentIdentifier) {
         // Keep watching: a two-step login may reveal the password field on this same page.
         sentIdentifier = true;
         send(withClaim(message, fields.forms));
       }
+      return sentGate;
     };
 
-    const observer = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(check, DEBOUNCE_MS);
-    });
-    check();
-    if (!sentGate && document.body) {
-      observer.observe(document.body, { childList: true, subtree: true });
-      setTimeout(() => {
-        observer.disconnect();
-        clearTimeout(timer);
-      }, WATCH_MS);
-    }
+    watchFields(document, check);
   },
 });
