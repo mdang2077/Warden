@@ -135,4 +135,4 @@ Reports live in [`packages/eval/reports/`](packages/eval/reports/).
 
 ## License
 
-No license has been chosen yet, so all rights are reserved for now.
+Warden's code is under the [MIT License](LICENSE). The pop-up network list is derived from EasyList and is distributed under CC BY-SA 3.0; see [`THIRD_PARTY_NOTICES.txt`](packages/extension/public/THIRD_PARTY_NOTICES.txt).
