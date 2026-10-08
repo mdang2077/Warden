@@ -10,12 +10,23 @@ import {
 } from "@warden/shared/feed-format";
 import { bundledPopupNetworksFile, type PopupNetworksFile } from "@warden/shared/popup-networks";
 import { bundledSharedHostsFile } from "@warden/shared/shared-hosts";
+import {
+  generateManifestKeyPair,
+  importPrivateKey,
+  importPublicKeys,
+  type SignedManifest,
+  signManifest,
+} from "@warden/shared/signed-manifest";
 import type { FeedId } from "@warden/shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DnrRule } from "./dnr.ts";
 import { type ListStore, openListStore } from "./list-store.ts";
 import { loadLocalData, readSyncState, syncFeeds } from "./sync.ts";
 import { memoryArea } from "./test-utils.ts";
+
+const TEST_PAIR = await generateManifestKeyPair();
+const TEST_KEYS = await importPublicKeys({ keys: [{ kid: "t1", publicKey: TEST_PAIR.publicKey }] });
+const TEST_SIGNING_KEY = await importPrivateKey(TEST_PAIR.privateKey);
 
 const NOW = 1_000_000;
 const BASE = "https://feeds.example";
@@ -38,6 +49,10 @@ class FakeService {
   files = new Map<string, string>();
   manifest: Manifest | null = null;
   fail = false;
+  /** Serve the manifest unsigned (the pre-signing format). */
+  unsigned = false;
+  /** Edit the signed envelope before serving it (tampering). */
+  tamper: ((env: SignedManifest) => SignedManifest) | null = null;
 
   async put(key: string, value: unknown) {
     const text = typeof value === "string" ? value : JSON.stringify(value);
@@ -79,8 +94,11 @@ class FakeService {
   fetch = vi.fn(async (input: string | URL | Request) => {
     if (this.fail) throw new TypeError("network down");
     const key = String(input).slice(BASE.length + 1);
-    if (key === "v1/manifest.json" && this.manifest)
-      return new Response(JSON.stringify(this.manifest));
+    if (key === "v1/manifest.json" && this.manifest) {
+      if (this.unsigned) return new Response(JSON.stringify(this.manifest));
+      const env = await signManifest(this.manifest, TEST_SIGNING_KEY, "t1");
+      return new Response(JSON.stringify(this.tamper ? this.tamper(env) : env));
+    }
     const body = this.files.get(key);
     return body === undefined ? new Response("", { status: 404 }) : new Response(body);
   });
@@ -118,6 +136,7 @@ function setup(service: FakeService) {
     storage,
     dnr,
     bundledShared: bundledSharedHostsFile,
+    manifestKeys: async () => TEST_KEYS,
     now: () => NOW,
   };
   return { deps, storage, dnr };
@@ -340,5 +359,50 @@ describe("popup-network list sync", () => {
     const report = await syncFeeds({ ...deps, phishingEnabled: () => false });
     expect(report.dnrRules).toBe(0);
     expect(dnr.rules.map((r) => r.id)).toEqual([29_900]);
+  });
+});
+
+describe("syncFeeds: manifest signature", () => {
+  it("rejects a tampered manifest and applies nothing, not even the kill switch", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(100, { openphish: [await pub("https://evil.example/")] });
+    const { deps, storage, dnr } = setup(service);
+    await syncFeeds(deps);
+    const before = await readSyncState(storage);
+    const rulesBefore = dnr.rules;
+
+    await service.publishSnapshot(200, {});
+    service.tamper = (env) => ({
+      ...env,
+      payload: env.payload.replace('"enabled":true', '"enabled":false'),
+    });
+    const setFeedConfig = vi.spyOn(lists, "setFeedConfig");
+    dnr.updateDynamicRules.mockClear();
+    const report = await syncFeeds(deps);
+    expect(report.error).toMatch(/manifest signature invalid: bad signature/);
+    expect(setFeedConfig).not.toHaveBeenCalled();
+    expect(dnr.updateDynamicRules).not.toHaveBeenCalled();
+    expect(dnr.rules).toEqual(rulesBefore);
+    const { lastError, ...after } = await readSyncState(storage);
+    const { lastError: _, ...unchanged } = before;
+    expect(after).toEqual(unchanged); // only the error is recorded
+    expect(lastError).toMatch(/manifest signature invalid/);
+    expect(await matches("https://evil.example/")).not.toEqual([]); // last good data kept
+  });
+
+  it("rejects an unsigned manifest and an unknown key on first sync", async () => {
+    for (const [configure, why] of [
+      [(s: FakeService) => (s.unsigned = true), "malformed"],
+      [(s: FakeService) => (s.tamper = (env) => ({ ...env, kid: "zz" })), "unknown key"],
+    ] as const) {
+      const service = new FakeService();
+      await service.publishSnapshot(100, { openphish: [await pub("https://evil.example/")] });
+      configure(service);
+      const { deps, storage, dnr } = setup(service);
+      const report = await syncFeeds(deps);
+      expect(report.error).toContain(`manifest signature invalid: ${why}`);
+      expect(dnr.rules).toEqual([]);
+      expect((await readSyncState(storage)).version).toBeNull();
+    }
   });
 });

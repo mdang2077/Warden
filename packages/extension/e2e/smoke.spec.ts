@@ -173,3 +173,22 @@ test("Stage 2 shadow mode records credentials sent to a Telegram bot", async ({
   // Only the kind: never the bot URL or token.
   expect(JSON.stringify(await readLog())).not.toContain("TOKEN");
 });
+
+test.describe("a forged feed manifest", () => {
+  test.use({ tamperedManifest: true });
+
+  test("is rejected: the sync fails and no feed rules are installed", async ({
+    context,
+    extensionId: _,
+  }) => {
+    const worker = context.serviceWorkers()[0];
+    if (!worker) throw new Error("no service worker");
+    await expect
+      .poll(() => worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null))))
+      .toContain("manifest signature invalid: bad signature");
+    const phishingRules = await worker.evaluate(async () =>
+      (await chrome.declarativeNetRequest.getDynamicRules()).filter((r) => r.id < 29_900),
+    );
+    expect(phishingRules).toEqual([]);
+  });
+});

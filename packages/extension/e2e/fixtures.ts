@@ -1,7 +1,7 @@
 import type { Server } from "node:http";
 import path from "node:path";
 import { type BrowserContext, test as base, chromium } from "@playwright/test";
-import { startFeedServer } from "./feed-server.ts";
+import { setManifestTampered, startFeedServer } from "./feed-server.ts";
 
 const EXTENSION_PATH = path.resolve(import.meta.dirname, "../.output/chrome-mv3-e2e");
 
@@ -68,9 +68,11 @@ export const TEST_PAGES: Record<string, string> = {
 };
 
 export const test = base.extend<
-  { context: BrowserContext; extensionId: string },
+  { context: BrowserContext; extensionId: string; tamperedManifest: boolean },
   { feedServer: Server }
 >({
+  /** Serve a forged manifest from the start (the extension syncs on install). */
+  tamperedManifest: [false, { option: true }],
   // The extension syncs on install, so the feed server must be up before Chrome starts.
   feedServer: [
     // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture signature
@@ -81,7 +83,8 @@ export const test = base.extend<
     },
     { scope: "worker", auto: true },
   ],
-  context: async ({ feedServer: _ }, use) => {
+  context: async ({ feedServer: _, tamperedManifest }, use) => {
+    setManifestTampered(tamperedManifest);
     const context = await chromium.launchPersistentContext("", {
       channel: "chromium",
       args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],
@@ -124,6 +127,7 @@ export const test = base.extend<
     );
     await use(context);
     await context.close();
+    setManifestTampered(false);
   },
   extensionId: async ({ context }, use) => {
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));

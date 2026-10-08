@@ -7,10 +7,12 @@ import {
   type PopupNetworkList,
 } from "@warden/shared/popup-networks";
 import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
+import { bundledManifestKeysFile, importPublicKeys } from "@warden/shared/signed-manifest";
 import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
+import { E2E_MANIFEST_KID, E2E_MANIFEST_PUBLIC_KEY } from "../../e2e/manifest-test-key.ts";
 import { isStrictQuery, parseClickMessage } from "../lib/click-capture.ts";
 import {
   addSessionBypass,
@@ -57,6 +59,17 @@ import { readTrusted } from "../lib/trusted-sites.ts";
  */
 const FEED_SERVICE_URL: string | undefined = import.meta.env.WXT_FEED_SERVICE_URL || undefined;
 const SYNC_ALARM = "feed-sync";
+/** Keys a feed manifest must be signed with; the e2e build also trusts the test key. */
+const manifestKeys = importPublicKeys({
+  keys: [
+    ...bundledManifestKeysFile.keys,
+    ...(import.meta.env.MODE === "e2e"
+      ? [{ kid: E2E_MANIFEST_KID, publicKey: E2E_MANIFEST_PUBLIC_KEY }]
+      : []),
+  ],
+});
+// A broken keys file fails every sync (fail open: no new blocks); don't also crash here.
+manifestKeys.catch((err) => console.error("[Warden] manifest keys unusable", err));
 
 // A failed open leaves lookups failing open (Stage 1 treats a throw as "no hit").
 const listStore = openListStore().catch((err: unknown) => {
@@ -152,6 +165,7 @@ function runSync(): Promise<void> {
       storage: browser.storage.local,
       dnr: dynamicDnr,
       bundledShared: bundledSharedHostsFile,
+      manifestKeys: () => manifestKeys,
       phishingEnabled: () => prefs.phishing,
     });
     await refreshLocalData();

@@ -9,6 +9,7 @@
  * Design: docs/design/2026-10-07-manifest-signing-design.md.
  */
 import { FORMAT_SCHEMA, type Manifest } from "./feed-format.ts";
+import keysFile from "./manifest-keys.json" with { type: "json" };
 
 export interface SignedManifest {
   schema: 1;
@@ -25,6 +26,9 @@ export interface ManifestKeysFile {
 }
 
 export type ManifestKeys = ReadonlyMap<string, CryptoKey>;
+
+/** The public keys bundled into the extension: every listed key is trusted (rotation). */
+export const bundledManifestKeysFile: ManifestKeysFile = keysFile;
 
 export type SignatureFailure = "malformed" | "unknown key" | "bad signature" | "unsupported";
 

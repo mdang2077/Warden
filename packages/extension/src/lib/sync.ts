@@ -1,7 +1,9 @@
 /**
  * Feed sync (runs on install, on browser start, and every 60 min via chrome.alarms):
  *
- *  1. Fetch the manifest. Apply its feed config right away (kill switch).
+ *  1. Fetch the manifest and verify its Ed25519 signature against the bundled keys
+ *     (signed-manifest.ts); an invalid one fails the sync before anything is applied.
+ *     Then apply its feed config right away (kill switch).
  *  2. Bring the local lists to the manifest version: the delta chain when there is one
  *     from our version, otherwise the full snapshot.
  *  3. Refresh the allowlist and shared-host list when their checksums changed.
@@ -12,13 +14,13 @@
  * stops the sync and keeps the last good data: a broken or unreachable service can make
  * Warden block less, never more.
  */
+
 import { type Allowlist, parseAllowlist } from "@warden/shared/allowlist";
 import {
   type Delta,
   deltaChain,
   type FileRef,
   FORMAT_SCHEMA,
-  type Manifest,
   type Snapshot,
   sha256Hex,
 } from "@warden/shared/feed-format";
@@ -34,6 +36,7 @@ import {
   type SharedHostList,
   type SharedHostsFile,
 } from "@warden/shared/shared-hosts";
+import { type ManifestKeys, verifyManifest } from "@warden/shared/signed-manifest";
 import { FEED_IDS } from "@warden/shared/types";
 import {
   compileDnrRules,
@@ -91,6 +94,8 @@ export interface SyncDeps {
   storage: KeyValueArea;
   dnr: DnrApi;
   bundledShared: SharedHostsFile;
+  /** Public keys a manifest must be signed with (bundled manifest-keys.json). */
+  manifestKeys: () => Promise<ManifestKeys>;
   /** Registrable domains the user marked safe; never compiled into DNR block rules. */
   userTrusted?: () => ReadonlySet<string>;
   /** False while the user has phishing protection off: the phishing DNR range is emptied. */
@@ -175,7 +180,10 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
   };
 
   try {
-    const manifest = JSON.parse(await fetchText("v1/manifest.json")) as Manifest;
+    const manifest = await verifyManifest(
+      await fetchText("v1/manifest.json"),
+      await deps.manifestKeys(),
+    );
     if (manifest.schema !== FORMAT_SCHEMA) throw new Error(`unsupported schema ${manifest.schema}`);
 
     // Kill switch first: a disabled feed stops matching even if the rest of the sync fails.

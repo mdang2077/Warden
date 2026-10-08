@@ -1,11 +1,15 @@
 /**
  * Minimal stand-in for the feed service, for e2e tests. Publishes one snapshot with a
- * single OpenPhish entry and answers the Safe Browsing proxy with "no hits".
+ * single OpenPhish entry and answers the Safe Browsing proxy with "no hits". The manifest is
+ * served signed with the e2e test key, like the real Worker; `setManifestTampered(true)`
+ * serves an envelope whose payload was edited after signing.
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { importPrivateKey, signManifest } from "@warden/shared/signed-manifest";
+import { E2E_MANIFEST_KID, E2E_MANIFEST_PRIVATE_KEY } from "./manifest-test-key.ts";
 
 export const FEED_SERVER_PORT = 47123;
 export const FEED_SERVER_URL = `http://127.0.0.1:${FEED_SERVER_PORT}`;
@@ -17,7 +21,7 @@ export const POPNET_HOST = `go.${POPNET_DOMAIN}`;
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
-function buildFiles(): Map<string, string> {
+function buildFiles(): { files: Map<string, string>; manifest: unknown } {
   const files = new Map<string, string>();
   const put = (key: string, text: string) => {
     files.set(key, text);
@@ -61,12 +65,32 @@ function buildFiles(): Map<string, string> {
       phishstats: { enabled: false, tier: "B" },
     },
   };
-  files.set("v1/manifest.json", JSON.stringify(manifest));
-  return files;
+  return { files, manifest };
 }
 
-export function startFeedServer(): Promise<http.Server> {
-  const files = buildFiles();
+let tampered = false;
+/** Serve a manifest edited after signing (until set back to false). */
+export function setManifestTampered(on: boolean): void {
+  tampered = on;
+}
+
+export async function startFeedServer(): Promise<http.Server> {
+  const { files, manifest } = buildFiles();
+  const key = await importPrivateKey(E2E_MANIFEST_PRIVATE_KEY);
+  const signed = await signManifest(
+    manifest as Parameters<typeof signManifest>[0],
+    key,
+    E2E_MANIFEST_KID,
+  );
+  files.set("v1/manifest.json", JSON.stringify(signed));
+  // An attacker turning on a Tier B feed it controls: valid-looking, but the signature is stale.
+  const forged = JSON.stringify({
+    ...signed,
+    payload: signed.payload.replace(
+      '"phishing_database":{"enabled":false',
+      '"phishing_database":{"enabled":true',
+    ),
+  });
   const server = http.createServer((req, res) => {
     const key = (req.url ?? "/").slice(1);
     if (key === "sb/hashes-search" && req.method === "POST") {
@@ -74,7 +98,7 @@ export function startFeedServer(): Promise<http.Server> {
       res.end(JSON.stringify({ cacheDuration: "300s" }));
       return;
     }
-    const body = files.get(key);
+    const body = key === "v1/manifest.json" && tampered ? forged : files.get(key);
     res.writeHead(body === undefined ? 404 : 200);
     res.end(body ?? "not found");
   });
