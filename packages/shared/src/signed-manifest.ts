@@ -29,8 +29,11 @@ export type ManifestKeys = ReadonlyMap<string, CryptoKey>;
 export type SignatureFailure = "malformed" | "unknown key" | "bad signature" | "unsupported";
 
 export class ManifestSignatureError extends Error {
-  constructor(readonly reason: SignatureFailure) {
+  // A plain field, not a parameter property: Node's type stripping can't run those.
+  readonly reason: SignatureFailure;
+  constructor(reason: SignatureFailure) {
     super(`manifest signature invalid: ${reason}`);
+    this.reason = reason;
     this.name = "ManifestSignatureError";
   }
 }
