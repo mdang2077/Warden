@@ -103,12 +103,15 @@ Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a
 
 ### Manifest signing
 
-The extension only accepts a feed manifest signed with an Ed25519 key it trusts, so a tampered manifest (in storage, at a CDN, or on the network) can't push lists. Every other file is pinned by its SHA-256 in the manifest. The Worker signs on every request and returns 503 rather than serve an unsigned manifest. The design is in [`docs/design/2026-10-07-manifest-signing-design.md`](docs/design/2026-10-07-manifest-signing-design.md).
+The extension only accepts a feed manifest signed with an Ed25519 key it trusts. Every other file is pinned by its SHA-256 in the manifest, and the signature carries the signing time, so an older signed manifest can't be replayed. The Worker signs on every request and returns 503 rather than serve an unsigned manifest.
+
+**What this protects against:** tampering at a CDN or on the network, replaying an old signed manifest, and edits to individual list files in storage. **What it doesn't:** the Worker signs whatever manifest and feed config are in R2, so anyone who can write those (an account takeover, or a future R2 API token) gets them signed. Signing at publish time instead would close that gap; see the taskboard (T4b.17). The design is in [`docs/design/2026-10-07-manifest-signing-design.md`](docs/design/2026-10-07-manifest-signing-design.md).
 
 - **New key:** `node packages/service/src/runners/keygen.ts --kid k2` prints the private key, which you store with `wrangler secret put MANIFEST_SIGNING_KEY` (and `MANIFEST_KEY_ID`), and the public key for `packages/shared/src/manifest-keys.json`. Add `--dev-vars` to write a local key into `packages/service/.dev.vars` instead.
-- **Keys in this repo:** `k1` is the local development key; its private half lives only in your `.dev.vars`. Generate a separate key for a public deployment.
+- **Production vs. development keys:** `packages/shared/src/manifest-keys.json` holds production keys, trusted by every build (empty until there's a production deployment). `manifest-dev-keys.json` holds development keys, which the extension trusts **only when its feed service is on this machine** (`127.0.0.1`, `localhost`). So a leaked development key can't sign anything a store build accepts. `k1` is the current development key; its private half lives only in its owner's `.dev.vars`.
+- **Another developer:** run `node packages/service/src/runners/keygen.ts --dev-vars --kid <your-name>` and add the printed public key to `manifest-dev-keys.json`.
 - **Rotation:**
-  1. Add the new public key to `manifest-keys.json` and ship an extension update. Every listed key is trusted.
+  1. Add the new public key to `manifest-keys.json` and ship an extension update. Every listed production key is trusted.
   2. Switch the Worker's `MANIFEST_SIGNING_KEY` and `MANIFEST_KEY_ID`.
   3. Remove the old key in a later extension update.
 - **If verification fails:** users see nothing. Warden keeps its last good lists and doesn't apply anything from the bad manifest, including feed switches.

@@ -74,6 +74,11 @@ export interface Manifest {
   popupNetworks?: FileRef & { version: number };
   /** Live feed config (kill switch). The Worker overlays the current config when serving. */
   feeds: Record<FeedId, FeedSettings>;
+  /**
+   * When the Worker signed this manifest (ms). Clients reject one signed earlier than the
+   * last they accepted, so an old signed manifest can't be replayed (signed-manifest.ts).
+   */
+  signedAt?: number;
 }
 
 export async function sha256Hex(text: string): Promise<string> {

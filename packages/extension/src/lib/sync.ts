@@ -63,6 +63,8 @@ export interface SyncState {
   popupNetworksSha: string | null;
   lastSyncAt: number | null;
   lastError: string | null;
+  /** `signedAt` of the newest manifest accepted; older ones are replays. */
+  lastSignedAt: number | null;
 }
 
 export interface SyncReport {
@@ -110,6 +112,7 @@ const EMPTY_STATE: SyncState = {
   popupNetworksSha: null,
   lastSyncAt: null,
   lastError: null,
+  lastSignedAt: null,
 };
 
 async function read<T>(storage: KeyValueArea, key: string): Promise<T | null> {
@@ -184,6 +187,17 @@ export async function syncFeeds(deps: SyncDeps): Promise<SyncReport> {
       await fetchText("v1/manifest.json"),
       await deps.manifestKeys(),
     );
+    // Freshness, before anything is applied: an older validly signed manifest (replayed
+    // from a cache or by a network attacker) could re-enable a feed that was switched off.
+    const signedAt = manifest.signedAt;
+    if (typeof signedAt !== "number") throw new Error("manifest has no signing time");
+    if (state.lastSignedAt !== null && signedAt < state.lastSignedAt) {
+      throw new Error("manifest replayed: signed older than the last one accepted");
+    }
+    if (state.version !== null && manifest.version < state.version) {
+      throw new Error("manifest rolled back to an older version");
+    }
+    state.lastSignedAt = signedAt;
     if (manifest.schema !== FORMAT_SCHEMA) throw new Error(`unsupported schema ${manifest.schema}`);
 
     // Kill switch first: a disabled feed stops matching even if the rest of the sync fails.

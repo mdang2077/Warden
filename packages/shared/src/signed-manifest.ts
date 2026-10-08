@@ -9,6 +9,7 @@
  * Design: docs/design/2026-10-07-manifest-signing-design.md.
  */
 import { FORMAT_SCHEMA, type Manifest } from "./feed-format.ts";
+import devKeysFile from "./manifest-dev-keys.json" with { type: "json" };
 import keysFile from "./manifest-keys.json" with { type: "json" };
 
 export interface SignedManifest {
@@ -27,8 +28,13 @@ export interface ManifestKeysFile {
 
 export type ManifestKeys = ReadonlyMap<string, CryptoKey>;
 
-/** The public keys bundled into the extension: every listed key is trusted (rotation). */
+/** Production public keys: every listed key is trusted (rotation). */
 export const bundledManifestKeysFile: ManifestKeysFile = keysFile;
+/**
+ * Development public keys (private halves in developers' `.dev.vars`). The extension trusts
+ * them only for a feed service on this machine (extension/src/lib/manifest-trust.ts).
+ */
+export const bundledDevManifestKeysFile: ManifestKeysFile = devKeysFile;
 
 export type SignatureFailure = "malformed" | "unknown key" | "bad signature" | "unsupported";
 
@@ -85,12 +91,14 @@ export async function generateManifestKeyPair(): Promise<{
   };
 }
 
+/** Signs `manifest`, stamping `signedAt` into the payload (replay protection). */
 export async function signManifest(
   manifest: Manifest,
   key: CryptoKey,
   kid: string,
+  signedAt: number = Date.now(),
 ): Promise<SignedManifest> {
-  const payload = JSON.stringify(manifest);
+  const payload = JSON.stringify({ ...manifest, signedAt });
   const sig = await crypto.subtle.sign(ALG, key, new TextEncoder().encode(payload));
   return { schema: ENVELOPE_SCHEMA, kid, alg: "Ed25519", payload, sig: toBase64(sig) };
 }

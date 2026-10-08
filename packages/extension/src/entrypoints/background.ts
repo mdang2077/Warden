@@ -7,7 +7,11 @@ import {
   type PopupNetworkList,
 } from "@warden/shared/popup-networks";
 import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
-import { bundledManifestKeysFile, importPublicKeys } from "@warden/shared/signed-manifest";
+import {
+  bundledDevManifestKeysFile,
+  bundledManifestKeysFile,
+  importPublicKeys,
+} from "@warden/shared/signed-manifest";
 import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
 import { browser } from "wxt/browser";
@@ -34,6 +38,7 @@ import {
 import { compileHijackRules, installHijackRules, withUserBlocks } from "../lib/hijack-rules.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
+import { manifestKeysFor } from "../lib/manifest-trust.ts";
 import { createNotices, NOTICE_MESSAGE, NOTICE_POLL } from "../lib/notices.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import {
@@ -62,7 +67,11 @@ const SYNC_ALARM = "feed-sync";
 /** Keys a feed manifest must be signed with; the e2e build also trusts the test key. */
 const manifestKeys = importPublicKeys({
   keys: [
-    ...bundledManifestKeysFile.keys,
+    ...manifestKeysFor({
+      feedUrl: FEED_SERVICE_URL,
+      production: bundledManifestKeysFile,
+      dev: bundledDevManifestKeysFile,
+    }).keys,
     ...(import.meta.env.MODE === "e2e"
       ? [{ kid: E2E_MANIFEST_KID, publicKey: E2E_MANIFEST_PUBLIC_KEY }]
       : []),

@@ -48,7 +48,7 @@ describe("signed manifest", () => {
   it("round-trips: what verifies is exactly the signed manifest", async () => {
     const { keys, signed } = await setup();
     expect(signed).toMatchObject({ schema: 1, kid: "t1", alg: "Ed25519" });
-    expect(await verifyManifest(JSON.stringify(signed), keys)).toEqual(manifest);
+    expect(await verifyManifest(JSON.stringify(signed), keys)).toMatchObject(manifest);
   });
 
   it("rejects an altered payload or signature", async () => {
@@ -99,7 +99,7 @@ describe("signed manifest", () => {
       ["k2", b],
     ] as const) {
       const signed = await signManifest(manifest, await importPrivateKey(pair.privateKey), kid);
-      expect(await verifyManifest(JSON.stringify(signed), keys)).toEqual(manifest);
+      expect(await verifyManifest(JSON.stringify(signed), keys)).toMatchObject(manifest);
     }
   });
 
@@ -107,7 +107,7 @@ describe("signed manifest", () => {
     const { pair, keys } = await setup();
     const pasted = `\n  ${pair.privateKey.slice(0, 20)}\n${pair.privateKey.slice(20)}  \n`;
     const signed = await signManifest(manifest, await importPrivateKey(pasted), "t1");
-    expect(await verifyManifest(JSON.stringify(signed), keys)).toEqual(manifest);
+    expect(await verifyManifest(JSON.stringify(signed), keys)).toMatchObject(manifest);
   });
 
   it("refuses a public key that isn't 32 raw bytes", async () => {
@@ -117,5 +117,16 @@ describe("signed manifest", () => {
   it("ships a keys file in the expected shape", async () => {
     expect(Array.isArray(keysFile.keys)).toBe(true);
     await importPublicKeys(keysFile);
+  });
+});
+
+describe("signing time", () => {
+  it("stamps the signing time into the signed payload", async () => {
+    const { keys, priv } = await setup();
+    const signed = await signManifest(manifest, priv, "t1", 1_234);
+    expect(await verifyManifest(JSON.stringify(signed), keys)).toEqual({
+      ...manifest,
+      signedAt: 1_234,
+    });
   });
 });

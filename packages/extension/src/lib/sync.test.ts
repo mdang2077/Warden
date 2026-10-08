@@ -53,6 +53,8 @@ class FakeService {
   unsigned = false;
   /** Edit the signed envelope before serving it (tampering). */
   tamper: ((env: SignedManifest) => SignedManifest) | null = null;
+  /** The signing time the service stamps into the manifest. */
+  signedAt = NOW;
 
   async put(key: string, value: unknown) {
     const text = typeof value === "string" ? value : JSON.stringify(value);
@@ -96,7 +98,7 @@ class FakeService {
     const key = String(input).slice(BASE.length + 1);
     if (key === "v1/manifest.json" && this.manifest) {
       if (this.unsigned) return new Response(JSON.stringify(this.manifest));
-      const env = await signManifest(this.manifest, TEST_SIGNING_KEY, "t1");
+      const env = await signManifest(this.manifest, TEST_SIGNING_KEY, "t1", this.signedAt);
       return new Response(JSON.stringify(this.tamper ? this.tamper(env) : env));
     }
     const body = this.files.get(key);
@@ -404,5 +406,59 @@ describe("syncFeeds: manifest signature", () => {
       expect(dnr.rules).toEqual([]);
       expect((await readSyncState(storage)).version).toBeNull();
     }
+  });
+});
+
+describe("syncFeeds: replay and rollback", () => {
+  async function accepted() {
+    const service = new FakeService();
+    await service.publishSnapshot(100, { openphish: [await pub("https://evil.example/")] });
+    service.signedAt = 1_000;
+    const old = await signManifest(service.manifest as Manifest, TEST_SIGNING_KEY, "t1", 1_000);
+    await service.publishSnapshot(200, {});
+    service.signedAt = 2_000;
+    const { deps, storage, dnr } = setup(service);
+    expect((await syncFeeds(deps)).error).toBeUndefined();
+    return { service, deps, storage, dnr, old };
+  }
+
+  it("rejects an older signed manifest replayed after a newer one", async () => {
+    const { service, deps, storage, old } = await accepted();
+    service.tamper = () => old;
+    const setFeedConfig = vi.spyOn(lists, "setFeedConfig");
+    const report = await syncFeeds(deps);
+    expect(report.error).toMatch(/older than the last one accepted/);
+    expect(setFeedConfig).not.toHaveBeenCalled();
+    expect((await readSyncState(storage)).version).toBe(200);
+  });
+
+  it("rejects a newer signature over an older version (rollback)", async () => {
+    const { service, deps, storage } = await accepted();
+    service.manifest = { ...(service.manifest as Manifest), version: 100 };
+    service.signedAt = 3_000;
+    expect((await syncFeeds(deps)).error).toMatch(/rolled back/);
+    expect((await readSyncState(storage)).version).toBe(200);
+  });
+
+  it("accepts the same manifest served again (a CDN cache)", async () => {
+    const { deps } = await accepted();
+    expect((await syncFeeds(deps)).error).toBeUndefined();
+  });
+
+  it("rejects a signed manifest without a signing time", async () => {
+    const service = new FakeService();
+    await service.publishSnapshot(100, {});
+    const bare = await signManifest(service.manifest as Manifest, TEST_SIGNING_KEY, "t1");
+    const { signedAt: _, ...rest } = JSON.parse(bare.payload);
+    const payloadOnly = JSON.stringify(rest);
+    const sig = await crypto.subtle.sign(
+      "Ed25519",
+      TEST_SIGNING_KEY,
+      new TextEncoder().encode(payloadOnly),
+    );
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    service.tamper = () => ({ ...bare, payload: payloadOnly, sig: b64 });
+    const { deps } = setup(service);
+    expect((await syncFeeds(deps)).error).toMatch(/no signing time/);
   });
 });
