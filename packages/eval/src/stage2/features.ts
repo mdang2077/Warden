@@ -87,6 +87,8 @@ export function serializeFeatures(header: FeaturesHeader, rows: readonly Feature
 
 const URL_KEYS = ["lookalike", "brandKeyword", "ipHost", "tenantPlatform", "deepSubdomain"];
 
+const EXFIL_KINDS: readonly unknown[] = ["telegram", "discord", "formService", "crossSiteForm"];
+
 function isRow(x: unknown): x is FeatureRow {
   const r = x as FeatureRow;
   return (
@@ -96,21 +98,41 @@ function isRow(x: unknown): x is FeatureRow {
     typeof r.gated === "boolean" &&
     typeof r.allowlisted === "boolean" &&
     (r.brandMismatch === null || typeof r.brandMismatch?.cues === "number") &&
-    (r.exfil === null || typeof r.exfil?.ip === "boolean") &&
+    (r.exfil === null ||
+      (typeof r.exfil?.ip === "boolean" &&
+        (r.exfil.kind === null || EXFIL_KINDS.includes(r.exfil.kind)))) &&
     URL_KEYS.every((k) => typeof (r.url as unknown as Record<string, unknown>)?.[k] === "boolean")
   );
 }
 
 export function parseFeatures(text: string): { header: FeaturesHeader; rows: FeatureRow[] } {
   const lines = text.split("\n").filter(Boolean);
-  const header = lines[0] ? (JSON.parse(lines[0]) as FeaturesHeader) : null;
+  const json = (line: string, n: number): unknown => {
+    try {
+      return JSON.parse(line);
+    } catch {
+      throw new Error(`features: line ${n} is not valid JSON`);
+    }
+  };
+  const header = lines[0] ? (json(lines[0], 1) as FeaturesHeader | null) : null;
   if (!header?.header || typeof header.sourceHash !== "string") {
     throw new Error("features: missing header line");
   }
+  if (header.schema !== 1) throw new Error(`features: unknown schema ${String(header.schema)}`);
+  const counts = header.counts as Partial<FeaturesHeader["counts"]> | undefined;
+  if (typeof counts?.benign !== "number" || typeof counts.phish !== "number") {
+    throw new Error("features: header has no row counts");
+  }
   const rows = lines.slice(1).map((l, i) => {
-    const row = JSON.parse(l) as unknown;
+    const row = json(l, i + 2);
     if (!isRow(row)) throw new Error(`features: malformed row on line ${i + 2}`);
     return row;
   });
+  const tally = (label: FeatureRow["label"]) => rows.filter((r) => r.label === label).length;
+  if (tally("benign") !== counts.benign || tally("phish") !== counts.phish) {
+    throw new Error(
+      `features: rows (${tally("benign")} benign, ${tally("phish")} phish) don't match the header's counts (${counts.benign}, ${counts.phish}); truncated file?`,
+    );
+  }
   return { header, rows };
 }

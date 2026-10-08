@@ -53,7 +53,17 @@ export async function runScore(opts: {
   return failures.length ? 1 : 0;
 }
 
-async function runExtract(values: Record<string, string | boolean | undefined>): Promise<void> {
+export async function runExtract(
+  values: Record<string, string | boolean | undefined>,
+): Promise<number> {
+  // A wrong path must fail loudly, not commit a features file with no benign or phish rows.
+  for (const key of ["benign", "phish"] as const) {
+    const dir = values[key] as string;
+    if (!existsSync(dir) || loadRecords(dir).length === 0) {
+      console.error(`[stage2] no crawl records in --${key} ${dir}`);
+      return 1;
+    }
+  }
   const allowlist = parseAllowlist(
     readFileSync(values.allowlist as string, "utf8"),
     bundledSharedHosts,
@@ -104,6 +114,7 @@ async function runExtract(values: Record<string, string | boolean | undefined>):
   console.log(
     `wrote ${values.out}: ${header.counts.benign} benign, ${header.counts.phish} phish, ${skipped} skipped${keep ? " (phish filtered by --index)" : ""}`,
   );
+  return 0;
 }
 
 if (import.meta.main) {
@@ -125,7 +136,7 @@ if (import.meta.main) {
         out: { type: "string", default: path.join(EVAL, "data", "stage2-features.jsonl") },
       },
     });
-    await runExtract(values);
+    process.exitCode = await runExtract(values);
   } else if (command === "score") {
     const { values } = parseArgs({
       args: rest,

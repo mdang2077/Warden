@@ -94,6 +94,17 @@ describe("featureRow", () => {
     expect(await featureRow(record({}), corpus(null), () => false)).toBe("skip");
   });
 
+  it("handles an IPv6 final URL", async () => {
+    const out = await featureRow(
+      record({ final_url: "http://[2001:db8::1]/login" }),
+      corpus(PHISH_HTML),
+      () => false,
+    );
+    if (!out || out === "skip") throw new Error("expected a row");
+    expect(out.row.url.ipHost).toBe(true);
+    expect(["tune", "holdout"]).toContain(out.row.split);
+  });
+
   it("handles an IP-literal final URL", async () => {
     const out = await featureRow(
       record({ final_url: "http://203.0.113.5/login" }),
@@ -171,5 +182,27 @@ describe("serializeFeatures / parseFeatures", () => {
     expect(() => parseFeatures(`${JSON.stringify(row)}\n`)).toThrow(/header/);
     expect(() => parseFeatures(`${JSON.stringify(header)}\n{"label":"x"}\n`)).toThrow(/line 2/);
     expect(() => parseFeatures("")).toThrow(/header/);
+  });
+
+  it("names the line of a row that isn't valid JSON", () => {
+    expect(() => parseFeatures(`${JSON.stringify(header)}\n{not json\n`)).toThrow(/line 2/);
+  });
+
+  it("rejects an unknown schema or a header without row counts", () => {
+    expect(() => parseFeatures(`${JSON.stringify({ ...header, schema: 2 })}\n`)).toThrow(/schema/);
+    const { counts: _, ...noCounts } = header;
+    expect(() => parseFeatures(`${JSON.stringify(noCounts)}\n`)).toThrow(/counts/);
+  });
+
+  it("rejects an exfil kind it doesn't know", () => {
+    const bad = { ...row, exfil: { kind: "carrierPigeon", ip: false } };
+    expect(() => parseFeatures(serializeFeatures(header, [bad as FeatureRow]))).toThrow(/line 2/);
+    const ok = { ...row, exfil: { kind: "telegram", ip: false } } as FeatureRow;
+    expect(parseFeatures(serializeFeatures(header, [ok])).rows).toEqual([ok]);
+  });
+
+  it("rejects a file whose rows don't add up to the header's counts (truncated)", () => {
+    const two = { ...header, counts: { benign: 2, phish: 0, skipped: 0 } };
+    expect(() => parseFeatures(serializeFeatures(two, [row]))).toThrow(/counts/);
   });
 });

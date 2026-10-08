@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FeatureRow, serializeFeatures, sourceHash } from "./features.ts";
-import { runScore } from "./harness.ts";
+import { runExtract, runScore } from "./harness.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "../../../..");
 const NO_URL = {
@@ -65,5 +65,16 @@ describe("runScore", () => {
     expect(
       await runScore({ features: file, out: path.join(dir, "R.md"), check: true, root: ROOT }),
     ).toBe(1);
+  });
+
+  it("exits 1 when a corpus directory is missing", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "warden-harness-"));
+    const code = await runExtract({
+      benign: path.join(dir, "no-such-benign"),
+      phish: path.join(dir, "no-such-phish"),
+      allowlist: path.join(dir, "tranco.txt"),
+      out: path.join(dir, "f.jsonl"),
+    });
+    expect(code).toBe(1);
   });
 });
