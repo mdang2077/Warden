@@ -26,6 +26,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # S2.11: score the committed Stage 2 features; fails over the 0.1% raw benign warn budget
+      # or when signal code changed without rerunning `harness.ts extract`.
+      - run: node eval/src/stage2/harness.ts score --check --out stage2-out/STAGE2_SCORE.md
 
   e2e:
     runs-on: ubuntu-latest
