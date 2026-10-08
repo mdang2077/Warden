@@ -15,7 +15,7 @@ Warden is built around one rule: **a false positive costs more than a missed phi
   - a brand claimed on a domain the brand doesn't own;
   - credentials sent to a Telegram bot, Discord webhook or form-to-email service;
   - lookalike and brand-keyword domains.
-- **Popup:** shows the current tab's verdict, lets you trust a site, and has the Hijack Guard settings.
+- **Popup:** shows the current tab's verdict and the Hijack Guard settings, lets you trust a site or block it from being opened by other sites, and summarizes the Stage 2 log (login pages seen, pages it would have warned on, and an export).
 
 ### Hijack Guard modes
 
@@ -34,7 +34,7 @@ Each block shows a short notice on the page for about 3 seconds (turn it off in 
 - Safe Browsing lookups send 4-byte hash prefixes to the proxy, which forwards them to Google. Never full URLs.
 - Feed syncs download published blocklist snapshots.
 - No browsing history, telemetry or page content leaves the device.
-- The Stage 2 shadow log stays in local extension storage.
+- The Stage 2 shadow log stays in local extension storage. Full draft policy: [`docs/privacy-policy.md`](docs/privacy-policy.md).
 
 ## Install (unpacked)
 
