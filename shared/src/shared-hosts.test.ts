@@ -179,3 +179,26 @@ describe("non-shared hosts keep normal SB matching", () => {
     expect(matches("http://evil.example/kit/a.html", "http://evil.example/")).toBe(false);
   });
 });
+
+describe("isTenant", () => {
+  const list = loadSharedHosts({
+    version: 1,
+    updated: "2026-10-07",
+    entries: [
+      { pattern: "*.github.io", group: "hosting", kind: "tenant" },
+      { pattern: "docs.google.com", group: "google" },
+    ],
+  });
+
+  it("is true for a tenant subdomain on a tenant platform", () => {
+    expect(list.isTenant("evil.github.io")).toBe(true);
+    expect(list.isTenant("a.b.github.io")).toBe(true);
+  });
+
+  it("is false for the platform apex, www on it, path-shared hosts and other hosts", () => {
+    expect(list.isTenant("github.io")).toBe(false);
+    expect(list.isTenant("www.github.io")).toBe(false);
+    expect(list.isTenant("docs.google.com")).toBe(false);
+    expect(list.isTenant("example.com")).toBe(false);
+  });
+});

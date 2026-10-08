@@ -35,6 +35,8 @@ export interface SharedHostList {
   isShared(host: string): boolean;
   /** True for any host the list covers, tenant subdomains included. Never allowlisted. */
   isListed(host: string): boolean;
+  /** True for a tenant subdomain of a `kind: "tenant"` platform (not the apex, not `www.` on it). */
+  isTenant(host: string): boolean;
   /** True when some shared host is a strict subdomain of `host` (e.g. `googleapis.com`). */
   hasSharedBelow(host: string): boolean;
 }
@@ -86,6 +88,10 @@ export function loadSharedHosts(file: SharedHostsFile): SharedHostList {
     version: file.version,
     isShared,
     isListed: (host) => isShared(host) || tenantApex(host) !== null,
+    isTenant(host) {
+      const apex = tenantApex(host);
+      return apex !== null && host !== `www.${apex}`;
+    },
     hasSharedBelow(host) {
       const tail = `.${host}`;
       for (const set of [exact, suffixes, tenantSuffixes]) {
