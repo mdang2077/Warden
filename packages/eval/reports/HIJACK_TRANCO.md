@@ -4,7 +4,7 @@
 - Tranco list Y83KG, top 100,000.
 - **199 list entries are on Tranco-ranked sites.** 26 are a single subdomain of a bigger site (`try.opera.com`, `paid.outbrain.com`, `track.totalav.com`). Those block only that host, so the rest of the site is unaffected. **173 entries are whole sites**: every page on them is blocked whenever another site opens it, in a new tab or by redirecting the current tab.
 
-Why this matters: EasyList's `$popup` rules only act on new windows, but Warden also blocks same-tab loads that another site starts. So a listed link redirector or affiliate network also breaks ordinary clicks on ordinary sites. The exclusion list `POPUP_NETWORK_EXCLUDES` in `packages/service/src/popup-networks-source.ts` drops entries; it ships empty until you decide.
+Why this matters: EasyList's `$popup` rules only act on new windows, but Warden also blocks same-tab loads that another site starts. So a listed link redirector or affiliate network also breaks ordinary clicks on ordinary sites. The exclusion list `POPUP_NETWORK_EXCLUDES` in `packages/service/src/popup-networks-source.ts` drops entries. **Decided 2026-10-08:** exclude the 7 rows marked "Exclude" below; doubleclick.net and the rest stay blocked.
 
 ## Decide: likely to break ordinary clicks
 

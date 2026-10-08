@@ -45,7 +45,17 @@ export function extractPopupDomains(text: string): string[] {
  * too, not only new windows). Each entry drops the domain and its subdomains. Review list:
  * packages/eval/reports/HIJACK_TRANCO.md (taskboard H4).
  */
-export const POPUP_NETWORK_EXCLUDES: readonly string[] = [];
+export const POPUP_NETWORK_EXCLUDES: readonly string[] = [
+  // Link redirectors and a shortener that ordinary sites send normal outbound links through.
+  "redirectingat.com", // Skimlinks
+  "s.id",
+  // Affiliate networks used by coupon, cashback and review sites.
+  "admitad.com",
+  "adcell.com",
+  "adtraction.com",
+  "postaffiliatepro.com",
+  "webgains.com",
+];
 
 const excludedBy = (excludes: readonly string[]) => (domain: string) =>
   excludes.some((e) => domain === e || domain.endsWith(`.${e}`));

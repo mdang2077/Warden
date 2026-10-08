@@ -89,7 +89,15 @@ describe("excluded domains", () => {
     expect(file.domains).toEqual(["popads.net"]);
   });
 
-  it("ships with no exclusions until they are reviewed (taskboard H4)", () => {
-    expect(POPUP_NETWORK_EXCLUDES).toEqual([]);
+  it("excludes the link redirectors and affiliate networks chosen in the H4 review", () => {
+    expect([...POPUP_NETWORK_EXCLUDES].sort()).toEqual([
+      "adcell.com",
+      "admitad.com",
+      "adtraction.com",
+      "postaffiliatepro.com",
+      "redirectingat.com",
+      "s.id",
+      "webgains.com",
+    ]);
   });
 });
