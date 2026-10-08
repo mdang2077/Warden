@@ -39,10 +39,22 @@
         <p class="hint">
           Warden won't flag this site's login pages. Sites on phishing lists are still blocked.
         </p>
+        <label class="toggle">
+          <span>Block when other sites open this</span>
+          <input type="checkbox" id="toggle-block" />
+        </label>
+        <p class="hint">
+          For junk pages that pop up from other sites. Opening it yourself still works. Don't
+          use it on sign-in or payment sites.
+        </p>
       </section>
       <details id="trusted" class="trusted" hidden>
         <summary id="trusted-summary"></summary>
         <ul id="trusted-list"></ul>
+      </details>
+      <details id="blocked-sites" class="trusted" hidden>
+        <summary id="blocked-sites-summary"></summary>
+        <ul id="blocked-sites-list"></ul>
       </details>
       <details id="shadow" class="trusted shadow" hidden>
         <summary id="shadow-summary"></summary>

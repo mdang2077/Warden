@@ -8,6 +8,7 @@ import {
   siteKey,
   siteMode,
   updatePrefs,
+  withBlocked,
   withSiteMode,
 } from "../../lib/popup-prefs.ts";
 import { blockedView } from "../../lib/popup-view.ts";
@@ -80,6 +81,47 @@ async function renderTrust(site: string | null) {
   await draw();
 }
 
+/** The user's own blocked sites: the per-site checkbox and the list with Remove buttons. */
+async function renderBlockedSites(site: string | null) {
+  const area = browser.storage.local;
+  const toggle = document.getElementById("toggle-block") as HTMLInputElement;
+  const details = document.getElementById("blocked-sites") as HTMLDetailsElement;
+  const summary = document.getElementById("blocked-sites-summary") as HTMLElement;
+  const list = document.getElementById("blocked-sites-list") as HTMLUListElement;
+
+  const draw = async () => {
+    const { blocked } = await readPrefs(area);
+    toggle.checked = site !== null && blocked.includes(site);
+    details.hidden = blocked.length === 0;
+    summary.textContent = `Blocked sites (${blocked.length})`;
+    list.replaceChildren(
+      ...blocked.map((s) => {
+        const li = document.createElement("li");
+        const name = document.createElement("span");
+        name.textContent = s; // textContent only: site names come from web pages
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Remove";
+        remove.setAttribute("aria-label", `Remove ${s}`);
+        remove.addEventListener("click", async () => {
+          await updatePrefs(area, (p) => withBlocked(p, s, false));
+          await draw();
+        });
+        li.append(name, remove);
+        return li;
+      }),
+    );
+  };
+
+  if (site !== null) {
+    toggle.addEventListener("change", async () => {
+      await updatePrefs(area, (p) => withBlocked(p, site, toggle.checked));
+      await draw();
+    });
+  }
+  await draw();
+}
+
 /** Toggles, the per-site popup mode, and the "blocked on this page" list. */
 async function renderControls(
   tab: { id?: number | undefined; url?: string | undefined } | undefined,
@@ -99,6 +141,7 @@ async function renderControls(
 
   const site = tab?.url ? siteKey(tab.url) : null;
   await renderTrust(site);
+  await renderBlockedSites(site);
   if (site === null || tab?.id === undefined) return;
   (document.getElementById("site") as HTMLElement).hidden = false;
   (document.getElementById("site-name") as HTMLElement).textContent = site;

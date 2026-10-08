@@ -64,6 +64,17 @@ Your clicks are only checked in memory for a few seconds. They're never stored a
 
 Allow switches Hijack Guard off for that site, known networks included. Use it if a site's legitimate pop-ups break, and tell us which site so the list can be fixed.
 
+## Your own block list
+
+Some junk pages get through because you really did click something: a fake "Play" or "Download" button that is a genuine link to an ad tracker, which then redirects to a casino or scam page. Warden can't tell that click from a real one, but you can stop the destination for good:
+
+1. On the unwanted page, open the Warden popup.
+2. Tick **Block when other sites open this**.
+
+From then on, whenever any other site opens that site, in a new tab or by redirecting your tab, through any number of redirects, it is blocked before it loads and Warden closes the tab or goes back. It works exactly like a known pop-up network, in Standard and Strict, on every site except those set to Allow. Opening the site yourself (typing it, a bookmark) still works.
+
+Manage the list under **Blocked sites** in the popup; **Remove** unblocks a site. The list is stored only on your device. Don't add sign-in or payment providers: other sites legitimately open those.
+
 ## Seeing what was blocked
 
 The toolbar popup shows **Blocked N on this page**. Expand it to see each blocked destination, whether it was a new tab or a redirect, and how long ago it happened. The list resets when you move to a different site.

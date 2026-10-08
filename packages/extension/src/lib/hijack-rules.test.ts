@@ -1,8 +1,13 @@
 import { loadPopupNetworks } from "@warden/shared/popup-networks";
 import { describe, expect, it, vi } from "vitest";
 import { HIJACK_RULE_IDS } from "./dnr.ts";
-import { compileHijackRules, DOMAINS_PER_RULE, installHijackRules } from "./hijack-rules.ts";
-import { DEFAULT_PREFS, withSiteMode } from "./popup-prefs.ts";
+import {
+  compileHijackRules,
+  DOMAINS_PER_RULE,
+  installHijackRules,
+  withUserBlocks,
+} from "./hijack-rules.ts";
+import { DEFAULT_PREFS, withBlocked, withSiteMode } from "./popup-prefs.ts";
 
 const list = (domains: string[]) =>
   loadPopupNetworks({ version: 1, generatedAt: "", sources: [], domains });
@@ -71,5 +76,23 @@ describe("installHijackRules", () => {
       removeRuleIds: [29_900],
       addRules: rules,
     });
+  });
+});
+
+describe("withUserBlocks", () => {
+  it("adds the user's blocked sites to the network list, subdomains included", () => {
+    const prefs = withBlocked(DEFAULT_PREFS, "casino.example", true);
+    const merged = withUserBlocks(list(["popads.net"]), prefs);
+    expect(merged.domains).toEqual(["casino.example", "popads.net"]);
+    expect(merged.has("www.casino.example")).toBe(true);
+    expect(merged.has("popads.net")).toBe(true);
+    expect(merged.has("example")).toBe(false);
+    const rules = compileHijackRules(merged, prefs);
+    expect(rules[0]?.condition.requestDomains).toEqual(["casino.example", "popads.net"]);
+  });
+
+  it("returns the list unchanged when nothing is blocked", () => {
+    const l = list(["popads.net"]);
+    expect(withUserBlocks(l, DEFAULT_PREFS)).toBe(l);
   });
 });

@@ -1,7 +1,11 @@
 import { createAllowlistStage } from "@warden/shared/allowlist";
 import type { CascadeResult } from "@warden/shared/cascade";
 import { runCascade } from "@warden/shared/cascade";
-import { bundledPopupNetworks, isPopupNetworkUrl } from "@warden/shared/popup-networks";
+import {
+  bundledPopupNetworks,
+  isPopupNetworkUrl,
+  type PopupNetworkList,
+} from "@warden/shared/popup-networks";
 import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/shared-hosts";
 import { createStage1, type LocalLists } from "@warden/shared/stage1";
 import type { NavigationContext, SourceId, Stage } from "@warden/shared/types";
@@ -19,7 +23,7 @@ import { createDnrHealer } from "../lib/dnr-heal.ts";
 import { CASCADE_BUDGET_MS, createNavigationHandler } from "../lib/handler.ts";
 import { createHijackAction, getHijackRecord } from "../lib/hijack-action.ts";
 import { CLICK_WAIT_MS, CLICK_WINDOW_MS, createClickLog, isHijack } from "../lib/hijack-detect.ts";
-import { compileHijackRules, installHijackRules } from "../lib/hijack-rules.ts";
+import { compileHijackRules, installHijackRules, withUserBlocks } from "../lib/hijack-rules.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
@@ -71,10 +75,20 @@ const prefsReady = readPrefs(browser.storage.local).then((p) => {
 });
 const dynamicDnr = browser.declarativeNetRequest as unknown as DnrApi;
 
+/** The synced pop-network list plus the user's blocked sites, rebuilt only when either changes. */
+let merged: { list: PopupNetworkList; blocked: string[]; out: PopupNetworkList } | null = null;
+function popupNetworks(): PopupNetworkList {
+  if (merged?.list !== local.popupNetworks || merged.blocked !== prefs.blocked) {
+    const out = withUserBlocks(local.popupNetworks, prefs);
+    merged = { list: local.popupNetworks, blocked: prefs.blocked, out };
+  }
+  return merged.out;
+}
+
 /** Rebuilds the hijack DNR range from the current list and prefs. */
 async function refreshHijackRules() {
   await Promise.all([localReady, prefsReady]);
-  await installHijackRules(dynamicDnr, compileHijackRules(local.popupNetworks, prefs));
+  await installHijackRules(dynamicDnr, compileHijackRules(popupNetworks(), prefs));
 }
 
 const lists: LocalLists = {
@@ -329,7 +343,7 @@ export default defineBackground({
       void (async () => {
         await Promise.all([localReady, prefsReady]);
         // A blocked pop-network load is not the page the counts belong to.
-        if (isPopupNetworkUrl(local.popupNetworks, d.url)) return;
+        if (isPopupNetworkUrl(popupNetworks(), d.url)) return;
         // Strict mode: a cross-site navigation away from a strict site may be a hijack.
         const before = await getHijackRecord(session, d.tabId);
         const site = before?.siteKey && isStrict(prefs, before.siteKey) ? before.siteKey : null;
@@ -362,7 +376,7 @@ export default defineBackground({
       void (async () => {
         await Promise.all([localReady, prefsReady]);
         // Pop networks are the Standard layer's (DNR) job.
-        if (isPopupNetworkUrl(local.popupNetworks, d.url)) return;
+        if (isPopupNetworkUrl(popupNetworks(), d.url)) return;
         const opener = await hijack.openerOf(d.tabId);
         if (!opener) return;
         const source = await browser.tabs.get(opener.sourceTabId).catch(() => null);
@@ -396,7 +410,7 @@ export default defineBackground({
       isHijack: async (url, tabId) => {
         await Promise.all([localReady, prefsReady]);
         return (
-          prefs.hijack && isPopupNetworkUrl(local.popupNetworks, url) && !browserStarted(tabId, url)
+          prefs.hijack && isPopupNetworkUrl(popupNetworks(), url) && !browserStarted(tabId, url)
         );
       },
       onHijack: async (d) => {

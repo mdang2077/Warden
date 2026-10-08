@@ -21,6 +21,11 @@ export const TEST_PAGES: Record<string, string> = {
     "<script>setTimeout(() => {" +
     ' document.getElementById("loading").style.display = "none";' +
     ' document.getElementById("f").style.display = "block"; }, 1500);</script>',
+  // A page whose button opens an affiliate landing page in a new tab (not a pop network).
+  "/opens-casino":
+    '<!doctype html><title>Video</title><button id="play">Play</button>' +
+    '<script>document.getElementById("play").onclick = () =>' +
+    ' window.open("https://casino.other-test.example/?click_id=1", "_blank");</script>',
   "/chase-login":
     "<!doctype html><title>Chase Online - Sign In</title><h1>Chase Online sign in</h1>" +
     '<form><input name="user"><input type="password" name="pw"><button>Sign in</button></form>',

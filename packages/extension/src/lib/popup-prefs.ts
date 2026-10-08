@@ -4,8 +4,10 @@
  * changes and rebuilds the affected DNR rules immediately.
  *
  * Sites are keyed on the registrable domain of the page the user is on, never on where a
- * popup goes: "Allow popups on this site" is about this site's behavior.
+ * popup goes: "Allow popups on this site" is about this site's behavior. The one exception
+ * is `blocked`: sites the user never wants other sites to open (a personal pop network list).
  */
+import { DOMAIN_PATTERN } from "@warden/shared/popup-networks";
 import { registrableDomain } from "@warden/shared/psl";
 import { shouldEvaluate } from "./navigation.ts";
 import type { KeyValueArea } from "./overrides.ts";
@@ -17,10 +19,12 @@ export interface PopupPrefs {
   hijack: boolean;
   /** "standard" is the default and is never stored. */
   sites: Record<string, "allow" | "strict">;
+  /** Sites blocked whenever another site opens them, like listed pop networks. Sorted. */
+  blocked: string[];
 }
 
 export const PREFS_KEY = "popup_prefs";
-export const DEFAULT_PREFS: PopupPrefs = { phishing: true, hijack: true, sites: {} };
+export const DEFAULT_PREFS: PopupPrefs = { phishing: true, hijack: true, sites: {}, blocked: [] };
 
 /** The per-site key for a page, or null for pages Warden never evaluates. */
 export function siteKey(rawUrl: string): string | null {
@@ -37,10 +41,18 @@ export function normalizePrefs(raw: unknown): PopupPrefs {
       if (mode === "allow" || mode === "strict") sites[site] = mode;
     }
   }
+  const blocked = Array.isArray(r.blocked)
+    ? [
+        ...new Set(
+          r.blocked.filter((d): d is string => typeof d === "string" && DOMAIN_PATTERN.test(d)),
+        ),
+      ].sort()
+    : [];
   return {
     phishing: typeof r.phishing === "boolean" ? r.phishing : DEFAULT_PREFS.phishing,
     hijack: typeof r.hijack === "boolean" ? r.hijack : DEFAULT_PREFS.hijack,
     sites,
+    blocked,
   };
 }
 
@@ -76,4 +88,9 @@ export function sitesWithMode(prefs: PopupPrefs, mode: "allow" | "strict"): stri
 
 export function isStrict(prefs: PopupPrefs, site: string | null): boolean {
   return prefs.hijack && siteMode(prefs, site) === "strict";
+}
+
+export function withBlocked(prefs: PopupPrefs, site: string, blocked: boolean): PopupPrefs {
+  const rest = prefs.blocked.filter((s) => s !== site);
+  return { ...prefs, blocked: blocked ? [...rest, site].sort() : rest };
 }

@@ -140,17 +140,20 @@ button {
   font-size: 0.85rem;
 }
 
-#trusted summary {
+#trusted summary,
+#blocked-sites summary {
   cursor: pointer;
 }
 
-#trusted-list {
+#trusted-list,
+#blocked-sites-list {
   margin: 6px 0 0;
   padding-left: 0;
   list-style: none;
 }
 
-#trusted-list li {
+#trusted-list li,
+#blocked-sites-list li {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -159,7 +162,8 @@ button {
   overflow-wrap: anywhere;
 }
 
-#trusted-list button {
+#trusted-list button,
+#blocked-sites-list button {
   padding: 2px 8px;
   font-size: 0.75rem;
 }

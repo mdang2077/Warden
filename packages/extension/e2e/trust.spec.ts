@@ -91,7 +91,8 @@ test("the popup summarizes the Stage 2 log and lists pages that would have warne
 
   const download = popup.waitForEvent("download");
   await popup.getByRole("button", { name: "Export log" }).click();
-  expect((await download).suggestedFilename()).toMatch(
-    /^warden-shadow-log-\d{4}-\d{2}-\d{2}\.json$/,
-  );
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^warden-shadow-log-\d{4}-\d{2}-\d{2}\.json$/);
+  // Let the download finish so closing the browser doesn't wait on it.
+  expect(await file.path()).toBeTruthy();
 });

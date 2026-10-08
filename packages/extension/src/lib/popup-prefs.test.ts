@@ -9,6 +9,7 @@ import {
   siteMode,
   sitesWithMode,
   updatePrefs,
+  withBlocked,
   withSiteMode,
 } from "./popup-prefs.ts";
 import { memoryArea } from "./test-utils.ts";
@@ -30,7 +31,7 @@ describe("siteKey", () => {
 describe("popup prefs", () => {
   it("defaults to both protections on and no per-site modes", async () => {
     expect(await readPrefs(memoryArea())).toEqual(DEFAULT_PREFS);
-    expect(DEFAULT_PREFS).toEqual({ phishing: true, hijack: true, sites: {} });
+    expect(DEFAULT_PREFS).toEqual({ phishing: true, hijack: true, sites: {}, blocked: [] });
   });
 
   it("drops malformed stored values", () => {
@@ -40,7 +41,7 @@ describe("popup prefs", () => {
         hijack: false,
         sites: { "a.com": "strict", "b.com": "weird", "c.com": "standard" },
       }),
-    ).toEqual({ phishing: true, hijack: false, sites: { "a.com": "strict" } });
+    ).toEqual({ phishing: true, hijack: false, sites: { "a.com": "strict" }, blocked: [] });
     expect(normalizePrefs(null)).toEqual(DEFAULT_PREFS);
   });
 
@@ -69,7 +70,25 @@ describe("popup prefs", () => {
       phishing: false,
       hijack: true,
       sites: { "b.com": "allow" },
+      blocked: [],
     });
     expect(sitesWithMode(await readPrefs(area), "allow")).toEqual(["b.com"]);
+  });
+});
+
+describe("blocked sites", () => {
+  it("keeps a sorted, deduplicated list of valid site names", () => {
+    expect(
+      normalizePrefs({ blocked: ["b.example", "a.example", "a.example", "Not A Site", "x", 3] })
+        .blocked,
+    ).toEqual(["a.example", "b.example"]);
+    expect(normalizePrefs({ blocked: "a.example" }).blocked).toEqual([]);
+  });
+
+  it("adds and removes a site", () => {
+    const on = withBlocked(DEFAULT_PREFS, "casino.example", true);
+    expect(on.blocked).toEqual(["casino.example"]);
+    expect(withBlocked(on, "casino.example", true).blocked).toEqual(["casino.example"]);
+    expect(withBlocked(on, "casino.example", false).blocked).toEqual([]);
   });
 });

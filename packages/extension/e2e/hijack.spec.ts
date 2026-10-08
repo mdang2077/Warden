@@ -191,3 +191,42 @@ test("strict: a visible link that server-redirects to another site still works",
   await page.waitForTimeout(500); // Warden had its chance to send the tab back
   expect(page.url()).toBe("https://cdn.other-test.example/file");
 });
+
+test("blocking a site in the popup stops other sites from opening it, until removed", async ({
+  context,
+  extensionId,
+}) => {
+  await hijackRulesReady(context);
+  const casino = "https://casino.other-test.example/";
+  const landing = await context.newPage();
+  await landing.goto(casino); // typed: a site you open yourself always loads
+  const popup = await context.newPage();
+  await popup.goto(
+    `chrome-extension://${extensionId}/popup.html?tab=${await tabIdFor(context, casino)}`,
+  );
+  await popup.getByLabel("Block when other sites open this").check();
+  await expect(popup.locator("#blocked-sites-list li")).toContainText(["other-test.example"]);
+  const blockedRule = () =>
+    worker(context).evaluate(async () =>
+      (await chrome.declarativeNetRequest.getDynamicRules()).some((r) =>
+        r.condition.requestDomains?.includes("other-test.example"),
+      ),
+    );
+  await expect.poll(blockedRule).toBe(true);
+
+  // Another site opening it: the new tab is closed and counted.
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/opens-casino`);
+  const opened = context.waitForEvent("page");
+  await page.click("#play");
+  const tab = await opened;
+  await expect.poll(() => tab.isClosed()).toBe(true);
+  await expect.poll(() => badgeFor(context, `${STREAM}/opens-casino`)).toBe("1");
+
+  // Removing it from the list lets it open again.
+  await popup.reload();
+  await popup.getByText("Blocked sites (1)").click();
+  await popup.getByRole("button", { name: "Remove other-test.example" }).click();
+  await expect(popup.locator("#blocked-sites-list li")).toHaveCount(0);
+  await expect.poll(blockedRule).toBe(false);
+});

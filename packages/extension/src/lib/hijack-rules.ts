@@ -7,7 +7,7 @@
  *
  * The phishing allowlist is deliberately not an input here.
  */
-import type { PopupNetworkList } from "@warden/shared/popup-networks";
+import { loadPopupNetworks, type PopupNetworkList } from "@warden/shared/popup-networks";
 import { registrableDomain } from "@warden/shared/psl";
 import { type DnrApi, HIJACK_RULE_IDS, replaceRuleRange } from "./dnr.ts";
 import { type PopupPrefs, sitesWithMode } from "./popup-prefs.ts";
@@ -26,6 +26,20 @@ export interface HijackRule {
     domainType: "thirdParty";
     resourceTypes: ["main_frame"];
   };
+}
+
+/**
+ * The network list plus the user's own blocked sites (popup "Block when other sites open
+ * this"), so they get the same blocking, close-or-go-back, and typed-address exception.
+ */
+export function withUserBlocks(list: PopupNetworkList, prefs: PopupPrefs): PopupNetworkList {
+  if (prefs.blocked.length === 0) return list;
+  return loadPopupNetworks({
+    version: list.version,
+    generatedAt: "",
+    sources: [],
+    domains: [...list.domains, ...prefs.blocked],
+  });
 }
 
 export function compileHijackRules(list: PopupNetworkList, prefs: PopupPrefs): HijackRule[] {
