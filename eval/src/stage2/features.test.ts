@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import {
   type FeatureRow,
   featureRow,
   parseFeatures,
+  SIGNAL_SOURCES,
   serializeFeatures,
   sourceHash,
   splitFor,
@@ -101,6 +102,22 @@ describe("featureRow", () => {
     );
     if (!out || out === "skip") throw new Error("expected a row");
     expect(out.row.url.ipHost).toBe(true);
+  });
+});
+
+describe("SIGNAL_SOURCES", () => {
+  it("covers the row extraction, page parsing, interception filter and PSL/DOM library versions", () => {
+    const root = path.resolve(import.meta.dirname, "../../..");
+    for (const s of [
+      "eval/src/stage2/feature-row.ts",
+      "eval/src/stage2/saved-page.ts",
+      "eval/src/crawl/interception.ts",
+      "shared/node_modules/tldts/package.json",
+      "eval/node_modules/happy-dom/package.json",
+    ]) {
+      expect(SIGNAL_SOURCES).toContain(s);
+    }
+    for (const s of SIGNAL_SOURCES) expect(existsSync(path.join(root, s)), s).toBe(true);
   });
 });
 

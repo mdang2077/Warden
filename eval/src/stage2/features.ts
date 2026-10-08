@@ -5,22 +5,13 @@
  * to the signal code that produced it.
  */
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { bundledBrands } from "@warden/shared/brands";
-import { canonicalize } from "@warden/shared/canonicalize";
-import { extractBrandInput, extractExfilScripts } from "@warden/shared/page/extract";
-import { registrableDomain } from "@warden/shared/psl";
-import { bundledSharedHosts } from "@warden/shared/shared-hosts";
-import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
-import { brandMismatch } from "@warden/shared/stage2/brand-mismatch";
-import { scanExfil } from "@warden/shared/stage2/exfil-scan";
-import { type ExfilSignal, exfilSignal } from "@warden/shared/stage2/exfil-signal";
+import type { ExfilSignal } from "@warden/shared/stage2/exfil-signal";
 import type { ScoreInput } from "@warden/shared/stage2/score";
-import { type UrlSignals, urlSignals } from "@warden/shared/stage2/url-signals";
-import type { CrawlRecord } from "../crawl/crawler.ts";
-import { classifyInterception } from "../crawl/interception.ts";
-import { parseSavedPage } from "./saved-page.ts";
+import type { UrlSignals } from "@warden/shared/stage2/url-signals";
+
+export { featureRow, splitFor } from "./feature-row.ts";
 
 export interface FeatureRow {
   label: "benign" | "phish";
@@ -42,7 +33,7 @@ export interface FeaturesHeader {
   counts: { benign: number; phish: number; skipped: number };
 }
 
-/** Files (relative to the repo root) whose contents decide signal values. Not score.ts. */
+/** Files (relative to the repo root) whose contents decide feature values. Not score.ts. */
 export const SIGNAL_SOURCES: readonly string[] = [
   "shared/src/page",
   "shared/src/stage2",
@@ -52,6 +43,13 @@ export const SIGNAL_SOURCES: readonly string[] = [
   "shared/src/shared-hosts.json",
   "shared/src/psl.ts",
   "shared/src/canonicalize.ts",
+  // Which pages become rows and how their values are computed.
+  "eval/src/stage2/feature-row.ts",
+  "eval/src/stage2/saved-page.ts",
+  "eval/src/crawl/interception.ts",
+  // Library versions that change values: the PSL (registrable domains) and the HTML parser.
+  "shared/node_modules/tldts/package.json",
+  "eval/node_modules/happy-dom/package.json",
 ];
 
 const counted = (f: string) =>
@@ -70,53 +68,6 @@ export function sourceHash(root: string, sources: readonly string[] = SIGNAL_SOU
   const h = createHash("sha256");
   for (const f of files.sort()) h.update(`${f}\0${readFileSync(path.join(root, f), "utf8")}\0`);
   return h.digest("hex");
-}
-
-/** ~30% of sites held out; every page of one site lands in the same split. */
-export function splitFor(host: string): "tune" | "holdout" {
-  const site = registrableDomain(host) ?? host;
-  return (createHash("sha256").update(site).digest()[0] ?? 0) < 77 ? "holdout" : "tune";
-}
-
-export async function featureRow(
-  r: CrawlRecord,
-  dir: string,
-  allowlisted: (host: string) => boolean,
-): Promise<{ row: FeatureRow; host: string } | "skip" | null> {
-  if (!r.ok || !r.snapshot || classifyInterception(r)) return null;
-  const identifier = !r.gated && (r.snapshot.identifierFields ?? 0) > 0;
-  if (!r.gated && !identifier) return null;
-  const file = path.join(dir, r.id, "page.html");
-  if (!existsSync(file)) return "skip";
-  const raw = r.final_url ?? r.url;
-  const canon = canonicalize(raw);
-  const host = canon?.host ?? new URL(raw).hostname;
-  let input: ReturnType<typeof extractBrandInput>;
-  let scripts: ReturnType<typeof extractExfilScripts>;
-  try {
-    const page = parseSavedPage(readFileSync(file, "utf8"), raw);
-    input = extractBrandInput(page.doc);
-    scripts = extractExfilScripts(page.doc);
-    await page.close();
-  } catch {
-    return "skip";
-  }
-  const brands = bundledBrands;
-  const claim = brands ? detectBrandClaim(input, brands) : null;
-  return {
-    host,
-    row: {
-      label: r.label,
-      group: r.group,
-      split: splitFor(host),
-      gated: r.gated,
-      allowlisted: allowlisted(host),
-      brandMismatch:
-        claim && brands && brandMismatch(claim, host, brands) ? { cues: claim.cues.length } : null,
-      exfil: exfilSignal(scanExfil({ forms: input.forms, ...scripts }), host),
-      url: urlSignals(canon, brands, bundledSharedHosts),
-    },
-  };
 }
 
 /** `eligible` defaults to "not allowlisted" (no user trust in the eval). */
