@@ -31,11 +31,10 @@ export const TEST_PAGES: Record<string, string> = {
   "/tracker-link":
     '<!doctype html><title>Video</title><a id="go" target="_blank"' +
     ' href="https://track.other-test.example/hop">Watch now</a>',
-  // The 1 s delay keeps this past strict mode's new-tab check (an immediate hop can race it
-  // and get closed; see taskboard H8).
+  // Hops immediately: strict mode must not mistake this for a second, unclicked pop-up.
   "/hop":
     "<!doctype html><title>Loading</title>" +
-    '<script>setTimeout(() => location.replace("https://casino.third-test.example/"), 1000);</script>',
+    '<script>location.replace("https://casino.third-test.example/");</script>',
   // Starts a file download from another site on load, with no click (H9).
   "/forced-download":
     "<!doctype html><title>Video</title><p>Loading…</p>" +

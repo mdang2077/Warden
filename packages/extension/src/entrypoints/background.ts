@@ -213,6 +213,11 @@ export default defineBackground({
     const clicks = createClickLog();
     // Log-only experiments (H8, H9): what stricter rules would have blocked.
     const redirectWatch = createRedirectWatch();
+    // Tabs that have committed a web page. Strict mode's "new tab" check only judges a tab's
+    // first navigation; recorded synchronously at commit, because the opener record is
+    // cleared asynchronously and a page that redirects at once could otherwise be mistaken
+    // for a second, unclicked pop-up and closed (taskboard H8).
+    const committedTabs = new Set<number>();
     const logExperiment = (entry: Parameters<typeof appendExperiment>[1]) =>
       appendExperiment(browser.storage.local, entry).catch(logHijackError);
     const strictSite = (url: string | undefined) => {
@@ -250,6 +255,7 @@ export default defineBackground({
       clicks.forget(tabId);
       notices.forgetTab(tabId);
       redirectWatch.forget(tabId);
+      committedTabs.delete(tabId);
     });
 
     // Stage 2 shadow mode: the content script reports secret-entry surfaces; nothing is shown.
@@ -368,6 +374,7 @@ export default defineBackground({
     });
     browser.webNavigation.onCommitted.addListener((d) => {
       if (d.frameId !== 0) return;
+      if (/^https?:/i.test(d.url)) committedTabs.add(d.tabId);
       void (async () => {
         await Promise.all([localReady, prefsReady]);
         const experiment = redirectWatch.onCommit(d.tabId, d.url, d.transitionQualifiers);
@@ -411,6 +418,8 @@ export default defineBackground({
         await Promise.all([localReady, prefsReady]);
         // Pop networks are the Standard layer's (DNR) job.
         if (isPopupNetworkUrl(popupNetworks(), d.url)) return;
+        // Only a tab's first page counts as "a new tab"; later hops are the H8 experiment's.
+        if (committedTabs.has(d.tabId)) return;
         const opener = await hijack.openerOf(d.tabId);
         if (!opener) return;
         const source = await browser.tabs.get(opener.sourceTabId).catch(() => null);
