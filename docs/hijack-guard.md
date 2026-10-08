@@ -75,4 +75,4 @@ Hijack Guard and phishing protection are separate:
 - A hijack block never shows the red phishing warning page.
 - If a pop-up or redirect lands on a known **phishing** page, the phishing warning still appears as usual.
 
-For the design details, see [`superpowers/specs/2026-10-06-hijack-guard-design.md`](superpowers/specs/2026-10-06-hijack-guard-design.md).
+For the design details, see [`design/2026-10-06-hijack-guard-design.md`](design/2026-10-06-hijack-guard-design.md).
