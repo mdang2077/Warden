@@ -25,6 +25,8 @@ function input(now: number, openphish: CleanEntry[], config: FeedConfig = DEFAUL
     allowlistText: "google.com\n",
     sharedHosts: sharedHostsFile,
     popupNetworks: bundledPopupNetworksFile,
+    // These tests exercise publishing mechanics with OpenPhish data, as a dev run would.
+    includeEvalOnly: true,
   };
 }
 
@@ -118,5 +120,30 @@ describe("publish", () => {
     expect(deltaChain(manifest, manifest.deltas[0]?.from as number)).toHaveLength(MAX_DELTAS);
     expect(await store.list("v1/deltas/")).toHaveLength(MAX_DELTAS);
     expect((await store.list("v1/snapshots/")).length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("publish: feed distribution (T4b.2)", () => {
+  const both: FeedConfig = {
+    ...DEFAULT_FEED_CONFIG,
+    openphish: { enabled: true, tier: "A" },
+    phishing_database: { enabled: true, tier: "B" },
+  };
+
+  it("leaves eval-only feeds out of a production snapshot, even when enabled", async () => {
+    const store = memoryStore();
+    const { includeEvalOnly: _, ...prod } = input(100, [entry("aa")], both);
+    const out = await publish(store, prod);
+    const snapshot = await getJson<Snapshot>(store, out.manifest.snapshot.key);
+    expect(snapshot?.feeds.openphish).toBeUndefined();
+    expect(snapshot?.feeds.phishing_database?.map((e) => e.hash)).toEqual(["bb"]);
+    expect([...store.data.values()].some((v) => v.includes('"aa"'))).toBe(false);
+  });
+
+  it("includes them only when asked to (dev feeds)", async () => {
+    const store = memoryStore();
+    const out = await publish(store, { ...input(100, [entry("aa")], both), includeEvalOnly: true });
+    const snapshot = await getJson<Snapshot>(store, out.manifest.snapshot.key);
+    expect(snapshot?.feeds.openphish?.map((e) => e.hash)).toEqual(["aa"]);
   });
 });

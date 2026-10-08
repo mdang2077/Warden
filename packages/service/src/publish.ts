@@ -7,6 +7,7 @@
  */
 import {
   type Delta,
+  FEED_DISTRIBUTION,
   type FeedDelta,
   FORMAT_SCHEMA,
   type Manifest,
@@ -33,6 +34,8 @@ export interface PublishInput {
   allowlistText: string;
   sharedHosts: SharedHostsFile;
   popupNetworks: PopupNetworksFile;
+  /** Publish `eval_only` feeds too. Only for a dev run (WARDEN_DEV_FEEDS=1), never in production. */
+  includeEvalOnly?: boolean;
 }
 
 export interface PublishOutcome {
@@ -46,6 +49,7 @@ export async function publish(store: BlobStore, input: PublishInput): Promise<Pu
 
   const feeds: Snapshot["feeds"] = {};
   for (const feed of enabledFeeds(input.config)) {
+    if (FEED_DISTRIBUTION[feed] !== "shippable" && !input.includeEvalOnly) continue;
     feeds[feed] = (input.feeds[feed] ?? []).map(toPublished).sort(byHash);
   }
 

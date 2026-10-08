@@ -84,12 +84,13 @@ Secrets and variables:
 | `SB_API_KEY` | Google Safe Browsing API key |
 | `ADMIN_TOKEN` | Optional. Enables `/admin/config` |
 | `ALERT_WEBHOOK_URL` | Optional. Feed-quality alerts |
+| `WARDEN_DEV_FEEDS` | Local/personal runs only. `1` also publishes feeds whose terms forbid redistribution (OpenPhish, PhishStats), under a separate `dev/` storage prefix. Never set it on a public deployment |
 
 Run it locally (put secrets in `packages/service/.dev.vars`):
 
 ```bash
 cd packages/service
-pnpm exec wrangler dev --test-scheduled                  # serves http://127.0.0.1:8787
+pnpm exec wrangler dev --test-scheduled --var WARDEN_DEV_FEEDS:1   # serves http://127.0.0.1:8787
 curl "http://127.0.0.1:8787/__scheduled?cron=17+*+*+*+*"  # run the pipeline once
 ```
 
@@ -97,7 +98,7 @@ Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To r
 
 Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
 
-> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a public deployment shouldn't ship them to users. Safe Browsing and Phishing.Database (MIT) are fine. See Phase 4b in [`docs/taskboard.md`](docs/taskboard.md).
+> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship. See Phase 4b in [`docs/taskboard.md`](docs/taskboard.md).
 
 ## Development
 

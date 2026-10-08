@@ -8,6 +8,18 @@ import type { FeedId, FeedTier } from "./types.ts";
 
 export const FORMAT_SCHEMA = 1;
 
+/**
+ * Whether a feed's data may reach users at all, fixed in code so remote config can't
+ * change it. OpenPhish and PhishStats terms forbid redistributing their data (derived
+ * hashes included): they are ingested for evaluation and the quality log only, and are
+ * published only by a dev run (WARDEN_DEV_FEEDS=1) under a separate storage prefix.
+ */
+export const FEED_DISTRIBUTION: Readonly<Record<FeedId, "shippable" | "eval_only">> = {
+  openphish: "eval_only",
+  phishing_database: "shippable",
+  phishstats: "eval_only",
+};
+
 export interface FeedSettings {
   enabled: boolean;
   tier: FeedTier;

@@ -35,9 +35,14 @@ function fakeFetch(openphishBody = OPENPHISH) {
 }
 
 describe("runPipeline", () => {
-  it("ingests, cleans, publishes, and logs quality", async () => {
+  it("ingests, cleans, publishes, and logs quality (dev feeds)", async () => {
     const store = memoryStore();
-    const log = await runPipeline({ store, fetch: fakeFetch() as typeof fetch, now: 1_000 });
+    const log = await runPipeline({
+      store,
+      fetch: fakeFetch() as typeof fetch,
+      now: 1_000,
+      devFeeds: true,
+    });
 
     expect(log.published).toBe(true);
     expect(log.feeds.openphish).toMatchObject({
@@ -55,6 +60,15 @@ describe("runPipeline", () => {
     expect(Object.keys(snapshot?.feeds ?? {})).toEqual(["openphish"]);
     // EasyList answers 404 in the fake fetch, so the bundled list is published.
     expect(manifest.popupNetworks?.version).toBe(1);
+  });
+
+  it("in production, still ingests and logs OpenPhish but never publishes it", async () => {
+    const store = memoryStore();
+    const log = await runPipeline({ store, fetch: fakeFetch() as typeof fetch, now: 1_000 });
+    expect(log.feeds.openphish).toMatchObject({ ingested: 4, kept: 2 });
+    const manifest = (await getJson<Manifest>(store, MANIFEST_KEY)) as Manifest;
+    const snapshot = await getJson<Snapshot>(store, manifest.snapshot.key);
+    expect(snapshot?.feeds).toEqual({});
   });
 
   it("publishes nothing without an allowlist", async () => {

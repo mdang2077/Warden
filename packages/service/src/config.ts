@@ -40,7 +40,8 @@ export async function loadConfig(store: BlobStore): Promise<FeedConfig> {
   try {
     return normalizeConfig(await getJson(store, CONFIG_KEY));
   } catch {
-    // Unreadable config: defaults (OpenPhish only) are the conservative choice.
+    // Unreadable config: the defaults. In production they publish no feed entries at all
+    // (OpenPhish is eval-only, Tier B feeds start disabled), leaving Safe Browsing alone.
     return normalizeConfig(null);
   }
 }

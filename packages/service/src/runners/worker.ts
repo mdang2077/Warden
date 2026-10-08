@@ -1,7 +1,13 @@
-/** Cloudflare Worker entry: HTTP routes plus the hourly cron that runs the pipeline. */
+/**
+ * Cloudflare Worker entry: HTTP routes plus the hourly cron that runs the pipeline.
+ * WARDEN_DEV_FEEDS=1 (local dev only, e.g. `wrangler dev --var WARDEN_DEV_FEEDS:1`) also
+ * publishes eval-only feeds such as OpenPhish, reading and writing under `dev/` so that data
+ * can never be served from the production keys.
+ */
 import { handleRequest } from "../app.ts";
 import { runPipeline } from "../run.ts";
 import type { RateLimiter } from "../sb-proxy.ts";
+import { type BlobStore, prefixedStore } from "../storage.ts";
 import { r2Store } from "./r2-store.ts";
 
 export interface Env {
@@ -10,12 +16,17 @@ export interface Env {
   SB_API_KEY?: string;
   ADMIN_TOKEN?: string;
   ALERT_WEBHOOK_URL?: string;
+  WARDEN_DEV_FEEDS?: string;
 }
+
+const devFeeds = (env: Env) => env.WARDEN_DEV_FEEDS === "1";
+const storeFor = (env: Env): BlobStore =>
+  devFeeds(env) ? prefixedStore(r2Store(env.FEEDS), "dev/") : r2Store(env.FEEDS);
 
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
     return handleRequest(request, {
-      store: r2Store(env.FEEDS),
+      store: storeFor(env),
       fetch,
       sbApiKey: env.SB_API_KEY,
       sbLimiter: env.SB_RATE_LIMITER,
@@ -26,9 +37,10 @@ export default {
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       runPipeline({
-        store: r2Store(env.FEEDS),
+        store: storeFor(env),
         fetch,
         now: Date.now(),
+        devFeeds: devFeeds(env),
         ...(env.ALERT_WEBHOOK_URL ? { alertWebhook: env.ALERT_WEBHOOK_URL } : {}),
       }).then((log) =>
         console.log(

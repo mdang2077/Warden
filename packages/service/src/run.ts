@@ -32,6 +32,8 @@ export interface RunOptions {
   ingestors?: Record<FeedId, Ingestor>;
   /** Optional webhook that receives `{ text }` for each alert. */
   alertWebhook?: string;
+  /** Publish `eval_only` feeds too (WARDEN_DEV_FEEDS=1; the store must be the dev prefix). */
+  devFeeds?: boolean;
 }
 
 export async function runPipeline(options: RunOptions): Promise<QualityLog> {
@@ -88,6 +90,7 @@ export async function runPipeline(options: RunOptions): Promise<QualityLog> {
     allowlistText: allowlistOut.text,
     sharedHosts: bundledSharedHostsFile,
     popupNetworks: popupOut.file ?? bundledPopupNetworksFile,
+    includeEvalOnly: options.devFeeds ?? false,
   });
   log.published = published.published;
   log.version = published.manifest.version;

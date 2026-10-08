@@ -39,3 +39,13 @@ export function memoryStore(): BlobStore & { data: Map<string, string> } {
     },
   };
 }
+
+/** A view of `store` with every key under `prefix` (the dev run's separate area). */
+export function prefixedStore(store: BlobStore, prefix: string): BlobStore {
+  return {
+    get: (key) => store.get(prefix + key),
+    put: (key, body, contentType) => store.put(prefix + key, body, contentType),
+    list: async (p) => (await store.list(prefix + p)).map((k) => k.slice(prefix.length)),
+    delete: (key) => store.delete(prefix + key),
+  };
+}

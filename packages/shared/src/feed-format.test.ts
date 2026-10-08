@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deltaChain, type Manifest } from "./feed-format.ts";
+import { deltaChain, FEED_DISTRIBUTION, type Manifest } from "./feed-format.ts";
 
 function manifest(version: number, deltas: [number, number][]): Manifest {
   const ref = { key: "k", sha256: "s" };
@@ -48,5 +48,15 @@ describe("deltaChain", () => {
       ),
     ).toBeNull();
     expect(deltaChain(manifest(50, [[10, 20]]), 10)).toBeNull();
+  });
+});
+
+describe("FEED_DISTRIBUTION", () => {
+  it("keeps feeds whose terms forbid redistribution out of what users download", () => {
+    expect(FEED_DISTRIBUTION).toEqual({
+      openphish: "eval_only",
+      phishstats: "eval_only",
+      phishing_database: "shippable",
+    });
   });
 });
