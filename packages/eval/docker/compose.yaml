@@ -1,0 +1,34 @@
+# Hardened phish crawler. Crawled pages are live phishing sites running real JavaScript:
+# Chromium's sandbox (enabled by the crawler, allowed by seccomp_profile.json) is the first
+# barrier, this container the second.
+#
+#   docker compose -f packages/eval/docker/compose.yaml up -d --build
+#   docker compose -f packages/eval/docker/compose.yaml logs -f
+services:
+  crawler:
+    build:
+      context: ../../..
+      dockerfile: packages/eval/docker/Dockerfile
+    command: ["--interval", "30"]
+    volumes:
+      # Feed history (feeds/) and the crawl corpus (crawl/) land here on the host.
+      - ../corpora/docker:/data
+    user: "10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+      - /home/crawler:size=256m
+    shm_size: 1g
+    cap_drop: [ALL]
+    # Only so the seccomp profile permits chroot(), which Chromium's sandbox calls inside its
+    # own user namespace. The crawler runs non-root with no-new-privileges, so it holds no
+    # effective capabilities in the container itself.
+    cap_add: [SYS_CHROOT]
+    security_opt:
+      - no-new-privileges:true
+      # Playwright's published profile: Docker's default plus the namespace syscalls
+      # Chromium's sandbox needs. Anything needing CAP_SYS_ADMIN stays blocked.
+      - seccomp=./seccomp_profile.json
+    mem_limit: 2g
+    pids_limit: 512
+    restart: unless-stopped

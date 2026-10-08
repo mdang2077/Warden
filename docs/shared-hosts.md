@@ -1,6 +1,6 @@
 # Shared-host list
 
-`shared/src/shared-hosts.json` lists hosts where many unrelated people publish content under
+`packages/shared/src/shared-hosts.json` lists hosts where many unrelated people publish content under
 one domain. A phishing report for one user's content says nothing about the rest. Each entry
 has a `kind`.
 
@@ -40,8 +40,8 @@ phish hosted there.
    - `*.example.com` matches `example.com` and every subdomain. `tenant` requires this form.
    - Patterns are lowercase hostnames; no paths, ports, or wildcards in the middle.
 2. Bump `version` and set `updated` to today's date.
-3. Add a case to `shared/src/shared-hosts.test.ts` if the host needs one.
-4. Run the Phase 4 eval (`node eval/src/cli.ts`) and note the change in recall and benign flags.
+3. Add a case to `packages/shared/src/shared-hosts.test.ts` if the host needs one.
+4. Run the Phase 4 eval (`node packages/eval/src/cli.ts`) and note the change in recall and benign flags.
 
 When unsure between kinds, choose `path`: it costs recall, never a false positive. When unsure
 whether to list a host at all, list it.

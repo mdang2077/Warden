@@ -1,9 +1,0 @@
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    // Shared code runs in the extension, Cloudflare Workers, and Node. DOM gives the
-    // common web globals (setTimeout, performance, crypto.subtle, URL) without Node types.
-    "lib": ["ES2022", "DOM"]
-  },
-  "include": ["src", "test"]
-}

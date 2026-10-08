@@ -1,0 +1,10 @@
+**/node_modules
+**/.output
+**/.wxt
+**/.wrangler
+.git
+packages/eval/corpora
+packages/eval/reports
+packages/service/out
+packages/extension/test-results
+packages/extension/playwright-report

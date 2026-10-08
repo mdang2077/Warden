@@ -9,7 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p shared && tsc -p extension && tsc -p service && tsc -p eval",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/extension && tsc -p packages/service && tsc -p packages/eval",
     "lint": "biome check .",
     "format": "biome format --write ."
   },

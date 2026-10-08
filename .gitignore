@@ -7,9 +7,9 @@ coverage/
 .dev.vars
 *.log
 .DS_Store
-eval/corpora/
+packages/eval/corpora/
 playwright-report/
 test-results/
-service/out/
+packages/service/out/
 .worktrees/
 .superpowers/

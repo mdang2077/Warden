@@ -3,7 +3,7 @@
 A false positive (warning on or blocking a legitimate site) costs more than a missed phish.
 Users who see bogus warnings learn to click through them, and then the real warnings stop working.
 This document turns that principle into numbers and rules. Code enforces the rules in
-`shared/risk.ts`, and the Phase 4 harness measures the numbers.
+`packages/shared/risk.ts`, and the Phase 4 harness measures the numbers.
 
 When in doubt: don't warn.
 
@@ -37,7 +37,7 @@ A `block` ends the cascade. An allowlist hit doesn't end it outright: it is reco
 
 ## 3. Block-authority table
 
-Each source has a **maximum decision** it may emit. `shared/risk.ts` clamps anything higher
+Each source has a **maximum decision** it may emit. `packages/shared/risk.ts` clamps anything higher
 down to the cap, and unit tests cover the clamping.
 
 | Source | Max decision | Notes |
@@ -70,7 +70,7 @@ down to the cap, and unit tests cover the clamping.
 
 ## 6. Matching rules
 
-- URLs are canonicalized the Safe Browsing way, in `shared/`, so the service and the extension
+- URLs are canonicalized the Safe Browsing way, in `packages/shared/`, so the service and the extension
   produce identical results.
 - Matching is URL / path-prefix (SB host-suffix × path-prefix expressions).
 - Host-level matching is allowed **only** when the feed entry is a bare host **and** its

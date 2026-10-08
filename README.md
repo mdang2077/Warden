@@ -42,14 +42,14 @@ You need Node 22+ and pnpm. The repo pins pnpm 10.34.6. With Corepack, run `core
 
 ```bash
 pnpm install
-cd extension
-pnpm build                  # writes extension/.output/chrome-mv3/
+cd packages/extension
+pnpm build                  # writes packages/extension/.output/chrome-mv3/
 ```
 
 Then in Chrome:
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select `extension/.output/chrome-mv3`. In the macOS file picker, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> to show the hidden `.output` folder.
+2. Click **Load unpacked** and select `packages/extension/.output/chrome-mv3`. In the macOS file picker, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> to show the hidden `.output` folder.
 
 After rebuilding, click the reload icon on Warden's card. For live reloading, run `pnpm dev`, which starts a separate Chrome profile with Warden loaded.
 
@@ -63,7 +63,7 @@ WXT_FEED_SERVICE_URL=https://warden-feeds.<subdomain>.workers.dev pnpm build
 
 ## Feed service
 
-`service/` is a Cloudflare Worker with a cron trigger and an R2 bucket. Every hour it:
+`packages/service/` is a Cloudflare Worker with a cron trigger and an R2 bucket. Every hour it:
 
 1. ingests the phishing feeds;
 2. cleans them against the allowlist and the shared-host list;
@@ -85,19 +85,19 @@ Secrets and variables:
 | `ADMIN_TOKEN` | Optional. Enables `/admin/config` |
 | `ALERT_WEBHOOK_URL` | Optional. Feed-quality alerts |
 
-Run it locally (put secrets in `service/.dev.vars`):
+Run it locally (put secrets in `packages/service/.dev.vars`):
 
 ```bash
-cd service
+cd packages/service
 pnpm exec wrangler dev --test-scheduled                  # serves http://127.0.0.1:8787
 curl "http://127.0.0.1:8787/__scheduled?cron=17+*+*+*+*"  # run the pipeline once
 ```
 
-Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To run the pipeline once into a local directory without the Worker, use `node service/src/runners/cli.ts [outDir]`.
+Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To run the pipeline once into a local directory without the Worker, use `node packages/service/src/runners/cli.ts [outDir]`.
 
-Deploy with `pnpm run deploy` from `service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
+Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
 
-> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a public deployment shouldn't ship them to users. Safe Browsing and Phishing.Database (MIT) are fine. See Phase 4b in [`taskboard.md`](taskboard.md).
+> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a public deployment shouldn't ship them to users. Safe Browsing and Phishing.Database (MIT) are fine. See Phase 4b in [`docs/taskboard.md`](docs/taskboard.md).
 
 ## Development
 
@@ -111,27 +111,27 @@ pnpm --filter @warden/extension e2e   # Playwright: loads the unpacked extension
 
 ### Evaluation
 
-`eval/` measures false positives and recall with the shipping code:
+`packages/eval/` measures false positives and recall with the shipping code:
 
-- `node eval/src/cli.ts` runs the **Stage 1** gate: any benign block among the Tranco top 100k plus curated login pages fails CI.
-- `node eval/src/stage2/harness.ts extract|score` runs the **Stage 2** harness:
-  - `extract` re-runs the signals over crawled login pages and writes `eval/data/stage2-features.jsonl` (signal values only, no URLs).
+- `node packages/eval/src/cli.ts` runs the **Stage 1** gate: any benign block among the Tranco top 100k plus curated login pages fails CI.
+- `node packages/eval/src/stage2/harness.ts extract|score` runs the **Stage 2** harness:
+  - `extract` re-runs the signals over crawled login pages and writes `packages/eval/data/stage2-features.jsonl` (signal values only, no URLs).
   - `score --check` fails CI if the benign warn-candidate rate exceeds 0.1%.
-- The crawler for building corpora is described in [`docs/crawler.md`](docs/crawler.md). Run phishing crawls only in the hardened Docker setup (`docker/crawler/`).
+- The crawler for building corpora is described in [`docs/crawler.md`](docs/crawler.md). Run phishing crawls only in the hardened Docker setup (`packages/eval/docker/`).
 
-Reports live in [`eval/reports/`](eval/reports/).
+Reports live in [`packages/eval/reports/`](packages/eval/reports/).
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `extension/` | The MV3 extension (WXT): background service worker, content scripts, popup, warning page |
-| `shared/` | Code used by the extension, service and eval: URL canonicalization, PSL, cascade and risk caps, Stage 2 signals and scoring |
-| `service/` | Feed aggregation Worker and Safe Browsing proxy |
-| `eval/` | FP/recall harnesses, crawler, reports |
-| `docker/` | Hardened container for crawling live phishing pages |
-| `docs/` | FP policy, shared-host list guide, crawler notes, design specs and plans |
-| `PLAN.md`, `taskboard.md` | Design plan and task status |
+| `packages/extension/` | The MV3 extension (WXT): background service worker, content scripts, popup, warning page |
+| `packages/shared/` | Code used by the extension, service and eval: URL canonicalization, PSL, cascade and risk caps, Stage 2 signals and scoring |
+| `packages/service/` | Feed aggregation Worker and Safe Browsing proxy |
+| `packages/eval/` | FP/recall harnesses, crawler, reports |
+| `packages/eval/docker/` | Hardened container for crawling live phishing pages |
+| `docs/` | Design plan (`PLAN.md`), task status (`taskboard.md`), FP policy, Hijack Guard guide, shared-host and crawler notes |
+| `docs/design/` | Design specs |
 
 ## License
 
