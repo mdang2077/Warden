@@ -165,8 +165,9 @@ export function urlSignals(
   if (IPV4.test(host) || host.startsWith("[")) return { ...NO_URL_SIGNALS, ipHost: true };
 
   const site = registrableDomain(host);
+  // Per brand: PayPal phish on Google Sites is still a PayPal claim; only the owner is skipped.
   const owner = brands?.ownerOf(host);
-  const candidates = owner ? [] : contextFree(brands);
+  const candidates = contextFree(brands).filter((b) => b !== owner);
 
   const label = site ? siteLabel(site) : "";
   const lookalike = candidates.some((b) =>
@@ -188,7 +189,11 @@ export function urlSignals(
       : suffix && host.endsWith(`.${suffix}`)
         ? host.slice(0, -suffix.length - 1)
         : host;
-  const tokens = new Set(`${hostWords}/${url.path.toLowerCase()}`.split(/[./_-]+/).filter(Boolean));
+  const words = (text: string) => text.split(/[./_-]+/).filter(Boolean);
+  const pathTokens = new Set(words(url.path.toLowerCase()));
+  // On a brand's own site the subdomain is a tenant name the brand assigned to a customer
+  // (`spotify.okta.com`), so only the path can carry another brand's name there.
+  const tokens = owner ? pathTokens : new Set([...words(hostWords), ...pathTokens]);
   const brandKeyword = candidates.some((b) =>
     b.aliases.some((a) => a.length >= MIN_KEYWORD && /^[a-z0-9]+$/.test(a) && tokens.has(a)),
   );

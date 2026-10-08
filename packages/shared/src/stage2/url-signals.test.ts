@@ -16,6 +16,9 @@ const brands = loadBrands({
     },
     { id: "chase", name: "Chase", aliases: ["chase"], domains: ["chase.com"], needsContext: true },
     { id: "usbank", name: "U.S. Bank", aliases: ["usbank"], domains: ["usbank.com"] },
+    { id: "google", name: "Google", aliases: ["google", "gmail"], domains: ["google.com"] },
+    { id: "okta", name: "Okta", aliases: ["okta"], domains: ["okta.com"] },
+    { id: "spotify", name: "Spotify", aliases: ["spotify"], domains: ["spotify.com"] },
   ],
 });
 const shared = loadSharedHosts({
@@ -73,6 +76,17 @@ describe("urlSignals", () => {
     expect(sig("https://example.com/office/365").brandKeyword).toBe(false);
     expect(sig("https://example.com/chase/login").brandKeyword).toBe(false);
     expect(sig("https://example.com/microsoft365").brandKeyword).toBe(false); // whole tokens only
+  });
+
+  it("checks other brands on a brand's own site, but never the owner itself", () => {
+    expect(sig("https://sites.google.com/view/paypal-login").brandKeyword).toBe(true);
+    expect(sig("https://sites.google.com/view/google-login").brandKeyword).toBe(false);
+    expect(sig("https://www.paypal.com/paypal/login").brandKeyword).toBe(false);
+  });
+
+  it("ignores company names in tenant subdomains of a brand's own platform (SSO tenants)", () => {
+    expect(sig("https://spotify.okta.com/app/spotifyprod/sso/saml").brandKeyword).toBe(false);
+    expect(sig("https://spotify.okta.com/paypal/login").brandKeyword).toBe(true); // path still counts
   });
 
   it("ignores the platform's own name on shared and tenant platforms", () => {
