@@ -30,7 +30,16 @@
         "skype.com",
         "xbox.com",
         "bing.com",
-        "microsoft365.com"
+        "microsoft365.com",
+        "microsoft.us",
+        "microsoft.net",
+        "microsoft.ai",
+        "microsoft-int.com",
+        "microsoft-falcon.net",
+        "s-microsoft.com",
+        "office365.us",
+        "office365-net.us",
+        "onedrive.us"
       ],
       "contextAliases": ["outlook"]
     },
@@ -47,7 +56,206 @@
         "google.de",
         "google.fr",
         "google.co.in",
-        "google.com.br"
+        "google.com.br",
+        "google-analytics.com",
+        "google.cn",
+        "google.com.hk",
+        "google.ca",
+        "google.co.jp",
+        "google.nl",
+        "google.it",
+        "google.ru",
+        "google.es",
+        "google.co.id",
+        "google.com.au",
+        "google.us",
+        "google.pl",
+        "google.at",
+        "google.be",
+        "google.com.tw",
+        "google.ch",
+        "google.com.mx",
+        "google.com.tr",
+        "google.com.ua",
+        "google.se",
+        "google.co.il",
+        "google.co.th",
+        "google.com.ar",
+        "google.com.sg",
+        "google.co.za",
+        "google.cz",
+        "google.com.vn",
+        "google.co.kr",
+        "google.com.ph",
+        "google.pt",
+        "google.gr",
+        "google.dk",
+        "google.com.eg",
+        "google.cl",
+        "google.no",
+        "google.co.nz",
+        "google.com.co",
+        "google.fi",
+        "google.com.my",
+        "google.ie",
+        "google.com.pe",
+        "google.ae",
+        "google.com.pk",
+        "google.com.sa",
+        "google.com.bd",
+        "google.co.ve",
+        "google.co.ke",
+        "google.com.ng",
+        "google.si",
+        "google.com.np",
+        "google.co.bw",
+        "google.jo",
+        "google.com.jm",
+        "google.dz",
+        "google.tt",
+        "google.com.na",
+        "google.com.gh",
+        "google.com.ni",
+        "google.co.zm",
+        "google.com.gt",
+        "google.ci",
+        "google.ro",
+        "google.mv",
+        "google.gm",
+        "google.co.ma",
+        "google.tm",
+        "google.im",
+        "google.com.pg",
+        "google.com.do",
+        "google.is",
+        "google.sk",
+        "google.com.py",
+        "google.rs",
+        "google.mw",
+        "google.com.ai",
+        "google.bs",
+        "google.co.ls",
+        "google.com.uy",
+        "google.bg",
+        "google.am",
+        "google.sn",
+        "google.hu",
+        "google.com.nf",
+        "google.al",
+        "google.co.cr",
+        "google.bi",
+        "google.com.bn",
+        "google.co.ck",
+        "google.com.et",
+        "google.com.bh",
+        "google.com.bz",
+        "google.lu",
+        "google.kz",
+        "google.by",
+        "google.com.kw",
+        "google.hr",
+        "google.lv",
+        "google.lt",
+        "google.gy",
+        "google.ge",
+        "google.lk",
+        "google.com.ec",
+        "google.ee",
+        "google.com.pr",
+        "google.ps",
+        "google.com.lb",
+        "google.gg",
+        "google.com.pa",
+        "google.co.uz",
+        "google.mn",
+        "google.ba",
+        "google.cat",
+        "google.iq",
+        "google.com.qa",
+        "google.com.bo",
+        "google.co.mz",
+        "google.fm",
+        "google.com.om",
+        "google.com.cu",
+        "google.ad",
+        "google.as",
+        "google.hn",
+        "google.com.mt",
+        "google.mu",
+        "google.tn",
+        "google.com.ag",
+        "google.com.ly",
+        "google.az",
+        "google.dm",
+        "google.com.gi",
+        "google.sc",
+        "google.ms",
+        "google.co.ao",
+        "google.com.sv",
+        "google.org",
+        "google.md",
+        "google.co.ug",
+        "google.kg",
+        "google.dev",
+        "google.com.cy",
+        "google.co.zw",
+        "google.pn",
+        "google.ml",
+        "google.com.kh",
+        "google.ki",
+        "google.mg",
+        "google.bj",
+        "google.mk",
+        "google.cv",
+        "google.cg",
+        "google.st",
+        "google.cf",
+        "google.co.vi",
+        "google.com.sl",
+        "google.co.tz",
+        "google.vu",
+        "google.td",
+        "google.cm",
+        "google.cd",
+        "google.so",
+        "google.ht",
+        "google.com.vc",
+        "google.rw",
+        "google.ws",
+        "google.com.sb",
+        "google.gp",
+        "google.li",
+        "google.sh",
+        "google.nr",
+        "google.com.fj",
+        "google.vg",
+        "google.bt",
+        "google.com.af",
+        "google.dj",
+        "google.sm",
+        "google.la",
+        "google.je",
+        "google.sr",
+        "google.tg",
+        "google.bf",
+        "google.nu",
+        "google.gl",
+        "google.com.mm",
+        "google.me",
+        "google.to",
+        "google.com.tj",
+        "google.ne",
+        "google.tl",
+        "google.tk",
+        "google.ga",
+        "google.eu",
+        "google.net",
+        "google.in",
+        "google.ac",
+        "google.ng",
+        "google.com.tn",
+        "google.com.iq",
+        "google.hk"
       ]
     },
     {
@@ -78,14 +286,45 @@
         "media-amazon.com",
         "ssl-images-amazon.com",
         "primevideo.com",
-        "amazon.com.tr"
+        "amazon.com.tr",
+        "amazon.ae",
+        "amazon.cn",
+        "amazon.co.za",
+        "amazon.eg",
+        "amazon.eu",
+        "amazon.ie",
+        "amazon.jp",
+        "amazon.pl",
+        "amazon.sa",
+        "amazon.se",
+        "amazon.sg",
+        "amazon.dev",
+        "amazon.jobs",
+        "amazon.science",
+        "amazon.work",
+        "amazon-adsystem.com",
+        "amazon-corp.com",
+        "amazon-dss.com",
+        "amazon-value-service.com",
+        "amazon-ads-attestation.com",
+        "siege-amazon.com",
+        "assoc-amazon.com",
+        "images-amazon.com",
+        "payments-amazon.com"
       ]
     },
     {
       "id": "paypal",
       "name": "PayPal",
       "aliases": ["paypal"],
-      "domains": ["paypal.com", "paypalobjects.com", "paypal.me"]
+      "domains": [
+        "paypal.com",
+        "paypalobjects.com",
+        "paypal.me",
+        "paypal-ads.com",
+        "paypal-corp.com",
+        "paypal-haitaopartner.com"
+      ]
     },
     {
       "id": "facebook",
@@ -97,56 +336,76 @@
         "fbcdn.net",
         "facebook.net",
         "messenger.com",
-        "meta.com"
+        "meta.com",
+        "facebook.de",
+        "facebook.com.br",
+        "facebook-hardware.com"
       ]
     },
     {
       "id": "instagram",
       "name": "Instagram",
       "aliases": ["instagram"],
-      "domains": ["instagram.com", "cdninstagram.com", "threads.com", "threads.net"]
+      "domains": [
+        "instagram.com",
+        "cdninstagram.com",
+        "threads.com",
+        "threads.net",
+        "instagram-press.com"
+      ]
     },
     {
       "id": "whatsapp",
       "name": "WhatsApp",
       "aliases": ["whatsapp"],
-      "domains": ["whatsapp.com", "whatsapp.net"]
+      "domains": ["whatsapp.com", "whatsapp.net", "whatsapp.biz", "whatsapp.cc", "whatsapp.tv"]
     },
     {
       "id": "netflix",
       "name": "Netflix",
       "aliases": ["netflix"],
-      "domains": ["netflix.com", "nflxext.com", "nflximg.net", "nflxvideo.net"]
+      "domains": ["netflix.com", "nflxext.com", "nflximg.net", "nflxvideo.net", "netflix.net"]
     },
     {
       "id": "dropbox",
       "name": "Dropbox",
       "aliases": ["dropbox"],
-      "domains": ["dropbox.com", "dropboxstatic.com", "db.tt"]
+      "domains": ["dropbox.com", "dropboxstatic.com", "db.tt", "dropbox-dns.com", "dropbox.tech"]
     },
     {
       "id": "linkedin",
       "name": "LinkedIn",
       "aliases": ["linkedin"],
-      "domains": ["linkedin.com", "licdn.com"]
+      "domains": ["linkedin.com", "licdn.com", "linkedin.cn", "linkedin-ei.com"]
     },
     {
       "id": "twitter",
       "name": "X (Twitter)",
       "aliases": ["twitter"],
-      "domains": ["twitter.com", "x.com", "twimg.com"]
+      "domains": ["twitter.com", "x.com", "twimg.com", "ads-twitter.com", "twitter.biz"]
     },
     {
       "id": "tiktok",
       "name": "TikTok",
       "aliases": ["tiktok"],
-      "domains": ["tiktok.com", "tiktokcdn.com"]
+      "domains": ["tiktok.com", "tiktokcdn.com", "tiktok-row.net", "tiktok-row.org"]
     },
     {
       "id": "yahoo",
       "name": "Yahoo",
       "aliases": ["yahoo", "yahoo mail"],
-      "domains": ["yahoo.com", "yimg.com", "yahoo.co.jp"]
+      "domains": [
+        "yahoo.com",
+        "yimg.com",
+        "yahoo.co.jp",
+        "yahoo.cloud",
+        "yahoo.net",
+        "yahoo.de",
+        "yahoo.fr",
+        "yahoo.com.tw",
+        "yahoo.jp",
+        "yahoo-net.jp"
+      ]
     },
     {
       "id": "aol",
@@ -159,7 +418,18 @@
       "id": "adobe",
       "name": "Adobe",
       "aliases": ["adobe", "adobe document cloud", "adobe acrobat"],
-      "domains": ["adobe.com", "adobelogin.com"]
+      "domains": [
+        "adobe.com",
+        "adobelogin.com",
+        "adobe.io",
+        "adobe.net",
+        "adobe.info",
+        "adobe.de",
+        "adobe.co.jp",
+        "adobe.ly",
+        "adobe-identity.com",
+        "adobe-addons.com"
+      ]
     },
     {
       "id": "docusign",
@@ -171,7 +441,7 @@
       "id": "wetransfer",
       "name": "WeTransfer",
       "aliases": ["wetransfer"],
-      "domains": ["wetransfer.com", "we.tl"]
+      "domains": ["wetransfer.com", "we.tl", "wetransfer.net"]
     },
     {
       "id": "steam",
@@ -184,13 +454,20 @@
       "id": "roblox",
       "name": "Roblox",
       "aliases": ["roblox"],
-      "domains": ["roblox.com", "rbxcdn.com"]
+      "domains": [
+        "roblox.com",
+        "rbxcdn.com",
+        "roblox.us",
+        "roblox.net",
+        "roblox.co.uk",
+        "roblox.vn"
+      ]
     },
     {
       "id": "discord",
       "name": "Discord",
       "aliases": ["discord"],
-      "domains": ["discord.com", "discordapp.com", "discord.gg"]
+      "domains": ["discord.com", "discordapp.com", "discord.gg", "discord.media"]
     },
     {
       "id": "epicgames",
@@ -208,19 +485,44 @@
       "id": "nintendo",
       "name": "Nintendo",
       "aliases": ["nintendo"],
-      "domains": ["nintendo.com"]
+      "domains": [
+        "nintendo.com",
+        "nintendo.net",
+        "nintendo.co.uk",
+        "nintendo.co.jp",
+        "nintendo.be",
+        "nintendo.de",
+        "nintendo.fr",
+        "nintendo.nl",
+        "nintendo-europe.com",
+        "nintendo.pt",
+        "nintendo.es",
+        "nintendo.at",
+        "nintendo.it",
+        "nintendo.ch",
+        "nintendo.ru",
+        "nintendo.co.kr",
+        "nintendo.eu"
+      ]
     },
     {
       "id": "garena",
       "name": "Garena / Free Fire",
       "aliases": ["garena", "free fire"],
-      "domains": ["garena.com"]
+      "domains": [
+        "garena.com",
+        "garena.vn",
+        "garena.co.id",
+        "garena.sg",
+        "garena.tw",
+        "garena.in.th"
+      ]
     },
     {
       "id": "spotify",
       "name": "Spotify",
       "aliases": ["spotify"],
-      "domains": ["spotify.com", "scdn.co"]
+      "domains": ["spotify.com", "scdn.co", "spotify.net", "spotify.dev", "spotify.link"]
     },
     {
       "id": "disneyplus",
@@ -238,13 +540,13 @@
       "id": "github",
       "name": "GitHub",
       "aliases": ["github"],
-      "domains": ["github.com", "githubassets.com", "ghe.com"]
+      "domains": ["github.com", "githubassets.com", "ghe.com", "github.blog"]
     },
     {
       "id": "okta",
       "name": "Okta",
       "aliases": ["okta"],
-      "domains": ["okta.com", "oktacdn.com", "okta-emea.com"]
+      "domains": ["okta.com", "oktacdn.com", "okta-emea.com", "okta-gov.com", "okta-dnssec.com"]
     },
     {
       "id": "zoom",
@@ -264,19 +566,49 @@
       "id": "proton",
       "name": "Proton Mail",
       "aliases": ["proton mail", "protonmail"],
-      "domains": ["proton.me", "protonmail.com"]
+      "domains": ["proton.me", "protonmail.com", "protonmail.ch"]
     },
     {
       "id": "zoho",
       "name": "Zoho",
       "aliases": ["zoho", "zoho mail"],
-      "domains": ["zoho.com"]
+      "domains": [
+        "zoho.com",
+        "zoho.eu",
+        "zoho.in",
+        "zoho.com.au",
+        "zoho.jp",
+        "zoho.sa",
+        "zoho.uk",
+        "zoho.ae"
+      ]
     },
     {
       "id": "yandex",
       "name": "Yandex",
       "aliases": ["yandex"],
-      "domains": ["yandex.ru", "yandex.com"]
+      "domains": [
+        "yandex.ru",
+        "yandex.com",
+        "yandex.net",
+        "yandex.com.tr",
+        "yandex.kz",
+        "yandex.by",
+        "yandex.uz",
+        "yandex.fi",
+        "yandex.md",
+        "yandex.com.ge",
+        "yandex.az",
+        "yandex.co.il",
+        "yandex.fr",
+        "yandex.com.am",
+        "yandex.tr",
+        "yandex.tj",
+        "yandex-team.ru",
+        "yandex-net.ru",
+        "yandex.cloud",
+        "yandex.st"
+      ]
     },
     {
       "id": "mailru",
@@ -294,13 +626,13 @@
       "id": "coinbase",
       "name": "Coinbase",
       "aliases": ["coinbase"],
-      "domains": ["coinbase.com"]
+      "domains": ["coinbase.com", "coinbase-corp.com"]
     },
     {
       "id": "binance",
       "name": "Binance",
       "aliases": ["binance"],
-      "domains": ["binance.com", "binance.us"]
+      "domains": ["binance.com", "binance.us", "binance.org", "binance.vision", "binance.bh"]
     },
     {
       "id": "metamask",
@@ -370,7 +702,7 @@
       "id": "bankofamerica",
       "name": "Bank of America",
       "aliases": ["bank of america", "bofa"],
-      "domains": ["bankofamerica.com"]
+      "domains": ["bankofamerica.com", "bofa.com"]
     },
     {
       "id": "wellsfargo",
@@ -420,7 +752,18 @@
       "id": "hsbc",
       "name": "HSBC",
       "aliases": ["hsbc"],
-      "domains": ["hsbc.com", "hsbc.co.uk", "hsbc.com.hk", "hsbcnet.com"]
+      "domains": [
+        "hsbc.com",
+        "hsbc.co.uk",
+        "hsbc.com.hk",
+        "hsbcnet.com",
+        "hsbc.com.sg",
+        "hsbc.com.mx",
+        "hsbc.net",
+        "hsbc.uk",
+        "hsbc.co.in",
+        "hsbc.com.br"
+      ]
     },
     {
       "id": "barclays",
@@ -452,14 +795,25 @@
         "bancosantander.es",
         "santander.com.mx",
         "santander.pt",
-        "santander.pl"
+        "santander.pl",
+        "santander.com.ar",
+        "santander.cl",
+        "santander.de"
       ]
     },
     {
       "id": "bbva",
       "name": "BBVA",
       "aliases": ["bbva"],
-      "domains": ["bbva.com", "bbva.es", "bbva.mx"]
+      "domains": [
+        "bbva.com",
+        "bbva.es",
+        "bbva.mx",
+        "bbva.com.ar",
+        "bbva.pe",
+        "bbva.com.co",
+        "bbva.com.uy"
+      ]
     },
     {
       "id": "bancolombia",
@@ -471,7 +825,7 @@
       "id": "itau",
       "name": "Itaú",
       "aliases": ["itau", "itaú"],
-      "domains": ["itau.com.br"]
+      "domains": ["itau.com.br", "itau.com.py", "itau.com.uy"]
     },
     {
       "id": "bancodobrasil",
@@ -490,7 +844,7 @@
       "id": "nubank",
       "name": "Nubank",
       "aliases": ["nubank"],
-      "domains": ["nubank.com.br"]
+      "domains": ["nubank.com.br", "nubank.com.mx"]
     },
     {
       "id": "ing",
@@ -516,7 +870,7 @@
       "id": "scotiabank",
       "name": "Scotiabank",
       "aliases": ["scotiabank"],
-      "domains": ["scotiabank.com"]
+      "domains": ["scotiabank.com", "scotiabank.com.pe", "scotiabank.cl"]
     },
     {
       "id": "rbc",
@@ -547,7 +901,7 @@
       "id": "zelle",
       "name": "Zelle",
       "aliases": ["zelle"],
-      "domains": ["zellepay.com"]
+      "domains": ["zellepay.com", "zelle.com"]
     },
     {
       "id": "stripe",
@@ -560,7 +914,7 @@
       "id": "mastercard",
       "name": "Mastercard",
       "aliases": ["mastercard"],
-      "domains": ["mastercard.com"]
+      "domains": ["mastercard.com", "mastercard.us", "mastercard.de"]
     },
     {
       "id": "visa",
@@ -579,7 +933,7 @@
       "id": "usps",
       "name": "USPS",
       "aliases": ["usps", "us postal service"],
-      "domains": ["usps.com"]
+      "domains": ["usps.com", "usps.gov"]
     },
     {
       "id": "ups",
@@ -647,13 +1001,13 @@
       "id": "verizon",
       "name": "Verizon",
       "aliases": ["verizon"],
-      "domains": ["verizon.com"]
+      "domains": ["verizon.com", "verizon.net"]
     },
     {
       "id": "xfinity",
       "name": "Xfinity",
       "aliases": ["xfinity", "comcast"],
-      "domains": ["xfinity.com", "comcast.net"]
+      "domains": ["xfinity.com", "comcast.net", "comcast.com"]
     },
     {
       "id": "spectrum",
@@ -679,19 +1033,50 @@
       "id": "ebay",
       "name": "eBay",
       "aliases": ["ebay"],
-      "domains": ["ebay.com", "ebay.co.uk", "ebay.de", "ebayimg.com", "ebaystatic.com"]
+      "domains": [
+        "ebay.com",
+        "ebay.co.uk",
+        "ebay.de",
+        "ebayimg.com",
+        "ebaystatic.com",
+        "ebay.ca",
+        "ebay.it",
+        "ebay.com.au",
+        "ebay.fr",
+        "ebay.es",
+        "ebay.ie",
+        "ebay-us.com",
+        "ebay.be",
+        "ebay.at",
+        "ebay.nl",
+        "ebay.pl",
+        "ebay.com.hk",
+        "ebay.us",
+        "ebay.ch",
+        "ebay.com.sg",
+        "ebay.com.my",
+        "ebay.in"
+      ]
     },
     {
       "id": "walmart",
       "name": "Walmart",
       "aliases": ["walmart"],
-      "domains": ["walmart.com"]
+      "domains": ["walmart.com", "walmart.ca", "walmart.com.mx", "walmart.co.cr", "walmart.com.gt"]
     },
     {
       "id": "costco",
       "name": "Costco",
       "aliases": ["costco"],
-      "domains": ["costco.com"]
+      "domains": [
+        "costco.com",
+        "costco.ca",
+        "costco.co.uk",
+        "costco.co.jp",
+        "costco.com.mx",
+        "costco.com.tw",
+        "costco-static.com"
+      ]
     },
     {
       "id": "booking",
@@ -703,7 +1088,37 @@
       "id": "airbnb",
       "name": "Airbnb",
       "aliases": ["airbnb"],
-      "domains": ["airbnb.com", "muscache.com"]
+      "domains": [
+        "airbnb.com",
+        "muscache.com",
+        "airbnb.net",
+        "airbnb.co.uk",
+        "airbnb.fr",
+        "airbnb.com.br",
+        "airbnb.co.in",
+        "airbnb.ca",
+        "airbnb.de",
+        "airbnb.co.kr",
+        "airbnb.it",
+        "airbnb.com.au",
+        "airbnb.es",
+        "airbnb.co.za",
+        "airbnb.at",
+        "airbnb.jp",
+        "airbnb.mx",
+        "airbnb.com.sg",
+        "airbnb.ru",
+        "airbnb.ae",
+        "airbnb.com.ar",
+        "airbnb.ie",
+        "airbnb.gr",
+        "airbnb.com.tr",
+        "airbnb.nl",
+        "airbnb.co.nz",
+        "airbnb.com.co",
+        "airbnb.biz",
+        "airbnb.be"
+      ]
     },
     {
       "id": "uber",
@@ -725,7 +1140,9 @@
         "shopee.tw",
         "shopee.co.th",
         "shopee.sg",
-        "shopee.com.br"
+        "shopee.com.br",
+        "shopee.cn",
+        "shopee.com.mx"
       ]
     },
     {
@@ -738,13 +1155,26 @@
       "id": "bet365",
       "name": "bet365",
       "aliases": ["bet365"],
-      "domains": ["bet365.com"]
+      "domains": [
+        "bet365.com",
+        "bet365.it",
+        "bet365.bet.ar",
+        "bet365.es",
+        "bet365.gr",
+        "bet365.com.au",
+        "bet365.pe",
+        "bet365.de",
+        "bet365.ee",
+        "bet365.nl",
+        "bet365.com.cy",
+        "bet365.rs"
+      ]
     },
     {
       "id": "rackspace",
       "name": "Rackspace",
       "aliases": ["rackspace", "rackspace webmail"],
-      "domains": ["rackspace.com"]
+      "domains": ["rackspace.com", "rackspace.net", "rackspace-cloud.com"]
     },
     {
       "id": "imtoken",

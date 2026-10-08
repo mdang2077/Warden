@@ -1,6 +1,6 @@
 # Stage 2 score report (S2.11)
 
-- Features generated 2026-10-08T05:39:07.397Z (source 1dfa8e796290)
+- Features generated 2026-10-08T05:59:56.188Z (source dd5e63358b27)
 - Rows: 2454 benign, 130 phish, 2 skipped
 - Threshold 8; CI budget: raw benign warn rate on gated pages ≤ 0.1%
 
@@ -18,8 +18,8 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 | benign | identity-providers | tune | 6 | 6 | 0 | 0 | 0 |
 | benign | tranco-home | holdout | 197 | 31 | 42 | 0 | 0 |
 | benign | tranco-home | tune | 429 | 78 | 84 | 0 | 0 |
-| benign | tranco-login | holdout | 574 | 416 | 34 | 0 | 0 |
-| benign | tranco-login | tune | 1220 | 860 | 79 | 0 | 0 |
+| benign | tranco-login | holdout | 574 | 416 | 32 | 0 | 0 |
+| benign | tranco-login | tune | 1220 | 860 | 73 | 0 | 0 |
 | benign | universities | holdout | 1 | 1 | 0 | 0 | 0 |
 | benign | universities | tune | 3 | 3 | 0 | 0 | 0 |
 | phish | openphish | holdout | 32 | 20 | 14 | 11 | 11 |
