@@ -202,3 +202,26 @@ describe("isTenant", () => {
     expect(list.isTenant("example.com")).toBe(false);
   });
 });
+
+describe("bundled list: Microsoft and GitHub user-content hosts", () => {
+  const list = loadSharedHosts(file);
+
+  it("treats SharePoint's regional and government domains like sharepoint.com", () => {
+    for (const host of [
+      "contoso.sharepoint.com",
+      "contoso.sharepoint.us",
+      "agency.sharepoint-mil.us",
+      "firma.sharepoint.de",
+      "gongsi.sharepoint.cn",
+      "msft.sharepoint-df.com",
+    ]) {
+      expect(list.isShared(host), host).toBe(true);
+    }
+  });
+
+  it("treats each Codespaces forwarded port as its own tenant, and github.dev as path-shared", () => {
+    expect(list.isTenant("octocat-8080.app.github.dev")).toBe(true);
+    expect(list.isTenant("app.github.dev")).toBe(false);
+    expect(list.isShared("github.dev")).toBe(true);
+  });
+});

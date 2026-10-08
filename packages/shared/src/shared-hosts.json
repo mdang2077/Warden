@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "updated": "2026-10-04",
+  "version": 3,
+  "updated": "2026-10-08",
   "entries": [
     {
       "pattern": "docs.google.com",
@@ -59,6 +59,31 @@
     },
     {
       "pattern": "*.sharepoint.com",
+      "group": "Microsoft user content",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.sharepoint.us",
+      "group": "Microsoft user content",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.sharepoint-mil.us",
+      "group": "Microsoft user content",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.sharepoint.de",
+      "group": "Microsoft user content",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.sharepoint.cn",
+      "group": "Microsoft user content",
+      "kind": "path"
+    },
+    {
+      "pattern": "*.sharepoint-df.com",
       "group": "Microsoft user content",
       "kind": "path"
     },
@@ -201,6 +226,16 @@
       "pattern": "*.github.io",
       "group": "App hosting",
       "kind": "tenant"
+    },
+    {
+      "pattern": "*.app.github.dev",
+      "group": "App hosting",
+      "kind": "tenant"
+    },
+    {
+      "pattern": "github.dev",
+      "group": "App hosting",
+      "kind": "path"
     },
     {
       "pattern": "*.glitch.me",

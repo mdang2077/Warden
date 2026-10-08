@@ -1,4 +1,4 @@
-{"header":true,"schema":1,"sourceHash":"9c4d00701317f69ff63fa34101aed6f00601c7b980986d0725d839c3008bb1f9","generated":"2026-10-08T06:30:38.304Z","counts":{"benign":2454,"phish":130,"skipped":2}}
+{"header":true,"schema":1,"sourceHash":"4ccfc942e4067ce727f447e400fa6dd8f14f913a127ebbe98d0e795fccbd22a8","generated":"2026-10-08T17:10:18.826Z","counts":{"benign":2454,"phish":130,"skipped":2}}
 {"label":"benign","group":"tranco-home","split":"tune","gated":false,"allowlisted":true,"brandMismatch":null,"exfil":null,"url":{"lookalike":false,"brandKeyword":false,"ipHost":false,"tenantPlatform":false,"deepSubdomain":false}}
 {"label":"benign","group":"tranco-home","split":"holdout","gated":false,"allowlisted":true,"brandMismatch":null,"exfil":null,"url":{"lookalike":false,"brandKeyword":false,"ipHost":false,"tenantPlatform":false,"deepSubdomain":false}}
 {"label":"benign","group":"tranco-home","split":"tune","gated":false,"allowlisted":true,"brandMismatch":null,"exfil":null,"url":{"lookalike":false,"brandKeyword":false,"ipHost":false,"tenantPlatform":false,"deepSubdomain":false}}
