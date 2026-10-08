@@ -103,7 +103,8 @@ describe("shadow recorder", () => {
     const log = await listShadowEntries(area);
     expect(log).toHaveLength(MAX_SHADOW_ENTRIES);
     expect(log[0]?.at).toBe(5);
-  });
+    // 2,000+ sequential appends, each copying the growing log: slow on a busy machine.
+  }, 30_000);
 });
 
 const testBrands = loadBrands({

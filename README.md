@@ -84,9 +84,10 @@ Secrets and variables:
 | `SB_API_KEY` | Google Safe Browsing API key |
 | `ADMIN_TOKEN` | Optional. Enables `/admin/config` |
 | `ALERT_WEBHOOK_URL` | Optional. Feed-quality alerts |
+| `MANIFEST_SIGNING_KEY`, `MANIFEST_KEY_ID` | Required. The Ed25519 key that signs the manifest, and its id (see [Manifest signing](#manifest-signing)). Without them the manifest route returns 503 |
 | `WARDEN_DEV_FEEDS` | Local/personal runs only. `1` also publishes feeds whose terms forbid redistribution (OpenPhish, PhishStats), under a separate `dev/` storage prefix. Never set it on a public deployment |
 
-Run it locally (put secrets in `packages/service/.dev.vars`):
+Run it locally (secrets go in `packages/service/.dev.vars`, which is gitignored; create a signing key there once with `node packages/service/src/runners/keygen.ts --dev-vars`):
 
 ```bash
 cd packages/service
@@ -99,6 +100,18 @@ Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To r
 Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
 
 > **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship. See Phase 4b in [`docs/taskboard.md`](docs/taskboard.md).
+
+### Manifest signing
+
+The extension only accepts a feed manifest signed with an Ed25519 key it trusts, so a tampered manifest (in storage, at a CDN, or on the network) can't push lists. Every other file is pinned by its SHA-256 in the manifest. The Worker signs on every request and returns 503 rather than serve an unsigned manifest. The design is in [`docs/design/2026-10-07-manifest-signing-design.md`](docs/design/2026-10-07-manifest-signing-design.md).
+
+- **New key:** `node packages/service/src/runners/keygen.ts --kid k2` prints the private key, which you store with `wrangler secret put MANIFEST_SIGNING_KEY` (and `MANIFEST_KEY_ID`), and the public key for `packages/shared/src/manifest-keys.json`. Add `--dev-vars` to write a local key into `packages/service/.dev.vars` instead.
+- **Keys in this repo:** `k1` is the local development key; its private half lives only in your `.dev.vars`. Generate a separate key for a public deployment.
+- **Rotation:**
+  1. Add the new public key to `manifest-keys.json` and ship an extension update. Every listed key is trusted.
+  2. Switch the Worker's `MANIFEST_SIGNING_KEY` and `MANIFEST_KEY_ID`.
+  3. Remove the old key in a later extension update.
+- **If verification fails:** users see nothing. Warden keeps its last good lists and doesn't apply anything from the bad manifest, including feed switches.
 
 ## Development
 
