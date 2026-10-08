@@ -4,6 +4,7 @@
  * warnings are ever turned on. Entries logged before scoring existed count toward the totals
  * only.
  */
+import type { ExperimentEntry } from "./hijack-experiments.ts";
 import type { ShadowEntry } from "./shadow-log.ts";
 
 export interface ShadowWarn {
@@ -69,10 +70,11 @@ export function describeSignals(signals: readonly string[]): string {
 export function shadowExport(
   entries: readonly ShadowEntry[],
   now: number,
+  hijackExperiments: readonly ExperimentEntry[] = [],
 ): { filename: string; json: string } {
   const exported = new Date(now).toISOString();
   return {
     filename: `warden-shadow-log-${exported.slice(0, 10)}.json`,
-    json: JSON.stringify({ exported, entries }, null, 2),
+    json: JSON.stringify({ exported, entries, hijackExperiments }, null, 2),
   };
 }

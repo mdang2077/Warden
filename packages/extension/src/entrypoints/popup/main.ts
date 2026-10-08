@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser";
 import { addFpReport } from "../../lib/fp-reports.ts";
 import { getHijackRecord } from "../../lib/hijack-action.ts";
+import { describeExperiment, listExperiments } from "../../lib/hijack-experiments.ts";
 import { parseWarningParams, SOURCE_LABELS } from "../../lib/interstitial.ts";
 import {
   readPrefs,
@@ -178,9 +179,30 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const day = (t: number) =>
   new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
+/** Hijack guard experiments (H8, H9): the newest log-only entries. */
+function renderExperiments(experiments: Parameters<typeof describeExperiment>[0][]) {
+  const details = document.getElementById("experiments") as HTMLDetailsElement;
+  details.hidden = experiments.length === 0;
+  if (experiments.length === 0) return;
+  (document.getElementById("experiments-summary") as HTMLElement).textContent =
+    `Pop-up experiments: would have stopped ${experiments.length}`;
+  (document.getElementById("experiments-list") as HTMLUListElement).replaceChildren(
+    ...experiments
+      .slice(-20)
+      .reverse()
+      .map((e) => {
+        const li = document.createElement("li");
+        li.textContent = `${describeExperiment(e)} · ${day(e.at)}`; // text only
+        return li;
+      }),
+  );
+}
+
 /** The Stage 2 shadow log: totals, pages that would have warned, and an export. */
 async function renderShadow() {
   const entries = await listShadowEntries(browser.storage.local);
+  const experiments = await listExperiments(browser.storage.local);
+  renderExperiments(experiments);
   const s = shadowSummary(entries);
   const details = document.getElementById("shadow") as HTMLDetailsElement;
   details.hidden = s.total === 0;
@@ -203,7 +225,7 @@ async function renderShadow() {
     }),
   );
   (document.getElementById("shadow-export") as HTMLButtonElement).addEventListener("click", () => {
-    const { filename, json } = shadowExport(entries, Date.now());
+    const { filename, json } = shadowExport(entries, Date.now(), experiments);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     a.download = filename;

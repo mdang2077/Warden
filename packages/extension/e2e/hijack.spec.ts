@@ -313,3 +313,56 @@ test("typing a blocked site yourself doesn't let other sites redirect to it afte
   await page.waitForTimeout(2_000);
   expect(page.url()).toBe(`${STREAM}/plain`);
 });
+
+const experiments = (context: BrowserContext) =>
+  worker(context).evaluate(
+    async () =>
+      ((await chrome.storage.local.get("hijack_experiments")).hijack_experiments ?? []) as {
+        experiment: string;
+      }[],
+  );
+
+test("experiment H8: a clicked link that redirects to a third site is logged, not blocked", async ({
+  context,
+  extensionId: _,
+}) => {
+  await hijackRulesReady(context);
+  await setStrict(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/tracker-link`);
+  const opened = context.waitForEvent("page");
+  await page.click("#go");
+  const tab = await opened;
+  await expect.poll(() => tab.url()).toBe("https://casino.third-test.example/");
+  expect(tab.isClosed()).toBe(false); // log only
+  await expect
+    .poll(async () => (await experiments(context)).at(-1))
+    .toMatchObject({
+      experiment: "click-redirect",
+      site: "warden-test.example",
+      linkSite: "other-test.example",
+      landedSite: "third-test.example",
+      via: "script",
+    });
+});
+
+test("experiment H9: a download a strict site forced without a click is logged, not cancelled", async ({
+  context,
+  extensionId: _,
+}) => {
+  await hijackRulesReady(context);
+  await setStrict(context);
+  const page = await context.newPage();
+  const download = page.waitForEvent("download");
+  await page.goto(`${STREAM}/forced-download`);
+  expect((await download).suggestedFilename()).toBe("setup.exe"); // still downloaded
+  await expect
+    .poll(async () => (await experiments(context)).at(-1))
+    .toMatchObject({
+      experiment: "download",
+      site: "warden-test.example",
+      downloadSite: "other-test.example",
+      fileType: "exe",
+      reason: "no-click",
+    });
+});

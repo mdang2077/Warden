@@ -168,17 +168,20 @@ button {
   font-size: 0.75rem;
 }
 
-#shadow summary {
+#shadow summary,
+#experiments summary {
   cursor: pointer;
 }
 
-#shadow-warns {
+#shadow-warns,
+#experiments-list {
   margin: 6px 0;
   padding-left: 0;
   list-style: none;
 }
 
-#shadow-warns li {
+#shadow-warns li,
+#experiments-list li {
   display: flex;
   flex-direction: column;
   gap: 2px;

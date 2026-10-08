@@ -159,3 +159,16 @@ describe("click log", () => {
     expect(timedOut).toBe(true);
   });
 });
+
+describe("click log: recent link sites", () => {
+  it("lists sites of visible links clicked in any tab within the window", () => {
+    let t = 10_000;
+    const log = createClickLog(() => t);
+    log.add(1, { at: 9_500, input: "pointer", linkHref: "https://www.files.example/get" });
+    log.add(2, { at: 9_900, input: "pointer", linkHref: null });
+    log.add(3, { at: 8_000, input: "pointer", linkHref: "https://old.example/" });
+    expect(log.recentLinkSites(1_000)).toEqual(["files.example"]);
+    t += 1_000;
+    expect(log.recentLinkSites(1_000)).toEqual([]);
+  });
+});

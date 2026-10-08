@@ -119,6 +119,10 @@ describe("shadowExport", () => {
     const entries = [entry({})];
     const out = shadowExport(entries, Date.UTC(2026, 9, 8, 12));
     expect(out.filename).toBe("warden-shadow-log-2026-10-08.json");
-    expect(JSON.parse(out.json)).toEqual({ exported: "2026-10-08T12:00:00.000Z", entries });
+    expect(JSON.parse(out.json)).toEqual({
+      exported: "2026-10-08T12:00:00.000Z",
+      entries,
+      hijackExperiments: [],
+    });
   });
 });

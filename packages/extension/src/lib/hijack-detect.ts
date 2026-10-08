@@ -135,6 +135,22 @@ export function createClickLog(now: () => number = Date.now) {
         waiters.add(waiter);
       });
     },
+    /** Sites of visible links clicked in any tab within the last `windowMs` (H9 downloads). */
+    recentLinkSites(windowMs: number): string[] {
+      const sites = new Set<string>();
+      for (const list of byTab.values()) {
+        for (const c of list) {
+          if (!c.linkHref || now() - c.at > windowMs) continue;
+          try {
+            const host = new URL(c.linkHref).hostname;
+            sites.add(registrableDomain(host) ?? host);
+          } catch {
+            // not a URL
+          }
+        }
+      }
+      return [...sites];
+    },
     forget(tabId: number): void {
       byTab.delete(tabId);
     },

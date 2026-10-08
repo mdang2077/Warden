@@ -19,6 +19,7 @@ Only two kinds of requests, both to the Warden feed service (a Cloudflare Worker
 - **Stage 2 log:** for login pages only, the page address without its query string or fragment, the site, how many password or code fields the page had, and Warden's verdict (signal names and a score). It never records anything you type, page text, or where a form sends data. It keeps the last 2,000 entries. It leaves your device only if you click **Export log** and share the file yourself.
 - **Pop-up and redirect blocks:** the blocked site's name and time, kept per tab for the toolbar badge and cleared when the tab closes.
 - **Clicks (Strict mode only):** on sites you set to Strict, Warden notes the time of each click and the address of the visible link you clicked, so it can tell your clicks apart from hijacks. These are held in memory for a few seconds, never written to storage, and never sent anywhere.
+- **Pop-up and download experiments:** when a link you clicked on a Strict site ended up on a different site, or a page started a download you didn't click (or an installer from another site), Warden notes the site names, the file type and the time. It never records full addresses or file contents, keeps the last 500 entries, and includes them only in a log you export yourself.
 - **"Proceed anyway" choices:** remembered only until you close the browser.
 
 ## Permissions

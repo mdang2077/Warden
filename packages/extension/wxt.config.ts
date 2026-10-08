@@ -15,6 +15,8 @@ export default defineConfig({
       "alarms",
       "declarativeNetRequest",
       "unlimitedStorage",
+      // Log-only experiment H9: notices downloads a page forced (nothing is cancelled).
+      "downloads",
     ],
     host_permissions: ["<all_urls>"],
     // DNR redirect rules point at the interstitial, so it must be web-accessible.

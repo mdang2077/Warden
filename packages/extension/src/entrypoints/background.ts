@@ -24,6 +24,11 @@ import { createDnrHealer } from "../lib/dnr-heal.ts";
 import { CASCADE_BUDGET_MS, createNavigationHandler } from "../lib/handler.ts";
 import { createHijackAction, getHijackRecord } from "../lib/hijack-action.ts";
 import { CLICK_WAIT_MS, CLICK_WINDOW_MS, createClickLog, isHijack } from "../lib/hijack-detect.ts";
+import {
+  appendExperiment,
+  createRedirectWatch,
+  downloadExperiment,
+} from "../lib/hijack-experiments.ts";
 import { compileHijackRules, installHijackRules, withUserBlocks } from "../lib/hijack-rules.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
@@ -206,6 +211,10 @@ export default defineBackground({
     const logHijackError = (err: unknown) => console.error("[Warden] hijack guard failed", err);
     // Hijack guard, strict mode: clicks reported by the hijack-clicks content script.
     const clicks = createClickLog();
+    // Log-only experiments (H8, H9): what stricter rules would have blocked.
+    const redirectWatch = createRedirectWatch();
+    const logExperiment = (entry: Parameters<typeof appendExperiment>[1]) =>
+      appendExperiment(browser.storage.local, entry).catch(logHijackError);
     const strictSite = (url: string | undefined) => {
       const site = url ? siteKey(url) : null;
       return site !== null && isStrict(prefs, site) ? site : null;
@@ -240,6 +249,7 @@ export default defineBackground({
       void hijack.forgetTab(tabId);
       clicks.forget(tabId);
       notices.forgetTab(tabId);
+      redirectWatch.forget(tabId);
     });
 
     // Stage 2 shadow mode: the content script reports secret-entry surfaces; nothing is shown.
@@ -360,6 +370,8 @@ export default defineBackground({
       if (d.frameId !== 0) return;
       void (async () => {
         await Promise.all([localReady, prefsReady]);
+        const experiment = redirectWatch.onCommit(d.tabId, d.url, d.transitionQualifiers);
+        if (experiment && prefs.hijack) await logExperiment(experiment);
         // A blocked pop-network load is not the page the counts belong to.
         if (isPopupNetworkUrl(popupNetworks(), d.url)) return;
         // Strict mode: a cross-site navigation away from a strict site may be a hijack.
@@ -383,6 +395,8 @@ export default defineBackground({
             await hijack.handle({ tabId: d.tabId, url: d.url, layer: "strict" });
             return;
           }
+          const landed = siteKey(d.url);
+          if (landed) redirectWatch.watch(d.tabId, site, landed, "same-tab");
         }
         await hijack.onCommitted(d.tabId, d.url);
         // A redirect notice waits for the page the tab went back to.
@@ -407,7 +421,33 @@ export default defineBackground({
         if (isHijack(site, event, clicks.recent(opener.sourceTabId))) {
           const openedBy = opener.sourceTabId;
           await hijack.handle({ tabId: d.tabId, url: d.url, layer: "strict", openedBy });
+        } else {
+          const linkSite = siteKey(d.url);
+          if (linkSite) redirectWatch.watch(d.tabId, site, linkSite, "new-tab");
         }
+      })().catch(logHijackError);
+    });
+
+    // H9, log-only: downloads a strict site started without a click, or installers from
+    // another site. Nothing is cancelled.
+    browser.downloads.onCreated.addListener((item) => {
+      void (async () => {
+        await prefsReady;
+        if (!prefs.hijack) return;
+        const pageSite = item.referrer ? siteKey(item.referrer) : null;
+        const entry = downloadExperiment(
+          {
+            at: Date.now(),
+            url: item.finalUrl || item.url,
+            referrer: item.referrer ?? "",
+            filename: item.filename ?? "",
+          },
+          {
+            strict: pageSite !== null && isStrict(prefs, pageSite),
+            clickedLinkSites: clicks.recentLinkSites(CLICK_WINDOW_MS),
+          },
+        );
+        if (entry) await logExperiment(entry);
       })().catch(logHijackError);
     });
 

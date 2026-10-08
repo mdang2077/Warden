@@ -26,6 +26,20 @@ export const TEST_PAGES: Record<string, string> = {
     '<!doctype html><title>Video</title><button id="play">Play</button>' +
     '<script>document.getElementById("play").onclick = () =>' +
     ' window.open("https://casino.other-test.example/?click_id=1", "_blank");</script>',
+  // A visible link to an ad tracker page that script-redirects to a third site (H8).
+  // (Playwright doesn't route a server redirect's target, so the hop is client-side.)
+  "/tracker-link":
+    '<!doctype html><title>Video</title><a id="go" target="_blank"' +
+    ' href="https://track.other-test.example/hop">Watch now</a>',
+  // The 1 s delay keeps this past strict mode's new-tab check (an immediate hop can race it
+  // and get closed; see taskboard H8).
+  "/hop":
+    "<!doctype html><title>Loading</title>" +
+    '<script>setTimeout(() => location.replace("https://casino.third-test.example/"), 1000);</script>',
+  // Starts a file download from another site on load, with no click (H9).
+  "/forced-download":
+    "<!doctype html><title>Video</title><p>Loading…</p>" +
+    '<script>setTimeout(() => { location.href = "https://files.other-test.example/setup.exe"; }, 300);</script>',
   "/chase-login":
     "<!doctype html><title>Chase Online - Sign In</title><h1>Chase Online sign in</h1>" +
     '<form><input name="user"><input type="password" name="pw"><button>Sign in</button></form>',
@@ -75,12 +89,23 @@ export const test = base.extend<
     });
     // Serve the fake test hosts locally; nothing goes to the network.
     await context.route(
-      /^https:\/\/[^/]*\.(warden-test|popnet-test|other-test)\.example\//,
+      /^https:\/\/[^/]*\.(warden-test|popnet-test|other-test|third-test)\.example\//,
       (route) => {
         const url = new URL(route.request().url());
-        // https://redirect.warden-test.example/?to=<url> answers with a 302.
-        const to = url.hostname === "redirect.warden-test.example" && url.searchParams.get("to");
+        // https://redirect.<any test site>/?to=<url> answers with a 302.
+        const to = url.hostname.startsWith("redirect.") && url.searchParams.get("to");
         if (to) return route.fulfill({ status: 302, headers: { location: to } });
+        // Any .exe path is served as a file download.
+        if (url.pathname.endsWith(".exe")) {
+          return route.fulfill({
+            status: 200,
+            headers: {
+              "content-type": "application/octet-stream",
+              "content-disposition": "attachment; filename=setup.exe",
+            },
+            body: "MZ",
+          });
+        }
         const testPage = TEST_PAGES[url.pathname];
         if (testPage) return route.fulfill({ contentType: "text/html", body: testPage });
         if (url.pathname === "/login") {
