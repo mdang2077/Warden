@@ -220,6 +220,7 @@ export default defineBackground({
     const recordShadow = createShadowRecorder({
       area: browser.storage.local,
       allowlisted: (host) => local.allowlist?.allows(host) ?? false,
+      sharedHosts: () => local.shared,
       trusted: async (host) => {
         const site = siteKey(`https://${host}/`);
         return site !== null && (await readTrusted(browser.storage.local)).has(site);

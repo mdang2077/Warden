@@ -62,6 +62,7 @@ describe("shadow recorder", () => {
       identifierFields: 0,
       allowlisted: false,
       stage1: "allow",
+      score: { points: 0, decision: "none", signals: [] },
     });
     expect(JSON.stringify(await listShadowEntries(area))).not.toContain("SECRET");
   });
@@ -216,5 +217,48 @@ describe("trusted sites in the shadow log", () => {
     expect(await record(msg(), sender("https://other.example/login"))).not.toHaveProperty(
       "trusted",
     );
+  });
+});
+
+describe("Stage 2 score in the shadow log", () => {
+  const brands = loadBrands({
+    version: 1,
+    brands: [{ id: "paypal", name: "PayPal", aliases: ["paypal"], domains: ["paypal.com"] }],
+  });
+  const phishy = {
+    ...msg(PW),
+    brandClaim: { brand: "paypal", cues: ["title", "logo"] },
+    exfil: { endpoint: "telegram", ip: false, formHosts: [] },
+  };
+  const recorder = () =>
+    createShadowRecorder({
+      area: memoryArea(),
+      allowlisted: (host) => host.endsWith("bank.example"),
+      stage1For: async () => null,
+      brands,
+    });
+
+  it("stores points, decision and counted signal names only", async () => {
+    const entry = await recorder()(phishy, sender("https://paypal-secure.example.com/login?x=1"));
+    expect(entry?.score).toEqual({
+      points: 15,
+      decision: "warn_candidate",
+      signals: ["brandMismatch:2cues", "exfil:telegram", "brandKeyword"],
+    });
+    expect(JSON.stringify(entry?.score)).not.toContain("example");
+  });
+
+  it("never makes an allowlisted page a warn candidate", async () => {
+    const entry = await recorder()(phishy, sender("https://paypal.bank.example/login"));
+    expect(entry?.score?.decision).toBe("suspicious");
+  });
+
+  it("scores identifier steps without ever warning", async () => {
+    const entry = await recorder()(
+      { ...phishy, ...msg({ password: 0, otp: 0, card: 0, seed: 0 }, 1) },
+      sender("https://paypal-secure.example.com/login"),
+    );
+    expect(entry?.kind).toBe("identifier");
+    expect(entry?.score?.decision).toBe("suspicious");
   });
 });

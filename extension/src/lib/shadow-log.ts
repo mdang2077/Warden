@@ -3,15 +3,19 @@
  * decision). Entries hold the origin and path, never the query, page text, or anything typed.
  * When Stage 2's brand signal fires they also hold a brand id and cue names, never the text
  * those came from; when the exfil signal fires, only its kind (never the URL or host).
+ * The S2.11 score is stored as points, decision and signal names.
  */
 import { type BrandList, bundledBrands } from "@warden/shared/brands";
 import { canonicalize } from "@warden/shared/canonicalize";
 import type { SecretKind } from "@warden/shared/page/extract";
 import { registrableDomain } from "@warden/shared/psl";
+import { bundledSharedHosts, type SharedHostList } from "@warden/shared/shared-hosts";
 import type { BrandClaim, BrandCue } from "@warden/shared/stage2/brand-claim";
 import { brandMismatch } from "@warden/shared/stage2/brand-mismatch";
 import type { ExfilEndpoint, ExfilScan } from "@warden/shared/stage2/exfil-scan";
 import { type ExfilSignal, exfilSignal } from "@warden/shared/stage2/exfil-signal";
+import { type Stage2Decision, score } from "@warden/shared/stage2/score";
+import { urlSignals } from "@warden/shared/stage2/url-signals";
 import type { Decision } from "@warden/shared/types";
 import { shouldEvaluate } from "./navigation.ts";
 import type { KeyValueArea } from "./overrides.ts";
@@ -35,6 +39,8 @@ export interface ShadowEntry {
   exfil?: ExfilSignal;
   /** The user trusts this site: Stage 2 never flags or warns on it. Logged, but marked. */
   trusted?: true;
+  /** S2.11: the Stage 2 score. Signal names only, never hosts or text. Absent if scoring threw. */
+  score?: { points: number; decision: Stage2Decision; signals: string[] };
 }
 
 /**
@@ -123,6 +129,8 @@ export interface RecorderDeps {
   brands?: BrandList | null;
   /** True for hosts on sites the user trusts (trusted-sites.ts). */
   trusted?: (host: string) => Promise<boolean>;
+  /** The shared-host list for URL signals; defaults to the bundled list. */
+  sharedHosts?: () => SharedHostList;
   now?: () => number;
 }
 
@@ -154,6 +162,30 @@ export function createShadowRecorder(deps: RecorderDeps) {
     seen.set(key, t);
 
     const exfil = msg.exfil ? exfilSignal(msg.exfil, url.host) : null;
+    const mismatch =
+      msg.brandClaim && brands && brandMismatch(msg.brandClaim, url.host, brands)
+        ? msg.brandClaim
+        : null;
+    const allowlisted = deps.allowlisted(url.host);
+    const trusted = (await deps.trusted?.(url.host)) ?? false;
+    let scored: ShadowEntry["score"];
+    try {
+      const shared = deps.sharedHosts?.() ?? bundledSharedHosts;
+      const r = score({
+        brandMismatch: mismatch ? { cues: mismatch.cues.length } : null,
+        exfil,
+        url: urlSignals(url, brands, shared),
+        gated,
+        eligible: !allowlisted && !trusted,
+      });
+      scored = {
+        points: r.points,
+        decision: r.decision,
+        signals: r.contributions.filter((c) => c.counted).map((c) => c.signal),
+      };
+    } catch (err) {
+      console.error("[Warden] Stage 2 scoring failed", err);
+    }
     const entry: ShadowEntry = {
       at: t,
       page,
@@ -161,13 +193,12 @@ export function createShadowRecorder(deps: RecorderDeps) {
       kind,
       secrets: msg.secrets,
       identifierFields: msg.identifierFields,
-      allowlisted: deps.allowlisted(url.host),
+      allowlisted,
       stage1: await deps.stage1For(sender.tabId, sender.url),
-      ...(msg.brandClaim && brands && brandMismatch(msg.brandClaim, url.host, brands)
-        ? { brandMismatch: msg.brandClaim }
-        : {}),
+      ...(mismatch ? { brandMismatch: mismatch } : {}),
       ...(exfil ? { exfil } : {}),
-      ...((await deps.trusted?.(url.host)) ? { trusted: true as const } : {}),
+      ...(trusted ? { trusted: true as const } : {}),
+      ...(scored ? { score: scored } : {}),
     };
     await appendShadowEntry(deps.area, entry);
     return entry;
