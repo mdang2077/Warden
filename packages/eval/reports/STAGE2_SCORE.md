@@ -1,7 +1,7 @@
 # Stage 2 score report (S2.11)
 
-- Features generated 2026-10-08T19:49:34.373Z (source af073fcfc3b4)
-- Rows: 2454 benign, 130 phish, 2 skipped
+- Features generated 2026-10-08T23:48:27.196Z (source af073fcfc3b4)
+- Rows: 3890 benign, 130 phish, 4 skipped
 - Threshold 8; CI budget: raw benign warn rate on gated pages ≤ 0.1%
 
 _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension would decide. Identifier-only steps are scored but never warn. Shadow mode only.
@@ -16,10 +16,10 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 | benign | consumer-accounts | tune | 8 | 8 | 0 | 0 | 0 |
 | benign | identity-providers | holdout | 3 | 3 | 0 | 0 | 0 |
 | benign | identity-providers | tune | 6 | 6 | 0 | 0 | 0 |
-| benign | tranco-home | holdout | 197 | 31 | 42 | 0 | 0 |
-| benign | tranco-home | tune | 429 | 78 | 84 | 0 | 0 |
-| benign | tranco-login | holdout | 574 | 416 | 32 | 0 | 0 |
-| benign | tranco-login | tune | 1220 | 860 | 73 | 0 | 0 |
+| benign | tranco-home | holdout | 322 | 58 | 58 | 0 | 0 |
+| benign | tranco-home | tune | 739 | 147 | 132 | 0 | 0 |
+| benign | tranco-login | holdout | 867 | 626 | 45 | 0 | 0 |
+| benign | tranco-login | tune | 1928 | 1341 | 115 | 0 | 0 |
 | benign | universities | holdout | 1 | 1 | 0 | 0 | 0 |
 | benign | universities | tune | 3 | 3 | 0 | 0 | 0 |
 | phish | openphish | holdout | 32 | 20 | 14 | 11 | 11 |
@@ -30,25 +30,25 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 
 | Threshold | Benign warn | Phish warn |
 |--:|--:|--:|
-| 6 | 0 of 1419 (0.00%) | 46 of 76 (60.53%) |
-| 7 | 0 of 1419 (0.00%) | 41 of 76 (53.95%) |
-| 8 | 0 of 1419 (0.00%) | 27 of 76 (35.53%) |
-| 9 | 0 of 1419 (0.00%) | 19 of 76 (25.00%) |
-| 10 | 0 of 1419 (0.00%) | 10 of 76 (13.16%) |
+| 6 | 0 of 2206 (0.00%) | 46 of 76 (60.53%) |
+| 7 | 0 of 2206 (0.00%) | 41 of 76 (53.95%) |
+| 8 | 0 of 2206 (0.00%) | 27 of 76 (35.53%) |
+| 9 | 0 of 2206 (0.00%) | 19 of 76 (25.00%) |
+| 10 | 0 of 2206 (0.00%) | 10 of 76 (13.16%) |
 
 ## Signal fire counts (gated pages)
 
 | Signal | Benign | Phish |
 |---|--:|--:|
-| brandMismatch:1cue | 39 | 36 |
-| brandMismatch:2cues | 20 | 17 |
+| brandMismatch:1cue | 55 | 36 |
+| brandMismatch:2cues | 26 | 17 |
 | exfil:telegram | 0 | 11 |
 | exfil:discord | 0 | 4 |
 | exfil:formService | 0 | 4 |
-| exfil:crossSiteForm | 8 | 1 |
-| ipLookup | 11 | 9 |
+| exfil:crossSiteForm | 12 | 1 |
+| ipLookup | 16 | 9 |
 | lookalike | 0 | 0 |
-| brandKeyword | 0 | 25 |
+| brandKeyword | 1 | 25 |
 | ipHost | 0 | 0 |
 | tenantPlatform | 0 | 46 |
 | deepSubdomain | 0 | 0 |
