@@ -13,3 +13,4 @@ test-results/
 packages/service/out/
 .worktrees/
 .superpowers/
+.impeccable/
