@@ -10,12 +10,24 @@ Warden is built around one rule: **a false positive costs more than a missed phi
 
 - **Blocks known phishing URLs.** Warden checks every top-frame navigation, including each hop of a redirect chain. It looks the URL up in Google Safe Browsing (through a small proxy) and in locally synced phishing feeds. On a hit, it shows a warning page with **Back to safety** and a small **Proceed anyway** link.
 - **Avoids blocking whole shared sites.** On Google Docs, GitHub Pages, Vercel, SharePoint, URL shorteners and similar hosts, Warden matches exact paths only, so one bad page doesn't block the platform. Popular sites (Tranco top 100k) are on an allowlist.
-- **Hijack Guard.** Blocks popups and redirects to known pop-under and ad-hijack networks. Strict mode, opt-in per site, also catches click hijacks.
+- **Hijack Guard.** Blocks popups and redirects to known pop-under and ad-hijack networks. Strict mode, opt-in per site, also catches click hijacks. See [Hijack Guard modes](#hijack-guard-modes).
 - **Stage 2 heuristics (shadow mode, no UI yet).** On pages that ask for a password or other secret, Warden scores local signals and logs the result on your device only:
   - a brand claimed on a domain the brand doesn't own;
   - credentials sent to a Telegram bot, Discord webhook or form-to-email service;
   - lookalike and brand-keyword domains.
 - **Popup:** shows the current tab's verdict, lets you trust a site, and has the Hijack Guard settings.
+
+### Hijack Guard modes
+
+Set per site in the toolbar popup (**On \<site\> → Popups**). Turn the whole feature on or off with **Block popups & redirects**.
+
+| Mode | What it does |
+|---|---|
+| **Allow** | Hijack Guard is off for this site. Use it if a site's real pop-ups break. |
+| **Standard** (default) | Pop-ups and redirects to **known** pop-up/ad networks are blocked before they load. A blocked new tab closes, and a hijacked tab goes back. Sign-in, payment and clicked-link pop-ups keep working. |
+| **Strict** (opt-in) | Standard, plus: any new tab or cross-site redirect you didn't cause by clicking a visible link (or submitting a form, typing an address, etc.) is closed or sent back, even to sites on no list. For sites that keep hijacking you. |
+
+Blocks show as a gray count on the toolbar icon and in the popup's "Blocked N on this page" list. Full details: [`docs/hijack-guard.md`](docs/hijack-guard.md).
 
 ### Privacy
 
