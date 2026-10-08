@@ -11,6 +11,8 @@ import {
   withSiteMode,
 } from "../../lib/popup-prefs.ts";
 import { blockedView } from "../../lib/popup-view.ts";
+import { listShadowEntries } from "../../lib/shadow-log.ts";
+import { describeSignals, shadowExport, shadowSummary } from "../../lib/shadow-summary.ts";
 import { getTabVerdict, type TabVerdict } from "../../lib/tab-state.ts";
 import { listTrusted, setTrusted } from "../../lib/trusted-sites.ts";
 
@@ -122,6 +124,44 @@ async function renderControls(
   }
 }
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const day = (t: number) =>
+  new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+/** The Stage 2 shadow log: totals, pages that would have warned, and an export. */
+async function renderShadow() {
+  const entries = await listShadowEntries(browser.storage.local);
+  const s = shadowSummary(entries);
+  const details = document.getElementById("shadow") as HTMLDetailsElement;
+  details.hidden = s.total === 0;
+  if (s.total === 0) return;
+  (document.getElementById("shadow-summary") as HTMLElement).textContent =
+    `Stage 2 log: ${plural(s.total, "login page", "login pages")} · would have warned on ${s.warns.length}`;
+  (document.getElementById("shadow-counts") as HTMLElement).textContent =
+    `Since ${day(s.since ?? Date.now())}: ${plural(s.gate, "password page", "password pages")}, ` +
+    `${plural(s.identifier, "username step", "username steps")}, ${s.suspicious} suspicious.`;
+  (document.getElementById("shadow-warns") as HTMLUListElement).replaceChildren(
+    ...s.warns.map((w) => {
+      const li = document.createElement("li");
+      const site = document.createElement("strong");
+      site.textContent = w.domain; // textContent only: site names come from web pages
+      const why = document.createElement("span");
+      why.textContent = `${describeSignals(w.signals)} · ${day(w.at)}`;
+      li.title = w.page;
+      li.append(site, why);
+      return li;
+    }),
+  );
+  (document.getElementById("shadow-export") as HTMLButtonElement).addEventListener("click", () => {
+    const { filename, json } = shadowExport(entries, Date.now());
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  });
+}
+
 async function main() {
   // `?tab=<id>` shows a specific tab (used by e2e; the popup isn't web-accessible).
   const forced = Number(new URLSearchParams(location.search).get("tab"));
@@ -130,6 +170,7 @@ async function main() {
       ? await browser.tabs.get(forced).catch(() => undefined)
       : (await browser.tabs.query({ active: true, currentWindow: true }))[0];
   await renderControls(tab);
+  await renderShadow().catch((err) => console.error("[Warden] shadow log view failed", err));
   if (tab?.id === undefined) {
     show("none", "Not checked", "");
     return;

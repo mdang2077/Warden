@@ -163,3 +163,31 @@ button {
   padding: 2px 8px;
   font-size: 0.75rem;
 }
+
+#shadow summary {
+  cursor: pointer;
+}
+
+#shadow-warns {
+  margin: 6px 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+#shadow-warns li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+#shadow-warns span {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+#shadow-export {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}

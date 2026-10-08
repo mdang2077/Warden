@@ -44,6 +44,16 @@
         <summary id="trusted-summary"></summary>
         <ul id="trusted-list"></ul>
       </details>
+      <details id="shadow" class="trusted shadow" hidden>
+        <summary id="shadow-summary"></summary>
+        <p class="hint">
+          Stage 2 runs in shadow mode: it only keeps a log on this device and never warns.
+          Pages listed here are the ones it would have warned on.
+        </p>
+        <p id="shadow-counts" class="detail"></p>
+        <ul id="shadow-warns"></ul>
+        <button id="shadow-export" type="button">Export log</button>
+      </details>
       <button id="report" type="button" hidden>Report false positive</button>
       <p id="report-done" class="detail" role="status" hidden>
         Thanks. The report was saved on this device.

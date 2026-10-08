@@ -69,3 +69,29 @@ test("a trusted site on a phishing list is still blocked", async ({ context, ext
     .poll(() => page.url())
     .toMatch(new RegExp(`^chrome-extension://${extensionId}/warning\\.html\\?`));
 });
+
+test("the popup summarizes the Stage 2 log and lists pages that would have warned", async ({
+  context,
+  extensionId,
+}) => {
+  // Telegram exfil (credential destination) + "paypal" in the address (URL/host): a warn candidate.
+  const phishy = "https://paypal-verify.warden-test.example/exfil-login";
+  const page = await context.newPage();
+  await page.goto(phishy);
+  await expect.poll(async () => (await readLog(context)).length).toBeGreaterThan(0);
+
+  const popup = await openPopup(context, extensionId, phishy);
+  const summary = popup.locator("#shadow-summary");
+  await expect(summary).toHaveText("Stage 2 log: 1 login page · would have warned on 1");
+  await summary.click(); // starts collapsed
+  await expect(popup.locator("#shadow-warns li")).toHaveCount(1);
+  await expect(popup.locator("#shadow-warns li")).toContainText(
+    "sends to Telegram + brand name in address",
+  );
+
+  const download = popup.waitForEvent("download");
+  await popup.getByRole("button", { name: "Export log" }).click();
+  expect((await download).suggestedFilename()).toMatch(
+    /^warden-shadow-log-\d{4}-\d{2}-\d{2}\.json$/,
+  );
+});
