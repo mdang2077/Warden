@@ -14,6 +14,7 @@ import { defineBackground } from "wxt/utils/define-background";
 import { isStrictQuery, parseClickMessage } from "../lib/click-capture.ts";
 import {
   addSessionBypass,
+  addTabBypass,
   type DnrApi,
   type DnrSessionApi,
   PHISHING_RULE_IDS,
@@ -412,13 +413,42 @@ export default defineBackground({
 
     // A DNR rule the worker disagrees with (stale since the last sync) gets one retry.
     const dnr = browser.declarativeNetRequest as unknown as DnrSessionApi;
+    // A typed visit to a hijack-blocked site gets a one-tab, one-visit allow rule: a
+    // session-wide one would also let other sites open it later (taskboard H10).
+    const visitBypasses = new Map<number, { id: number; url: string }>();
+    const dropVisitBypass = (tabId: number) => {
+      const bypass = visitBypasses.get(tabId);
+      if (!bypass) return;
+      visitBypasses.delete(tabId);
+      void dnr
+        .updateSessionRules({ removeRuleIds: [bypass.id], addRules: [] })
+        .catch(logHijackError);
+    };
+    browser.webNavigation.onCommitted.addListener((d) => {
+      if (d.frameId === 0 && visitBypasses.get(d.tabId)?.url === d.url.split("#")[0]) {
+        dropVisitBypass(d.tabId);
+      }
+    });
+    browser.tabs.onRemoved.addListener((tabId) => dropVisitBypass(tabId));
     const heal = createDnrHealer({
       evaluate: async (url, tabId) => {
         await localReady;
         const ctx = { url, tabId, redirectChain: [], startedAt: Date.now() };
         return (await runCascade(stages, ctx, { budgetMs: CASCADE_BUDGET_MS })).decision;
       },
-      allow: (url) => addSessionBypass(dnr, url),
+      allow: async (url, tabId) => {
+        await Promise.all([localReady, prefsReady]);
+        if (!(prefs.hijack && isPopupNetworkUrl(popupNetworks(), url))) {
+          return addSessionBypass(dnr, url);
+        }
+        dropVisitBypass(tabId);
+        const id = await addTabBypass(dnr, url, tabId);
+        visitBypasses.set(tabId, { id, url: url.split("#")[0] as string });
+        // If the visit never commits (the user goes elsewhere), don't leave the rule behind.
+        setTimeout(() => {
+          if (visitBypasses.get(tabId)?.id === id) dropVisitBypass(tabId);
+        }, 30_000);
+      },
       reload: async (tabId, url) => {
         await browser.tabs.update(tabId, { url });
       },

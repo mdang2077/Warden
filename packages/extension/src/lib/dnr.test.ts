@@ -2,6 +2,7 @@ import { bundledSharedHosts as shared } from "@warden/shared/shared-hosts";
 import { describe, expect, it, vi } from "vitest";
 import {
   addSessionBypass,
+  addTabBypass,
   BYPASS_PRIORITY,
   bypassRule,
   bypassRuleId,
@@ -356,5 +357,28 @@ describe("addSessionBypass", () => {
       expect(id).toBeGreaterThan(0);
       expect(id).toBeLessThanOrEqual(2 ** 30);
     }
+  });
+});
+
+describe("addTabBypass", () => {
+  it("allows one URL in one tab only, with an id apart from the session bypass", async () => {
+    const api = { updateSessionRules: vi.fn(async (_o: { removeRuleIds: number[] }) => {}) };
+    const id = await addTabBypass(api, "https://casino.example/", 7);
+    expect(id).not.toBe(await bypassRuleId("https://casino.example/"));
+    expect(id).toBeGreaterThan(0);
+    expect(api.updateSessionRules).toHaveBeenCalledWith({
+      removeRuleIds: [id],
+      addRules: [
+        expect.objectContaining({
+          id,
+          action: { type: "allow" },
+          condition: expect.objectContaining({
+            tabIds: [7],
+            urlFilter: "|https://casino.example/|",
+          }),
+        }),
+      ],
+    });
+    expect(await addTabBypass(api, "https://casino.example/", 8)).not.toBe(id);
   });
 });

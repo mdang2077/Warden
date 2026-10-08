@@ -277,3 +277,39 @@ test("no notice when notices are turned off", async ({ context, extensionId: _ }
   await page.waitForTimeout(1_500);
   await expect(page.locator("warden-notice")).toHaveCount(0);
 });
+
+test("typing a blocked site yourself doesn't let other sites redirect to it afterwards", async ({
+  context,
+  extensionId: _,
+}) => {
+  await worker(context).evaluate(() =>
+    chrome.storage.local.set({
+      popup_prefs: { phishing: true, hijack: true, sites: {}, blocked: ["other-test.example"] },
+    }),
+  );
+  await expect
+    .poll(() =>
+      worker(context).evaluate(async () =>
+        (await chrome.declarativeNetRequest.getDynamicRules()).some((r) =>
+          r.condition.requestDomains?.includes("other-test.example"),
+        ),
+      ),
+    )
+    .toBe(true);
+  const casino = "https://casino.other-test.example/";
+
+  // Typed: loads (after a brief block and a retry).
+  const typed = await context.newPage();
+  await typed.goto(casino).catch(() => {});
+  await expect.poll(() => typed.url()).toBe(casino);
+  await expect(typed.locator("h1")).toHaveText("Test page");
+
+  // Another site redirecting to it afterwards is still blocked and sent back.
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/plain`);
+  await page.evaluate((url) => {
+    location.href = url;
+  }, casino);
+  await page.waitForTimeout(2_000);
+  expect(page.url()).toBe(`${STREAM}/plain`);
+});

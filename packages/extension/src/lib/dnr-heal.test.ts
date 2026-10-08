@@ -22,7 +22,7 @@ describe("DNR healer", () => {
   it("allows and reloads a URL the cascade doesn't block", async () => {
     const { deps, heal } = setup("allow");
     expect(await heal(blocked())).toBe("healed");
-    expect(deps.allow).toHaveBeenCalledWith("https://trusted.example/");
+    expect(deps.allow).toHaveBeenCalledWith("https://trusted.example/", 3);
     expect(deps.reload).toHaveBeenCalledWith(3, "https://trusted.example/");
   });
 

@@ -16,7 +16,7 @@ import { shouldEvaluate } from "./navigation.ts";
 export interface DnrHealDeps {
   /** Runs the cascade for a URL and returns its decision. */
   evaluate: (url: string, tabId: number) => Promise<Decision>;
-  allow: (url: string) => Promise<void>;
+  allow: (url: string, tabId: number) => Promise<void>;
   reload: (tabId: number, url: string) => Promise<void>;
   /**
    * True for a pop-network URL that a page navigated to: that block belongs to the hijack
@@ -50,7 +50,7 @@ export function createDnrHealer(deps: DnrHealDeps) {
 
     // The worker's own block path shows the interstitial for a real block.
     if ((await deps.evaluate(details.url, details.tabId)) === "block") return "skipped";
-    await deps.allow(details.url);
+    await deps.allow(details.url, details.tabId);
     await deps.reload(details.tabId, details.url);
     return "healed";
   };

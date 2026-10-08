@@ -33,6 +33,8 @@ export interface DnrRule {
     regexFilter?: string;
     isUrlFilterCaseSensitive: true;
     resourceTypes: ["main_frame"];
+    /** Session rules only: limit the rule to these tabs. */
+    tabIds?: number[];
   };
 }
 
@@ -162,10 +164,10 @@ export function bypassRule(id: number, rawUrl: string): DnrRule {
 }
 
 /** Session rule id for a URL: stable, so concurrent bypasses of one URL write one rule. */
-export async function bypassRuleId(rawUrl: string): Promise<number> {
+export async function bypassRuleId(rawUrl: string, scope = ""): Promise<number> {
   const url = new URL(rawUrl);
   url.hash = "";
-  const h = await sha256(url.href);
+  const h = await sha256(scope + url.href);
   // 30 bits, never 0: DNR rule ids must be positive integers.
   return (
     ((((h[0] as number) << 24) |
@@ -217,4 +219,22 @@ export interface DnrSessionApi {
 export async function addSessionBypass(api: DnrSessionApi, url: string): Promise<void> {
   const id = await bypassRuleId(url);
   await api.updateSessionRules({ removeRuleIds: [id], addRules: [bypassRule(id, url)] });
+}
+
+/**
+ * Lets one tab through to one exact URL: for a site the user opened themselves (typed, a
+ * bookmark) that a hijack-guard rule blocks. Unlike the session bypass it must not let
+ * other sites open the URL later, so it is limited to the tab and the caller removes it
+ * once the visit has loaded. Returns the rule id.
+ */
+export async function addTabBypass(
+  api: DnrSessionApi,
+  url: string,
+  tabId: number,
+): Promise<number> {
+  const id = await bypassRuleId(url, `tab:${tabId}:`);
+  const base = bypassRule(id, url);
+  const rule: DnrRule = { ...base, condition: { ...base.condition, tabIds: [tabId] } };
+  await api.updateSessionRules({ removeRuleIds: [id], addRules: [rule] });
+  return id;
 }
