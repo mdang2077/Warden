@@ -1,0 +1,126 @@
+# Warden
+
+A Chrome extension (Manifest V3) that blocks known phishing pages and the popups and redirects that lead to them.
+
+Warden is built around one rule: **a false positive costs more than a missed phish.** People who see bogus warnings learn to click through them, and then real warnings stop working. So only curated sources can block a page. Heuristics run in shadow mode and must pass a measured false-positive gate before they're allowed to warn. See [`docs/fp-policy.md`](docs/fp-policy.md).
+
+> **Status:** personal project, under active development. Not on the Chrome Web Store yet. Install it unpacked (below).
+
+## What it does
+
+- **Blocks known phishing URLs.** Warden checks every top-frame navigation, including each hop of a redirect chain. It looks the URL up in Google Safe Browsing (through a small proxy) and in locally synced phishing feeds. On a hit, it shows a warning page with **Back to safety** and a small **Proceed anyway** link.
+- **Avoids blocking whole shared sites.** On Google Docs, GitHub Pages, Vercel, SharePoint, URL shorteners and similar hosts, Warden matches exact paths only, so one bad page doesn't block the platform. Popular sites (Tranco top 100k) are on an allowlist.
+- **Hijack Guard.** Blocks popups and redirects to known pop-under and ad-hijack networks. Strict mode, opt-in per site, also catches click hijacks.
+- **Stage 2 heuristics (shadow mode, no UI yet).** On pages that ask for a password or other secret, Warden scores local signals and logs the result on your device only:
+  - a brand claimed on a domain the brand doesn't own;
+  - credentials sent to a Telegram bot, Discord webhook or form-to-email service;
+  - lookalike and brand-keyword domains.
+- **Popup:** shows the current tab's verdict, lets you trust a site, and has the Hijack Guard settings.
+
+### Privacy
+
+- Safe Browsing lookups send 4-byte hash prefixes to the proxy, which forwards them to Google. Never full URLs.
+- Feed syncs download published blocklist snapshots.
+- No browsing history, telemetry or page content leaves the device.
+- The Stage 2 shadow log stays in local extension storage.
+
+## Install (unpacked)
+
+You need Node 22+ and pnpm. The repo pins pnpm 10.34.6. With Corepack, run `corepack enable pnpm`.
+
+```bash
+pnpm install
+cd extension
+pnpm build                  # writes extension/.output/chrome-mv3/
+```
+
+Then in Chrome:
+
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and select `extension/.output/chrome-mv3`. In the macOS file picker, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> to show the hidden `.output` folder.
+
+After rebuilding, click the reload icon on Warden's card. For live reloading, run `pnpm dev`, which starts a separate Chrome profile with Warden loaded.
+
+### Pointing it at a feed service
+
+A plain build has **no phishing lists and no Safe Browsing**. Hijack Guard and the local checks still work. To get list blocking, build against a running feed service:
+
+```bash
+WXT_FEED_SERVICE_URL=https://warden-feeds.<subdomain>.workers.dev pnpm build
+```
+
+## Feed service
+
+`service/` is a Cloudflare Worker with a cron trigger and an R2 bucket. Every hour it:
+
+1. ingests the phishing feeds;
+2. cleans them against the allowlist and the shared-host list;
+3. publishes versioned snapshots and deltas;
+4. serves them, plus the Safe Browsing proxy.
+
+| Route | Purpose |
+|---|---|
+| `GET /v1/manifest.json` | Current snapshot manifest, with the live feed config applied (kill switch) |
+| `GET /v1/{snapshots,deltas,allowlist,shared-hosts}/…` | Published files |
+| `POST /sb/hashes-search` | Safe Browsing v5 proxy (rate-limited per IP) |
+| `GET\|PUT /admin/config` | Feed config, bearer `ADMIN_TOKEN` |
+
+Secrets and variables:
+
+| Name | Purpose |
+|---|---|
+| `SB_API_KEY` | Google Safe Browsing API key |
+| `ADMIN_TOKEN` | Optional. Enables `/admin/config` |
+| `ALERT_WEBHOOK_URL` | Optional. Feed-quality alerts |
+
+Run it locally (put secrets in `service/.dev.vars`):
+
+```bash
+cd service
+pnpm exec wrangler dev --test-scheduled                  # serves http://127.0.0.1:8787
+curl "http://127.0.0.1:8787/__scheduled?cron=17+*+*+*+*"  # run the pipeline once
+```
+
+Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To run the pipeline once into a local directory without the Worker, use `node service/src/runners/cli.ts [outDir]`.
+
+Deploy with `pnpm run deploy` from `service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
+
+> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a public deployment shouldn't ship them to users. Safe Browsing and Phishing.Database (MIT) are fine. See Phase 4b in [`taskboard.md`](taskboard.md).
+
+## Development
+
+```bash
+pnpm test         # Vitest across all packages
+pnpm typecheck
+pnpm lint         # Biome
+pnpm format
+pnpm --filter @warden/extension e2e   # Playwright: loads the unpacked extension
+```
+
+### Evaluation
+
+`eval/` measures false positives and recall with the shipping code:
+
+- `node eval/src/cli.ts` runs the **Stage 1** gate: any benign block among the Tranco top 100k plus curated login pages fails CI.
+- `node eval/src/stage2/harness.ts extract|score` runs the **Stage 2** harness:
+  - `extract` re-runs the signals over crawled login pages and writes `eval/data/stage2-features.jsonl` (signal values only, no URLs).
+  - `score --check` fails CI if the benign warn-candidate rate exceeds 0.1%.
+- The crawler for building corpora is described in [`docs/crawler.md`](docs/crawler.md). Run phishing crawls only in the hardened Docker setup (`docker/crawler/`).
+
+Reports live in [`eval/reports/`](eval/reports/).
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `extension/` | The MV3 extension (WXT): background service worker, content scripts, popup, warning page |
+| `shared/` | Code used by the extension, service and eval: URL canonicalization, PSL, cascade and risk caps, Stage 2 signals and scoring |
+| `service/` | Feed aggregation Worker and Safe Browsing proxy |
+| `eval/` | FP/recall harnesses, crawler, reports |
+| `docker/` | Hardened container for crawling live phishing pages |
+| `docs/` | FP policy, shared-host list guide, crawler notes, design specs and plans |
+| `PLAN.md`, `taskboard.md` | Design plan and task status |
+
+## License
+
+No license has been chosen yet, so all rights are reserved for now.
