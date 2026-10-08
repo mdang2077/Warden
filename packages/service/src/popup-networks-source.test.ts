@@ -4,6 +4,7 @@ import {
   buildPopupNetworks,
   EASYLIST_URL,
   extractPopupDomains,
+  POPUP_NETWORK_EXCLUDES,
   refreshPopupNetworks,
 } from "./popup-networks-source.ts";
 import { memoryStore } from "./storage.ts";
@@ -74,5 +75,21 @@ describe("refreshPopupNetworks", () => {
     const out = await refreshPopupNetworks(memoryStore(), tiny as unknown as typeof fetch, 1_000);
     expect(out.file).toBeNull();
     expect(out.error).toMatch(/too few/);
+  });
+});
+
+describe("excluded domains", () => {
+  it("drops an excluded domain and its subdomains from the built list, and only those", () => {
+    const file = buildPopupNetworks(
+      ["go.redirectingat.com", "redirectingat.com", "popads.net"],
+      [],
+      0,
+      ["redirectingat.com"],
+    );
+    expect(file.domains).toEqual(["popads.net"]);
+  });
+
+  it("ships with no exclusions until they are reviewed (taskboard H4)", () => {
+    expect(POPUP_NETWORK_EXCLUDES).toEqual([]);
   });
 });

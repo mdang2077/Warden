@@ -39,11 +39,24 @@ export function extractPopupDomains(text: string): string[] {
   return [...out].sort();
 }
 
+/**
+ * Domains never published as pop networks, even when EasyList lists them: real sites or
+ * link redirectors whose blocking would break ordinary clicks (Warden blocks same-tab loads
+ * too, not only new windows). Each entry drops the domain and its subdomains. Review list:
+ * packages/eval/reports/HIJACK_TRANCO.md (taskboard H4).
+ */
+export const POPUP_NETWORK_EXCLUDES: readonly string[] = [];
+
+const excludedBy = (excludes: readonly string[]) => (domain: string) =>
+  excludes.some((e) => domain === e || domain.endsWith(`.${e}`));
+
 export function buildPopupNetworks(
   easylist: readonly string[],
   curated: readonly string[],
   now: number,
+  excludes: readonly string[] = POPUP_NETWORK_EXCLUDES,
 ): PopupNetworksFile {
+  const excluded = excludedBy(excludes);
   return {
     version: now,
     generatedAt: new Date(now).toISOString(),
@@ -51,7 +64,7 @@ export function buildPopupNetworks(
       { name: "EasyList", license: "see THIRD_PARTY_NOTICES", url: "https://easylist.to/" },
       ...bundledPopupNetworksFile.sources,
     ],
-    domains: [...new Set([...easylist, ...curated])].sort(),
+    domains: [...new Set([...easylist, ...curated])].filter((d) => !excluded(d)).sort(),
   };
 }
 

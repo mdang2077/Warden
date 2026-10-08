@@ -4,8 +4,9 @@ Popup-network list
 ------------------
 Warden's popup and redirect protection uses a domain list derived from the
 "$popup" filters of EasyList (https://easylist.to/), merged with domains
-curated by the Warden project. EasyList is published by The EasyList
-authors under a dual license (GPLv3 or CC BY-SA 3.0).
-
-RELEASE GATE: confirm the current EasyList license and attribution terms at
-https://easylist.to/ before shipping, and update this notice to match.
+curated by the Warden project. The EasyList material is by "The EasyList
+authors (https://easylist.to/)" and is dual licensed under the GNU General
+Public License version 3 or later and Creative Commons
+Attribution-ShareAlike 3.0 Unported or later
+(https://easylist.to/pages/licence.html, checked 2026-10-08). The derived
+domain list is distributed under CC BY-SA 3.0.
