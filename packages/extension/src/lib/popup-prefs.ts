@@ -17,6 +17,8 @@ export type SiteMode = "allow" | "standard" | "strict";
 export interface PopupPrefs {
   phishing: boolean;
   hijack: boolean;
+  /** Show a short in-page notice when the hijack guard closes a pop-up or undoes a redirect. */
+  notices: boolean;
   /** "standard" is the default and is never stored. */
   sites: Record<string, "allow" | "strict">;
   /** Sites blocked whenever another site opens them, like listed pop networks. Sorted. */
@@ -24,7 +26,13 @@ export interface PopupPrefs {
 }
 
 export const PREFS_KEY = "popup_prefs";
-export const DEFAULT_PREFS: PopupPrefs = { phishing: true, hijack: true, sites: {}, blocked: [] };
+export const DEFAULT_PREFS: PopupPrefs = {
+  phishing: true,
+  hijack: true,
+  notices: true,
+  sites: {},
+  blocked: [],
+};
 
 /** The per-site key for a page, or null for pages Warden never evaluates. */
 export function siteKey(rawUrl: string): string | null {
@@ -51,6 +59,7 @@ export function normalizePrefs(raw: unknown): PopupPrefs {
   return {
     phishing: typeof r.phishing === "boolean" ? r.phishing : DEFAULT_PREFS.phishing,
     hijack: typeof r.hijack === "boolean" ? r.hijack : DEFAULT_PREFS.hijack,
+    notices: typeof r.notices === "boolean" ? r.notices : DEFAULT_PREFS.notices,
     sites,
     blocked,
   };

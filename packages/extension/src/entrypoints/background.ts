@@ -26,6 +26,7 @@ import { CLICK_WAIT_MS, CLICK_WINDOW_MS, createClickLog, isHijack } from "../lib
 import { compileHijackRules, installHijackRules, withUserBlocks } from "../lib/hijack-rules.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
+import { createNotices, NOTICE_MESSAGE, NOTICE_POLL } from "../lib/notices.ts";
 import { createOverrideStore } from "../lib/overrides.ts";
 import {
   DEFAULT_PREFS,
@@ -181,6 +182,14 @@ export default defineBackground({
     });
 
     const session = browser.storage.session;
+    // "Warden closed a pop-up to …" on the page (notice.content.ts), when turned on.
+    const notices = createNotices({
+      send: async (tabId, text) =>
+        (await browser.tabs
+          .sendMessage(tabId, { type: NOTICE_MESSAGE, text }, { frameId: 0 })
+          .catch(() => undefined)) === true,
+      enabled: () => prefs.hijack && prefs.notices,
+    });
     const hijack = createHijackAction({
       area: session,
       tabs: {
@@ -191,6 +200,7 @@ export default defineBackground({
         setBadgeText: (d) => browser.action.setBadgeText(d),
         setBadgeBackgroundColor: (d) => browser.action.setBadgeBackgroundColor(d),
       },
+      notify: (tabId, block) => notices.blocked(tabId, block),
     });
     const logHijackError = (err: unknown) => console.error("[Warden] hijack guard failed", err);
     // Hijack guard, strict mode: clicks reported by the hijack-clicks content script.
@@ -228,6 +238,7 @@ export default defineBackground({
       void clearTabVerdict(session, tabId);
       void hijack.forgetTab(tabId);
       clicks.forget(tabId);
+      notices.forgetTab(tabId);
     });
 
     // Stage 2 shadow mode: the content script reports secret-entry surfaces; nothing is shown.
@@ -246,6 +257,12 @@ export default defineBackground({
       },
     });
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if ((message as { type?: unknown } | null)?.type === NOTICE_POLL) {
+        const text =
+          sender.tab?.id !== undefined && sender.frameId === 0 ? notices.poll(sender.tab.id) : null;
+        sendResponse(text ? { type: NOTICE_MESSAGE, text } : null);
+        return;
+      }
       if (isStrictQuery(message)) {
         void prefsReady.then(() => sendResponse(strictSite(sender.tab?.url) !== null));
         return true; // answered asynchronously
@@ -367,6 +384,8 @@ export default defineBackground({
           }
         }
         await hijack.onCommitted(d.tabId, d.url);
+        // A redirect notice waits for the page the tab went back to.
+        await notices.committed(d.tabId);
       })().catch(logHijackError);
     });
 

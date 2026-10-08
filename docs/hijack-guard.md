@@ -3,10 +3,12 @@
 Hijack Guard stops the pop-ups, pop-unders, tab-unders and forced redirects that drag you off a page and onto an ad, scam or phishing site. Streaming and file-download sites are the usual culprits. Real pop-ups keep working: sign-in windows, payment windows, and links you deliberately open in a new tab.
 
 It works quietly:
-- Warden never adds anything to the page itself.
 - A blocked pop-up tab just closes.
 - A redirected tab goes back to where you were.
-- The only sign on screen is a small gray number on the Warden toolbar icon, which counts blocks on the current page. Red is reserved for phishing.
+- A small card in the top-right corner of the page says what happened, for example "Warden closed a pop-up to crowncoinscasino.com" or "Warden blocked a redirect to … and brought you back". It fades after about 3 seconds; click it to dismiss it sooner. Several blocks in a row update one card ("Warden closed 3 pop-ups").
+- A small gray number on the Warden toolbar icon counts blocks on the current page. Red is reserved for phishing.
+
+Turn the card off with **Show a notice when something is blocked** in the popup.
 
 ## Turning it on and off
 

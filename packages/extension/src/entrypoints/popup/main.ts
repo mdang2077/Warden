@@ -130,13 +130,20 @@ async function renderControls(
   const prefs = await readPrefs(area);
   const phishing = document.getElementById("toggle-phishing") as HTMLInputElement;
   const hijack = document.getElementById("toggle-hijack") as HTMLInputElement;
+  const notices = document.getElementById("toggle-notices") as HTMLInputElement;
   phishing.checked = prefs.phishing;
   hijack.checked = prefs.hijack;
+  notices.checked = prefs.notices;
+  notices.disabled = !prefs.hijack;
   phishing.addEventListener("change", () => {
     void updatePrefs(area, (p) => ({ ...p, phishing: phishing.checked }));
   });
   hijack.addEventListener("change", () => {
+    notices.disabled = !hijack.checked;
     void updatePrefs(area, (p) => ({ ...p, hijack: hijack.checked }));
+  });
+  notices.addEventListener("change", () => {
+    void updatePrefs(area, (p) => ({ ...p, notices: notices.checked }));
   });
 
   const site = tab?.url ? siteKey(tab.url) : null;

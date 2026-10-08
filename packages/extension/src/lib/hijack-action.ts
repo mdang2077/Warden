@@ -1,8 +1,8 @@
 /**
  * What Warden does once a popup or redirect is judged a hijack, by a DNR block on a pop
  * network (Standard) or by strict mode: close a new tab that a page opened, or send a
- * redirected tab back. Nothing is shown in the page; each block is recorded per tab in
- * chrome.storage.session for the toolbar badge and the popup.
+ * redirected tab back. Each block is recorded per tab in chrome.storage.session for the
+ * toolbar badge and the popup, and reported to `notify` for the in-page notice (notices.ts).
  *
  * Opener records live in storage.session too (plus an in-memory copy, because the new
  * tab's first navigation can race the storage write), so a worker restart between "a
@@ -57,6 +57,8 @@ export interface HijackDeps {
     setBadgeText(details: { tabId: number; text: string }): Promise<void>;
     setBadgeBackgroundColor(details: { tabId: number; color: string }): Promise<void>;
   };
+  /** Told about each block on the tab the user is looking at (the opener, or the tab sent back). */
+  notify?: (tabId: number, block: HijackBlock) => Promise<void>;
   now?: () => number;
 }
 
@@ -127,16 +129,14 @@ export function createHijackAction(deps: HijackDeps) {
       if (sourceTabId !== undefined) {
         await clearOpener(ev.tabId);
         await quietly(() => deps.tabs.remove(ev.tabId));
-        await addBlock(sourceTabId, {
-          destinationHost,
-          kind: "new-tab",
-          layer: ev.layer,
-          at,
-        });
+        const block: HijackBlock = { destinationHost, kind: "new-tab", layer: ev.layer, at };
+        await addBlock(sourceTabId, block);
+        await quietly(async () => deps.notify?.(sourceTabId, block));
         return "closed";
       }
 
-      await addBlock(ev.tabId, { destinationHost, kind: "redirect", layer: ev.layer, at });
+      const block: HijackBlock = { destinationHost, kind: "redirect", layer: ev.layer, at };
+      await addBlock(ev.tabId, block);
       const recent = (backs.get(ev.tabId) ?? []).filter((t) => at - t < LOOP_WINDOW_MS);
       if (recent.length >= LOOP_LIMIT) {
         backs.set(ev.tabId, recent);
@@ -145,6 +145,7 @@ export function createHijackAction(deps: HijackDeps) {
       backs.set(ev.tabId, [...recent, at]);
       try {
         await deps.tabs.goBack(ev.tabId);
+        await quietly(async () => deps.notify?.(ev.tabId, block));
         return "went-back";
       } catch {
         // No history to go back to: Chrome's blocked-page screen stays up.

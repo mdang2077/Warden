@@ -230,3 +230,50 @@ test("blocking a site in the popup stops other sites from opening it, until remo
   await expect(popup.locator("#blocked-sites-list li")).toHaveCount(0);
   await expect.poll(blockedRule).toBe(false);
 });
+
+test("a closed pop-up shows a short notice on the page that opened it", async ({
+  context,
+  extensionId: _,
+}) => {
+  await hijackRulesReady(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/hijack-click`);
+  const popup = context.waitForEvent("page");
+  await page.click("#play");
+  await expect.poll(async () => (await popup).isClosed()).toBe(true);
+  const notice = page.locator("warden-notice");
+  await expect(notice).toContainText("Warden closed a pop-up to popnet-test.example");
+  await expect(notice).toHaveCount(0, { timeout: 6_000 }); // gone after about 3 s
+});
+
+test("an undone redirect shows a notice on the page it went back to", async ({
+  context,
+  extensionId: _,
+}) => {
+  await hijackRulesReady(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/tab-under`);
+  const content = context.waitForEvent("page");
+  await page.click("#play");
+  await content;
+  await expect.poll(() => page.url()).toBe(`${STREAM}/tab-under`);
+  await expect(page.locator("warden-notice")).toContainText(
+    "Warden blocked a redirect to popnet-test.example and brought you back",
+  );
+});
+
+test("no notice when notices are turned off", async ({ context, extensionId: _ }) => {
+  await hijackRulesReady(context);
+  await worker(context).evaluate(() =>
+    chrome.storage.local.set({
+      popup_prefs: { phishing: true, hijack: true, notices: false, sites: {} },
+    }),
+  );
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/hijack-click`);
+  const popup = context.waitForEvent("page");
+  await page.click("#play");
+  await expect.poll(async () => (await popup).isClosed()).toBe(true);
+  await page.waitForTimeout(1_500);
+  await expect(page.locator("warden-notice")).toHaveCount(0);
+});

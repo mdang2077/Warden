@@ -18,11 +18,13 @@ function setup(area = memoryArea()) {
     setBadgeText: vi.fn(async (_d: { tabId: number; text: string }) => {}),
     setBadgeBackgroundColor: vi.fn(async (_d: { tabId: number; color: string }) => {}),
   };
-  const action = createHijackAction({ area, tabs, badge, now: () => t });
+  const notify = vi.fn(async (_tabId: number, _block: unknown) => {});
+  const action = createHijackAction({ area, tabs, badge, notify, now: () => t });
   return {
     area,
     tabs,
     badge,
+    notify,
     action,
     advance: (ms: number) => {
       t += ms;
@@ -152,5 +154,30 @@ describe("hijack action", () => {
     await action.forgetTab(1);
     expect(await getHijackRecord(area, 1)).toBeNull();
     expect(await action.openerOf(1)).toBeNull();
+  });
+});
+
+describe("hijack action notices", () => {
+  it("reports a closed pop-up to the tab that opened it", async () => {
+    const { action, notify } = setup();
+    await action.recordOpener(2, 1);
+    await action.handle({ tabId: 2, url: POP, layer: "standard" });
+    expect(notify).toHaveBeenCalledWith(1, expect.objectContaining({ kind: "new-tab" }));
+  });
+
+  it("reports an undone redirect to the redirected tab", async () => {
+    const { action, notify } = setup();
+    await action.handle({ tabId: 3, url: POP, layer: "strict" });
+    expect(notify).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({ kind: "redirect", destinationHost: "go.popads.net" }),
+    );
+  });
+
+  it("stays quiet when it leaves the blocked page up instead of going back", async () => {
+    const { action, notify, tabs } = setup();
+    tabs.goBack.mockRejectedValue(new Error("no history"));
+    expect(await action.handle({ tabId: 4, url: POP, layer: "standard" })).toBe("left");
+    expect(notify).not.toHaveBeenCalled();
   });
 });

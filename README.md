@@ -27,7 +27,7 @@ Set per site in the toolbar popup (**On \<site\> → Popups**). Turn the whole f
 | **Standard** (default) | Pop-ups and redirects to **known** pop-up/ad networks are blocked before they load. A blocked new tab closes, and a hijacked tab goes back. Sign-in, payment and clicked-link pop-ups keep working. |
 | **Strict** (opt-in) | Standard, plus: any new tab or cross-site redirect you didn't cause by clicking a visible link (or submitting a form, typing an address, etc.) is closed or sent back, even to sites on no list. For sites that keep hijacking you. |
 
-Blocks show as a gray count on the toolbar icon and in the popup's "Blocked N on this page" list. Full details: [`docs/hijack-guard.md`](docs/hijack-guard.md).
+Each block shows a short notice on the page for about 3 seconds (turn it off in the popup), a gray count on the toolbar icon, and an entry in the popup's "Blocked N on this page" list. You can also block a site from ever being opened by other sites: tick **Block when other sites open this** on its page. Full details: [`docs/hijack-guard.md`](docs/hijack-guard.md).
 
 ### Privacy
 

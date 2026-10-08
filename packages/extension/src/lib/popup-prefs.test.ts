@@ -31,7 +31,13 @@ describe("siteKey", () => {
 describe("popup prefs", () => {
   it("defaults to both protections on and no per-site modes", async () => {
     expect(await readPrefs(memoryArea())).toEqual(DEFAULT_PREFS);
-    expect(DEFAULT_PREFS).toEqual({ phishing: true, hijack: true, sites: {}, blocked: [] });
+    expect(DEFAULT_PREFS).toEqual({
+      phishing: true,
+      hijack: true,
+      notices: true,
+      sites: {},
+      blocked: [],
+    });
   });
 
   it("drops malformed stored values", () => {
@@ -41,7 +47,13 @@ describe("popup prefs", () => {
         hijack: false,
         sites: { "a.com": "strict", "b.com": "weird", "c.com": "standard" },
       }),
-    ).toEqual({ phishing: true, hijack: false, sites: { "a.com": "strict" }, blocked: [] });
+    ).toEqual({
+      phishing: true,
+      hijack: false,
+      notices: true,
+      sites: { "a.com": "strict" },
+      blocked: [],
+    });
     expect(normalizePrefs(null)).toEqual(DEFAULT_PREFS);
   });
 
@@ -69,6 +81,7 @@ describe("popup prefs", () => {
     expect((await area.get(PREFS_KEY))[PREFS_KEY]).toEqual({
       phishing: false,
       hijack: true,
+      notices: true,
       sites: { "b.com": "allow" },
       blocked: [],
     });
@@ -90,5 +103,13 @@ describe("blocked sites", () => {
     expect(on.blocked).toEqual(["casino.example"]);
     expect(withBlocked(on, "casino.example", true).blocked).toEqual(["casino.example"]);
     expect(withBlocked(on, "casino.example", false).blocked).toEqual([]);
+  });
+});
+
+describe("notices setting", () => {
+  it("is on by default and keeps a stored boolean", () => {
+    expect(normalizePrefs({}).notices).toBe(true);
+    expect(normalizePrefs({ notices: false }).notices).toBe(false);
+    expect(normalizePrefs({ notices: "no" }).notices).toBe(true);
   });
 });
