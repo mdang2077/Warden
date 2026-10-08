@@ -1,8 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
+import {
+  generateManifestKeyPair,
+  importPublicKeys,
+  verifyManifest,
+} from "@warden/shared/signed-manifest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { type AppDeps, handleRequest } from "./app.ts";
 import { CONFIG_KEY, DEFAULT_FEED_CONFIG } from "./config.ts";
 import { MANIFEST_KEY } from "./publish.ts";
 import { memoryStore } from "./storage.ts";
+
+let pair: { publicKey: string; privateKey: string };
+beforeAll(async () => {
+  pair = await generateManifestKeyPair();
+});
 
 function deps(
   overrides: Partial<AppDeps> = {},
@@ -13,6 +23,8 @@ function deps(
     sbApiKey: "KEY",
     sbLimiter: undefined,
     adminToken: "secret",
+    signingKey: pair.privateKey,
+    signingKid: "t1",
     ...overrides,
   } as AppDeps & { store: ReturnType<typeof memoryStore> };
 }
@@ -20,15 +32,42 @@ function deps(
 const get = (path: string, init?: RequestInit) => new Request(`https://svc${path}`, init);
 
 describe("handleRequest", () => {
-  it("serves the manifest with the live config overlaid", async () => {
+  it("serves the manifest signed, with the live config overlaid", async () => {
     const d = deps();
-    await d.store.put(MANIFEST_KEY, JSON.stringify({ version: 5, feeds: DEFAULT_FEED_CONFIG }));
+    const stored = { schema: 1, version: 5, feeds: DEFAULT_FEED_CONFIG };
+    await d.store.put(MANIFEST_KEY, JSON.stringify(stored));
     await d.store.put(CONFIG_KEY, JSON.stringify({ openphish: { enabled: false, tier: "A" } }));
     const res = await handleRequest(get("/v1/manifest.json"), d);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { version: number; feeds: typeof DEFAULT_FEED_CONFIG };
+    const keys = await importPublicKeys({ keys: [{ kid: "t1", publicKey: pair.publicKey }] });
+    const body = await verifyManifest(await res.text(), keys);
     expect(body.version).toBe(5);
     expect(body.feeds.openphish.enabled).toBe(false);
+  });
+
+  it("never serves an unsigned manifest: 503 without a usable signing key", async () => {
+    for (const overrides of [
+      { signingKey: undefined },
+      { signingKid: undefined },
+      { signingKey: "bm90IGEga2V5" },
+    ]) {
+      const d = deps(overrides);
+      await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 5 }));
+      const res = await handleRequest(get("/v1/manifest.json"), d);
+      expect(res.status).toBe(503);
+      expect(await res.text()).not.toContain("version");
+    }
+  });
+
+  it("imports the signing key once per key, not on every request", async () => {
+    const d = deps();
+    await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 5 }));
+    await handleRequest(get("/v1/manifest.json"), d);
+    const spy = vi.spyOn(crypto.subtle, "importKey");
+    await handleRequest(get("/v1/manifest.json"), d);
+    await handleRequest(get("/v1/manifest.json"), d);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 
   it("404s the manifest before the first publish", async () => {

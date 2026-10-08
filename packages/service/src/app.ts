@@ -1,12 +1,14 @@
 /**
  * HTTP routes for the feed service:
- *   GET  /v1/manifest.json     manifest with the live feed config overlaid (kill switch)
+ *   GET  /v1/manifest.json     manifest with the live feed config overlaid (kill switch),
+ *                              signed (Ed25519 envelope); 503 without a signing key, never unsigned
  *   GET  /v1/{snapshots,deltas,allowlist,shared-hosts}/…   published files, immutable
  *   POST /sb/hashes-search     Safe Browsing proxy
  *   GET|PUT /admin/config      feed config, bearer ADMIN_TOKEN
  * Nothing under state/, logs/, or config/ is ever served.
  */
 import type { Manifest } from "@warden/shared/feed-format";
+import { importPrivateKey, signManifest } from "@warden/shared/signed-manifest";
 import { loadConfig, saveConfig } from "./config.ts";
 import { MANIFEST_KEY } from "./publish.ts";
 import { handleSbSearch, type RateLimiter } from "./sb-proxy.ts";
@@ -18,6 +20,24 @@ export interface AppDeps {
   sbApiKey: string | undefined;
   sbLimiter: RateLimiter | undefined;
   adminToken: string | undefined;
+  /** Base64 PKCS#8 Ed25519 private key (Worker secret MANIFEST_SIGNING_KEY). */
+  signingKey: string | undefined;
+  /** Key id the extension's bundled manifest-keys.json lists (MANIFEST_KEY_ID). */
+  signingKid: string | undefined;
+}
+
+/** The imported signing key, per Worker instance; re-imported if the secret changes. */
+let cachedKey: { secret: string; key: Promise<CryptoKey> } | null = null;
+function signingKeyFor(secret: string): Promise<CryptoKey> {
+  if (cachedKey?.secret !== secret) {
+    const key = importPrivateKey(secret);
+    // A bad secret must not stay cached as a rejected promise.
+    key.catch(() => {
+      if (cachedKey?.key === key) cachedKey = null;
+    });
+    cachedKey = { secret, key };
+  }
+  return cachedKey.key;
 }
 
 const PUBLIC_FILE = /^v1\/(snapshots|deltas|allowlist|shared-hosts)\/[A-Za-z0-9._-]+$/;
@@ -40,7 +60,20 @@ export async function handleRequest(request: Request, deps: AppDeps): Promise<Re
     if (!manifest) return text("not published yet", 404);
     // The kill switch must reach clients within one sync, without waiting for a publish.
     const live: Manifest = { ...manifest, feeds: await loadConfig(deps.store) };
-    return new Response(JSON.stringify(live), {
+    if (!deps.signingKey || !deps.signingKid) {
+      console.error(
+        "[warden-feeds] manifest signing not configured: set MANIFEST_SIGNING_KEY and MANIFEST_KEY_ID",
+      );
+      return text("manifest signing not configured", 503);
+    }
+    let signed: Awaited<ReturnType<typeof signManifest>>;
+    try {
+      signed = await signManifest(live, await signingKeyFor(deps.signingKey), deps.signingKid);
+    } catch (err) {
+      console.error("[warden-feeds] manifest signing key unusable", err);
+      return text("manifest signing not configured", 503);
+    }
+    return new Response(JSON.stringify(signed), {
       headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
     });
   }

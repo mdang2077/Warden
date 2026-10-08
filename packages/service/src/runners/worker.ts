@@ -17,6 +17,9 @@ export interface Env {
   ADMIN_TOKEN?: string;
   ALERT_WEBHOOK_URL?: string;
   WARDEN_DEV_FEEDS?: string;
+  /** Base64 PKCS#8 Ed25519 key that signs the manifest (`keygen.ts`). */
+  MANIFEST_SIGNING_KEY?: string;
+  MANIFEST_KEY_ID?: string;
 }
 
 const devFeeds = (env: Env) => env.WARDEN_DEV_FEEDS === "1";
@@ -31,6 +34,8 @@ export default {
       sbApiKey: env.SB_API_KEY,
       sbLimiter: env.SB_RATE_LIMITER,
       adminToken: env.ADMIN_TOKEN,
+      signingKey: env.MANIFEST_SIGNING_KEY,
+      signingKid: env.MANIFEST_KEY_ID,
     });
   },
 

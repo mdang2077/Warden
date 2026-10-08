@@ -73,8 +73,8 @@ export async function generateManifestKeyPair(): Promise<{
 }> {
   const pair = (await crypto.subtle.generateKey(ALG, true, ["sign", "verify"])) as CryptoKeyPair;
   return {
-    publicKey: toBase64(await crypto.subtle.exportKey("raw", pair.publicKey)),
-    privateKey: toBase64(await crypto.subtle.exportKey("pkcs8", pair.privateKey)),
+    publicKey: toBase64((await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer),
+    privateKey: toBase64((await crypto.subtle.exportKey("pkcs8", pair.privateKey)) as ArrayBuffer),
   };
 }
 
