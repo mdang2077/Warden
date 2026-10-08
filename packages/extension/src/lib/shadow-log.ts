@@ -99,7 +99,7 @@ export async function listShadowEntries(area: KeyValueArea): Promise<ShadowEntry
 /** Validates an untrusted runtime message. */
 export function parseFieldsMessage(msg: unknown): FieldsMessage | null {
   const m = msg as Partial<FieldsMessage> | null;
-  if (!m || m.type !== "warden:fields" || typeof m.secrets !== "object" || !m.secrets) return null;
+  if (m?.type !== "warden:fields" || typeof m.secrets !== "object" || !m.secrets) return null;
   const count = (v: unknown) =>
     Number.isInteger(v) && (v as number) >= 0 ? Math.min(v as number, 1000) : null;
   const secrets = {} as Record<SecretKind, number>;
