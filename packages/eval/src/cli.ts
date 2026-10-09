@@ -3,6 +3,10 @@
  *
  *   node packages/eval/src/cli.ts [--top 100000] [--state <pipeline out dir>] [--phish-file <json>]
  *                        [--max-phish 5000] [--out packages/eval/reports] [--cache packages/eval/corpora]
+ *                        [--feeds shippable|all]
+ *
+ * --feeds shippable (default, the release gate): only feeds whose data may reach users.
+ * --feeds all: every enabled feed, including eval-only ones like OpenPhish (research).
  *
  * Writes SUMMARY.md, TIER_B.md, and runs/<timestamp>.json to --out. Exits 1 when the gate
  * fails (any benign block under the production config), so CI can use it directly.
@@ -27,6 +31,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const { values } = parseArgs({
   options: {
     top: { type: "string", default: "100000" },
+    feeds: { type: "string", default: "shippable" },
     state: { type: "string" },
     "phish-file": { type: "string" },
     "max-phish": { type: "string", default: "5000" },
@@ -83,7 +88,11 @@ const perFeed = Object.entries(
   .map(([f, n]) => `${f} ${n}`)
   .join(", ");
 
+if (values.feeds !== "shippable" && values.feeds !== "all") {
+  throw new Error(`--feeds must be "shippable" or "all", not ${values.feeds}`);
+}
 const result = await runEval({
+  feeds: values.feeds,
   benign,
   phish,
   trancoDomains: tranco.domains,

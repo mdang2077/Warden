@@ -11,6 +11,7 @@
 import { DEFAULT_FEED_CONFIG, type FeedConfig } from "@warden/service/config";
 import type { FeedRecord } from "@warden/service/feeds/types";
 import { buildAllowlist, parseAllowlist, serializeAllowlist } from "@warden/shared/allowlist";
+import { FEED_DISTRIBUTION } from "@warden/shared/feed-format";
 import type { SharedHostList } from "@warden/shared/shared-hosts";
 import { FEED_IDS, type FeedId } from "@warden/shared/types";
 import { phishUrls, splitByTime, type TimeSplit } from "./corpora.ts";
@@ -28,6 +29,12 @@ export interface EvalInput {
   /** Free-form provenance lines for the report header. */
   meta: string[];
   log?: (msg: string) => void;
+  /**
+   * Which feeds count as "production" (T4b.4). `shippable` (the release gate and the default):
+   * only feeds whose data may reach users (FEED_DISTRIBUTION), as the published snapshot has
+   * them. `all`: every enabled feed, for research (what OpenPhish adds).
+   */
+  feeds?: "shippable" | "all";
 }
 
 export interface EvalOutput {
@@ -45,6 +52,26 @@ const ALL_FEEDS: FeedConfig = Object.fromEntries(
 
 export async function runEval(input: EvalInput): Promise<EvalOutput> {
   const log = input.log ?? (() => {});
+  const mode = input.feeds ?? "shippable";
+  const prodConfig: FeedConfig =
+    mode === "all"
+      ? DEFAULT_FEED_CONFIG
+      : (Object.fromEntries(
+          FEED_IDS.map((f) => [
+            f,
+            FEED_DISTRIBUTION[f] === "shippable"
+              ? DEFAULT_FEED_CONFIG[f]
+              : { ...DEFAULT_FEED_CONFIG[f], enabled: false },
+          ]),
+        ) as FeedConfig);
+  const meta = [
+    ...input.meta,
+    mode === "all"
+      ? "Feeds: all (research: includes eval-only feeds such as OpenPhish)"
+      : "Feeds: shippable (the release gate: only feeds whose data may reach users)",
+  ];
+  // The report reads its header from `input.meta`.
+  input = { ...input, meta };
   const { shared, now } = input;
   const allowlist = parseAllowlist(
     serializeAllowlist(buildAllowlist(input.trancoDomains, shared)),
@@ -52,13 +79,7 @@ export async function runEval(input: EvalInput): Promise<EvalOutput> {
   );
   log(`allowlist: ${allowlist.size} registrable domains`);
 
-  const prodLists = await buildMemoryLists(
-    input.phish,
-    DEFAULT_FEED_CONFIG,
-    allowlist,
-    shared,
-    now,
-  );
+  const prodLists = await buildMemoryLists(input.phish, prodConfig, allowlist, shared, now);
   const allLists = await buildMemoryLists(input.phish, ALL_FEEDS, allowlist, shared, now);
   const run = (urls: LabeledUrl[], setup: EvalSetup, name: string) => {
     log(`${name}: ${urls.length} URLs`);
@@ -82,7 +103,7 @@ export async function runEval(input: EvalInput): Promise<EvalOutput> {
   const train = split ? split.train : input.phish;
   const test = phishUrls(split ? split.test : input.phish);
   const trainProd = split
-    ? await buildMemoryLists(train, DEFAULT_FEED_CONFIG, allowlist, shared, now)
+    ? await buildMemoryLists(train, prodConfig, allowlist, shared, now)
     : prodLists;
   const trainAll = split
     ? await buildMemoryLists(train, ALL_FEEDS, allowlist, shared, now)

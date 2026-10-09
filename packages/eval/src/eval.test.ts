@@ -18,8 +18,13 @@ function rec(
   return { url, source, first_seen, last_seen: NOW };
 }
 
-async function evalWith(phish: FeedRecord[], extraBenign: string[] = []) {
+async function evalWith(
+  phish: FeedRecord[],
+  extraBenign: string[] = [],
+  feeds: "shippable" | "all" = "all",
+) {
   return runEval({
+    feeds,
     benign: [
       ...trancoBenign(TRANCO, 2),
       ...extraBenign.map((url) => ({ url, label: "benign" as const, group: "extra" })),
@@ -71,6 +76,26 @@ describe("runEval gate", () => {
     // Listed under an allowlisted domain: dropped at cleaning, so no block either way.
     const out = await evalWith([rec("https://example.org/")]);
     expect(out.gatePassed).toBe(true);
+  });
+});
+
+describe("runEval feeds mode (T4b.4)", () => {
+  it("shippable: feeds that can't reach users never block, and the report says so", async () => {
+    const out = await evalWith(
+      [rec("https://smallbiz.example/"), rec("https://evil.example/login")],
+      ["https://smallbiz.example/login"],
+      "shippable",
+    );
+    expect(out.gatePassed).toBe(true); // OpenPhish is eval-only: its entry can't block
+    expect(out.benignBlocks).toEqual([]);
+    expect(out.summary).toContain("Feeds: shippable");
+    expect(out.summary).toMatch(/\| openphish \| A \| 2 \| 0 \|/); // blocked in prod: 0
+  });
+
+  it("all: every configured feed blocks, for research", async () => {
+    const out = await evalWith([rec("https://evil.example/login")], [], "all");
+    expect(out.summary).toContain("Feeds: all");
+    expect(out.summary).toContain("| openphish | A | 1 | 1 |");
   });
 });
 
