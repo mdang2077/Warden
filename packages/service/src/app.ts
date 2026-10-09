@@ -32,7 +32,9 @@ export interface AppDeps {
   signer: ManifestSigner | null;
 }
 
-const PUBLIC_FILE = /^v1\/(snapshots|deltas|allowlist|shared-hosts)\/[A-Za-z0-9._-]+$/;
+/** Every file kind a published manifest can point to (publish.ts). */
+const PUBLIC_FILE =
+  /^v1\/(snapshots|deltas|allowlist|shared-hosts|popup-networks)\/[A-Za-z0-9._-]+$/;
 
 export async function handleRequest(request: Request, deps: AppDeps): Promise<Response> {
   const path = new URL(request.url).pathname.replace(/^\/+/, "");

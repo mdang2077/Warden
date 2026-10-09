@@ -102,6 +102,20 @@ describe("handleRequest", () => {
     expect((await handleRequest(get("/v1/manifest.json"), deps())).status).toBe(404);
   });
 
+  it("serves every file kind a published manifest points to", async () => {
+    const d = deps();
+    for (const key of [
+      "v1/snapshots/5.json",
+      "v1/deltas/4-5.json",
+      "v1/allowlist/abc.txt",
+      "v1/shared-hosts/3-abc.json",
+      "v1/popup-networks/1791-abc.json",
+    ]) {
+      await d.store.put(key, "{}");
+      expect((await handleRequest(get(`/${key}`), d)).status, key).toBe(200);
+    }
+  });
+
   it("serves published files as immutable", async () => {
     const d = deps();
     await d.store.put("v1/snapshots/5.json", "{}");
