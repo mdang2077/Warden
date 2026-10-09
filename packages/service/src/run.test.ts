@@ -1,10 +1,16 @@
 import type { Manifest, Snapshot } from "@warden/shared/feed-format";
+import {
+  generateManifestKeyPair,
+  importPublicKeys,
+  verifyManifest,
+} from "@warden/shared/signed-manifest";
 import { describe, expect, it, vi } from "vitest";
 import { TRANCO_BASE } from "./allowlist-source.ts";
 import { saveConfig } from "./config.ts";
 import { OPENPHISH_URL } from "./feeds/openphish.ts";
 import { MANIFEST_KEY } from "./publish.ts";
 import { runPipeline } from "./run.ts";
+import { createSigner, SIGNED_MANIFEST_KEY } from "./signing.ts";
 import { getJson, memoryStore } from "./storage.ts";
 
 // The real allowlist is 100k domains; the test pads Tranco so the size check passes.
@@ -101,5 +107,35 @@ describe("runPipeline", () => {
     });
     expect(log.alerts.some((a) => a.includes("openphish"))).toBe(true);
     expect(f.mock.calls.some(([u]) => String(u) === "https://hooks.example/alert")).toBe(true);
+  });
+});
+
+describe("runPipeline: publish-time signing", () => {
+  it("stores the published manifest signed, with the run's config", async () => {
+    const pair = await generateManifestKeyPair();
+    const store = memoryStore();
+    const log = await runPipeline({
+      store,
+      fetch: fakeFetch() as typeof fetch,
+      now: 1_000,
+      signer: createSigner(pair.privateKey, "t1"),
+    });
+    expect(log.alerts.filter((a) => a.includes("not signed"))).toEqual([]);
+    const keys = await importPublicKeys({ keys: [{ kid: "t1", publicKey: pair.publicKey }] });
+    const manifest = (await getJson<Manifest>(store, MANIFEST_KEY)) as Manifest;
+    const signed = await verifyManifest((await store.get(SIGNED_MANIFEST_KEY)) as string, keys);
+    expect(signed.version).toBe(manifest.version);
+  });
+
+  it("alerts when it can't sign, so a missing key doesn't go unnoticed", async () => {
+    const store = memoryStore();
+    const log = await runPipeline({
+      store,
+      fetch: fakeFetch() as typeof fetch,
+      now: 1_000,
+      signer: null,
+    });
+    expect(log.alerts.some((a) => a.includes("not signed"))).toBe(true);
+    expect(await store.get(SIGNED_MANIFEST_KEY)).toBeNull();
   });
 });

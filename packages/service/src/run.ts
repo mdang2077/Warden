@@ -17,6 +17,7 @@ import { type CleanEntry, cleanFeed } from "./pipeline.ts";
 import { refreshPopupNetworks } from "./popup-networks-source.ts";
 import { publish } from "./publish.ts";
 import { dropRatio, type QualityLog, recordQuality } from "./quality.ts";
+import { type ManifestSigner, resignManifest } from "./signing.ts";
 import type { BlobStore } from "./storage.ts";
 
 export const INGESTORS: Record<FeedId, Ingestor> = {
@@ -34,6 +35,11 @@ export interface RunOptions {
   alertWebhook?: string;
   /** Publish `eval_only` feeds too (WARDEN_DEV_FEEDS=1; the store must be the dev prefix). */
   devFeeds?: boolean;
+  /**
+   * Signs the published manifest (publish-time signing, signing.ts). `null`: no signing key
+   * configured, which raises an alert; omitted: signing isn't part of this run (tests).
+   */
+  signer?: ManifestSigner | null;
 }
 
 export async function runPipeline(options: RunOptions): Promise<QualityLog> {
@@ -94,6 +100,18 @@ export async function runPipeline(options: RunOptions): Promise<QualityLog> {
   });
   log.published = published.published;
   log.version = published.manifest.version;
+
+  // Signed every run (not only on publish): the envelope always carries the current config
+  // and a fresh signing time.
+  if (options.signer === null) {
+    log.alerts.push("manifest not signed: MANIFEST_SIGNING_KEY or MANIFEST_KEY_ID is missing");
+  } else if (options.signer) {
+    try {
+      await resignManifest(store, options.signer, () => now);
+    } catch (err) {
+      log.alerts.push(`manifest not signed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   return finish(options, log);
 }
 

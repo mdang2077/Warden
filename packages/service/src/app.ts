@@ -1,14 +1,12 @@
 /**
  * HTTP routes for the feed service:
- *   GET  /v1/manifest.json     manifest with the live feed config overlaid (kill switch),
- *                              signed (Ed25519 envelope); 503 without a signing key, never unsigned
+ *   GET  /v1/manifest.json     the signed manifest stored at publish time (signing.ts), as-is;
+ *                              503 if it hasn't been signed yet, never unsigned
  *   GET  /v1/{snapshots,deltas,allowlist,shared-hosts}/…   published files, immutable
  *   POST /sb/hashes-search     Safe Browsing proxy
  *   GET|PUT /admin/config      feed config, bearer ADMIN_TOKEN
  * Nothing under state/, logs/, or config/ is ever served.
  */
-import type { Manifest } from "@warden/shared/feed-format";
-import { importPrivateKey, signManifest } from "@warden/shared/signed-manifest";
 import { loadConfig, saveConfig } from "./config.ts";
 import { MANIFEST_KEY } from "./publish.ts";
 import {
@@ -17,7 +15,8 @@ import {
   type RateLimiter,
   type UpstreamBudget,
 } from "./sb-proxy.ts";
-import { type BlobStore, getJson } from "./storage.ts";
+import { type ManifestSigner, resignManifest, SIGNED_MANIFEST_KEY } from "./signing.ts";
+import type { BlobStore } from "./storage.ts";
 
 export interface AppDeps {
   store: BlobStore;
@@ -29,24 +28,8 @@ export interface AppDeps {
   /** Overall cap on calls to Google (SB_UPSTREAM_LIMITER). */
   sbBudget?: UpstreamBudget;
   adminToken: string | undefined;
-  /** Base64 PKCS#8 Ed25519 private key (Worker secret MANIFEST_SIGNING_KEY). */
-  signingKey: string | undefined;
-  /** Key id the extension's bundled manifest-keys.json lists (MANIFEST_KEY_ID). */
-  signingKid: string | undefined;
-}
-
-/** The imported signing key, per Worker instance; re-imported if the secret changes. */
-let cachedKey: { secret: string; key: Promise<CryptoKey> } | null = null;
-function signingKeyFor(secret: string): Promise<CryptoKey> {
-  if (cachedKey?.secret !== secret) {
-    const key = importPrivateKey(secret);
-    // A bad secret must not stay cached as a rejected promise.
-    key.catch(() => {
-      if (cachedKey?.key === key) cachedKey = null;
-    });
-    cachedKey = { secret, key };
-  }
-  return cachedKey.key;
+  /** Signs the manifest when the admin changes the feed config (null: no signing key). */
+  signer: ManifestSigner | null;
 }
 
 const PUBLIC_FILE = /^v1\/(snapshots|deltas|allowlist|shared-hosts)\/[A-Za-z0-9._-]+$/;
@@ -67,26 +50,17 @@ export async function handleRequest(request: Request, deps: AppDeps): Promise<Re
   if (request.method !== "GET") return text("method not allowed", 405);
 
   if (path === MANIFEST_KEY) {
-    const manifest = await getJson<Manifest>(deps.store, MANIFEST_KEY);
-    if (!manifest) return text("not published yet", 404);
-    // The kill switch must reach clients within one sync, without waiting for a publish.
-    const live: Manifest = { ...manifest, feeds: await loadConfig(deps.store) };
-    if (!deps.signingKey || !deps.signingKid) {
-      console.error(
-        "[warden-feeds] manifest signing not configured: set MANIFEST_SIGNING_KEY and MANIFEST_KEY_ID",
-      );
-      return text("manifest signing not configured", 503);
+    const signed = await deps.store.get(SIGNED_MANIFEST_KEY);
+    if (signed !== null) {
+      return new Response(signed, {
+        headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
+      });
     }
-    let signed: Awaited<ReturnType<typeof signManifest>>;
-    try {
-      signed = await signManifest(live, await signingKeyFor(deps.signingKey), deps.signingKid);
-    } catch (err) {
-      console.error("[warden-feeds] manifest signing key unusable", err);
-      return text("manifest signing not configured", 503);
-    }
-    return new Response(JSON.stringify(signed), {
-      headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
-    });
+    if ((await deps.store.get(MANIFEST_KEY)) === null) return text("not published yet", 404);
+    console.error(
+      "[warden-feeds] manifest published but not signed: set MANIFEST_SIGNING_KEY and MANIFEST_KEY_ID",
+    );
+    return text("manifest not signed yet", 503);
   }
 
   if (PUBLIC_FILE.test(path) && !path.includes("..")) {
@@ -120,7 +94,17 @@ async function handleAdminConfig(request: Request, deps: AppDeps): Promise<Respo
     } catch {
       return text("expected JSON", 400);
     }
-    return Response.json(await saveConfig(deps.store, body));
+    // The config only reaches clients inside the signed manifest, so a change that can't be
+    // signed is refused rather than saved and silently not served.
+    if (!deps.signer) return text("manifest signing not configured", 503);
+    const config = await saveConfig(deps.store, body);
+    try {
+      await resignManifest(deps.store, deps.signer);
+    } catch (err) {
+      console.error("[warden-feeds] re-signing after a config change failed", err);
+      return text("config saved, but the manifest couldn't be re-signed", 500);
+    }
+    return Response.json(config);
   }
   return text("method not allowed", 405);
 }

@@ -7,6 +7,7 @@
 import { handleRequest } from "../app.ts";
 import { runPipeline } from "../run.ts";
 import type { PrefixCache, RateLimiter, UpstreamBudget } from "../sb-proxy.ts";
+import { createSigner } from "../signing.ts";
 import { type BlobStore, prefixedStore } from "../storage.ts";
 import { r2Store } from "./r2-store.ts";
 
@@ -64,8 +65,7 @@ export default {
       sbCache,
       ...(budget ? { sbBudget: budget } : {}),
       adminToken: env.ADMIN_TOKEN,
-      signingKey: env.MANIFEST_SIGNING_KEY,
-      signingKid: env.MANIFEST_KEY_ID,
+      signer: createSigner(env.MANIFEST_SIGNING_KEY, env.MANIFEST_KEY_ID),
     });
   },
 
@@ -76,6 +76,7 @@ export default {
         fetch,
         now: Date.now(),
         devFeeds: devFeeds(env),
+        signer: createSigner(env.MANIFEST_SIGNING_KEY, env.MANIFEST_KEY_ID),
         ...(env.ALERT_WEBHOOK_URL ? { alertWebhook: env.ALERT_WEBHOOK_URL } : {}),
       }).then((log) =>
         console.log(

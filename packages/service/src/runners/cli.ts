@@ -8,6 +8,7 @@
  */
 import path from "node:path";
 import { runPipeline } from "../run.ts";
+import { createSigner } from "../signing.ts";
 import { prefixedStore } from "../storage.ts";
 import { fsStore } from "./fs-store.ts";
 
@@ -18,6 +19,7 @@ const log = await runPipeline({
   fetch,
   now: Date.now(),
   devFeeds,
+  signer: createSigner(process.env.MANIFEST_SIGNING_KEY, process.env.MANIFEST_KEY_ID),
   ...(process.env.ALERT_WEBHOOK_URL ? { alertWebhook: process.env.ALERT_WEBHOOK_URL } : {}),
 });
 console.log(JSON.stringify({ outDir, ...log }, null, 2));

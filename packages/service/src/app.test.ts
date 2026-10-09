@@ -7,6 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { type AppDeps, handleRequest } from "./app.ts";
 import { CONFIG_KEY, DEFAULT_FEED_CONFIG } from "./config.ts";
 import { MANIFEST_KEY } from "./publish.ts";
+import { createSigner, resignManifest, SIGNED_MANIFEST_KEY } from "./signing.ts";
 import { memoryStore } from "./storage.ts";
 
 let pair: { publicKey: string; privateKey: string };
@@ -23,8 +24,7 @@ function deps(
     sbApiKey: "KEY",
     sbLimiter: undefined,
     adminToken: "secret",
-    signingKey: pair.privateKey,
-    signingKid: "t1",
+    signer: createSigner(pair.privateKey, "t1"),
     ...overrides,
   } as AppDeps & { store: ReturnType<typeof memoryStore> };
 }
@@ -32,42 +32,70 @@ function deps(
 const get = (path: string, init?: RequestInit) => new Request(`https://svc${path}`, init);
 
 describe("handleRequest", () => {
-  it("serves the manifest signed, with the live config overlaid", async () => {
-    const d = deps();
-    const stored = { schema: 1, version: 5, feeds: DEFAULT_FEED_CONFIG };
-    await d.store.put(MANIFEST_KEY, JSON.stringify(stored));
-    await d.store.put(CONFIG_KEY, JSON.stringify({ openphish: { enabled: false, tier: "A" } }));
+  it("serves the stored signed manifest exactly as published, without needing the key", async () => {
+    const d = deps({ signer: null });
+    await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 5 }));
+    await d.store.put(SIGNED_MANIFEST_KEY, '{"schema":1,"kid":"t1"}');
     const res = await handleRequest(get("/v1/manifest.json"), d);
     expect(res.status).toBe(200);
-    const keys = await importPublicKeys({ keys: [{ kid: "t1", publicKey: pair.publicKey }] });
-    const body = await verifyManifest(await res.text(), keys);
-    expect(body.version).toBe(5);
-    expect(body.feeds.openphish.enabled).toBe(false);
+    expect(await res.text()).toBe('{"schema":1,"kid":"t1"}');
   });
 
-  it("never serves an unsigned manifest: 503 without a usable signing key", async () => {
-    for (const overrides of [
-      { signingKey: undefined },
-      { signingKid: undefined },
-      { signingKey: "bm90IGEga2V5" },
-    ]) {
-      const d = deps(overrides);
-      await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 5 }));
-      const res = await handleRequest(get("/v1/manifest.json"), d);
-      expect(res.status).toBe(503);
-      expect(await res.text()).not.toContain("version");
-    }
-  });
-
-  it("imports the signing key once per key, not on every request", async () => {
+  it("never serves an unsigned manifest: 503 when published but not signed yet", async () => {
     const d = deps();
     await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 5 }));
-    await handleRequest(get("/v1/manifest.json"), d);
-    const spy = vi.spyOn(crypto.subtle, "importKey");
-    await handleRequest(get("/v1/manifest.json"), d);
-    await handleRequest(get("/v1/manifest.json"), d);
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
+    const res = await handleRequest(get("/v1/manifest.json"), d);
+    expect(res.status).toBe(503);
+    expect(await res.text()).not.toContain("version");
+  });
+
+  it("ignores edits to the stored manifest or config made without the key", async () => {
+    const d = deps();
+    await d.store.put(
+      MANIFEST_KEY,
+      JSON.stringify({ schema: 1, version: 5, feeds: DEFAULT_FEED_CONFIG }),
+    );
+    await resignManifest(d.store, d.signer ?? null);
+    const before = await (await handleRequest(get("/v1/manifest.json"), d)).text();
+    await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 99 }));
+    await d.store.put(CONFIG_KEY, JSON.stringify({ phishing_database: { enabled: true } }));
+    expect(await (await handleRequest(get("/v1/manifest.json"), d)).text()).toBe(before);
+  });
+
+  it("re-signs the manifest when the admin changes the feed config (kill switch)", async () => {
+    const d = deps();
+    await d.store.put(
+      MANIFEST_KEY,
+      JSON.stringify({ schema: 1, version: 5, feeds: DEFAULT_FEED_CONFIG }),
+    );
+    await resignManifest(d.store, d.signer ?? null);
+    const res = await handleRequest(
+      get("/admin/config", {
+        method: "PUT",
+        headers: { authorization: "Bearer secret" },
+        body: JSON.stringify({ openphish: { enabled: false } }),
+      }),
+      d,
+    );
+    expect(res.status).toBe(200);
+    const keys = await importPublicKeys({ keys: [{ kid: "t1", publicKey: pair.publicKey }] });
+    const served = await (await handleRequest(get("/v1/manifest.json"), d)).text();
+    expect((await verifyManifest(served, keys)).feeds.openphish.enabled).toBe(false);
+  });
+
+  it("refuses a config change it can't sign, so the served manifest never goes stale", async () => {
+    const d = deps({ signer: null });
+    await d.store.put(MANIFEST_KEY, JSON.stringify({ schema: 1, version: 5 }));
+    const res = await handleRequest(
+      get("/admin/config", {
+        method: "PUT",
+        headers: { authorization: "Bearer secret" },
+        body: JSON.stringify({ openphish: { enabled: false } }),
+      }),
+      d,
+    );
+    expect(res.status).toBe(503);
+    expect(await d.store.get(CONFIG_KEY)).toBeNull();
   });
 
   it("404s the manifest before the first publish", async () => {
