@@ -1,6 +1,6 @@
 import { browser } from "wxt/browser";
 import { addSessionBypass, type DnrSessionApi } from "../../lib/dnr.ts";
-import { parseWarningParams, SOURCE_LABELS } from "../../lib/interstitial.ts";
+import { parseWarningParams, reportIssueUrl, SOURCE_LABELS } from "../../lib/interstitial.ts";
 import { createOverrideStore } from "../../lib/overrides.ts";
 
 const NEW_TAB = "chrome://newtab/";
@@ -37,6 +37,7 @@ if (!params || framed) {
   }
   byId("sources").textContent = params.sources.map((s) => SOURCE_LABELS[s]).join(", ") || "Unknown";
   byId("sb-attribution").hidden = !params.sources.includes("safe_browsing");
+  (byId("report-link") as HTMLAnchorElement).href = reportIssueUrl(params.url, params.sources);
 
   const store = createOverrideStore(browser.storage.session);
   proceed.addEventListener("click", async () => {

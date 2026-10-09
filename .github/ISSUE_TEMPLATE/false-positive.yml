@@ -1,0 +1,39 @@
+name: Wrong block (false positive)
+description: Warden blocked or warned about a site that is safe.
+title: "Wrong block: "
+labels: ["false positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Wrong blocks are Warden's top priority to fix.
+        **This issue is public.** Don't include passwords, tokens, or private links; the
+        page address below has its query string removed for that reason.
+  - type: input
+    id: url
+    attributes:
+      label: Blocked page
+      description: The address Warden blocked (without any ?query part).
+      placeholder: https://example.com/login
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened
+      options:
+        - The red "phishing page" warning appeared
+        - A pop-up or redirect was closed (Hijack Guard)
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: sources
+    attributes:
+      label: "\"Reported by\" on the warning page"
+      description: For example "Google Safe Browsing" or "OpenPhish". Leave empty for Hijack Guard.
+  - type: textarea
+    id: details
+    attributes:
+      label: Why you think it's safe
+      description: Whose site it is, how you got there, anything else that helps.

@@ -2,7 +2,7 @@ import { browser } from "wxt/browser";
 import { addFpReport } from "../../lib/fp-reports.ts";
 import { getHijackRecord } from "../../lib/hijack-action.ts";
 import { describeExperiment, listExperiments } from "../../lib/hijack-experiments.ts";
-import { parseWarningParams, SOURCE_LABELS } from "../../lib/interstitial.ts";
+import { parseWarningParams, reportIssueUrl, SOURCE_LABELS } from "../../lib/interstitial.ts";
 import {
   readPrefs,
   type SiteMode,
@@ -298,6 +298,7 @@ async function main() {
         sources: verdict.sources,
         at: Date.now(),
       });
+      await browser.tabs.create({ url: reportIssueUrl(verdict.url, verdict.sources) });
       report.hidden = true;
       reportDone.hidden = false;
     });

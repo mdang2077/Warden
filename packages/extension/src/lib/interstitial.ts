@@ -64,3 +64,24 @@ function parseHttpUrl(raw: string | null): URL | null {
     return null;
   }
 }
+
+const ISSUE_FORM = "https://github.com/mdang2077/Warden/issues/new";
+
+/**
+ * The public "wrong block" issue form, pre-filled. Only the page's origin and path go in:
+ * a query or fragment can carry tokens, and the issue is public.
+ */
+export function reportIssueUrl(blockedUrl: string, sources: readonly SourceId[]): string {
+  let page = "";
+  try {
+    const u = new URL(blockedUrl);
+    if (u.protocol === "http:" || u.protocol === "https:") page = u.origin + u.pathname;
+  } catch {
+    // not a URL: leave the field empty
+  }
+  const url = new URL(ISSUE_FORM);
+  url.searchParams.set("template", "false-positive.yml");
+  url.searchParams.set("url", page);
+  url.searchParams.set("sources", sources.map((s) => SOURCE_LABELS[s] ?? s).join(", "));
+  return url.href;
+}

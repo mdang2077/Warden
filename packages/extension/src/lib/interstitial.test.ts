@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWarningUrl, parseWarningParams } from "./interstitial.ts";
+import { buildWarningUrl, parseWarningParams, reportIssueUrl } from "./interstitial.ts";
 
 const PAGE = "chrome-extension://abc/warning.html";
 
@@ -50,5 +50,25 @@ describe("interstitial params", () => {
   it("drops unknown and non-blocking sources", () => {
     const parsed = parseWarningParams("?u=https%3A%2F%2Fx.example%2F&s=openphish,bogus,allowlist");
     expect(parsed?.sources).toEqual(["openphish"]);
+  });
+});
+
+describe("reportIssueUrl", () => {
+  it("opens the wrong-block issue form with the page pre-filled, minus query and fragment", () => {
+    const url = new URL(
+      reportIssueUrl("https://shop.example/login?token=SECRET#step2", [
+        "openphish",
+        "safe_browsing",
+      ]),
+    );
+    expect(url.origin + url.pathname).toBe("https://github.com/mdang2077/Warden/issues/new");
+    expect(url.searchParams.get("template")).toBe("false-positive.yml");
+    expect(url.searchParams.get("url")).toBe("https://shop.example/login");
+    expect(url.searchParams.get("sources")).toBe("OpenPhish, Google Safe Browsing");
+    expect(url.href).not.toContain("SECRET");
+  });
+
+  it("leaves the page empty for something that isn't a web address", () => {
+    expect(new URL(reportIssueUrl("not a url", [])).searchParams.get("url")).toBe("");
   });
 });

@@ -165,3 +165,19 @@ test("the About page credits Google Safe Browsing and EasyList, and the popup li
   await expect(about.locator("main")).toContainText("EasyList");
   await expect(about.locator("main")).toContainText("CC BY-SA");
 });
+
+test("the warning page links to a pre-filled public report, without the page's query", async ({
+  context,
+  extensionId,
+}) => {
+  const page = await context.newPage();
+  const blocked = "https://shop.example/login?token=SECRET";
+  await page.goto(
+    `chrome-extension://${extensionId}/warning.html?u=${encodeURIComponent(blocked)}&s=openphish`,
+  );
+  const href = await page.getByRole("link", { name: /Report a wrong block/ }).getAttribute("href");
+  const url = new URL(href ?? "");
+  expect(url.origin + url.pathname).toBe("https://github.com/mdang2077/Warden/issues/new");
+  expect(url.searchParams.get("url")).toBe("https://shop.example/login");
+  expect(href).not.toContain("SECRET");
+});
