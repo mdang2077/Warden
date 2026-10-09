@@ -102,6 +102,22 @@ Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a
 
 > **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship. See Phase 4b in [`docs/taskboard.md`](docs/taskboard.md).
 
+### Production deploy checklist
+
+Everything below needs your own accounts; run it from `packages/service`.
+
+1. **Cloudflare:** `pnpm exec wrangler login`, then `pnpm exec wrangler r2 bucket create warden-feeds`.
+2. **Safe Browsing key:** in Google Cloud Console, enable the Safe Browsing API, create an API key restricted to it, then `pnpm exec wrangler secret put SB_API_KEY`. Request a quota increase if you expect many users. (Safe Browsing is free for non-commercial use only.)
+3. **Production signing key** (separate from your dev key):
+   - Run `node src/runners/keygen.ts --kid p1`.
+   - Store the private half with `pnpm exec wrangler secret put MANIFEST_SIGNING_KEY`, and `p1` with `pnpm exec wrangler secret put MANIFEST_KEY_ID`.
+   - Add the printed public key to `packages/shared/src/manifest-keys.json` and commit it.
+4. **Admin token:** `openssl rand -hex 32 | pnpm exec wrangler secret put ADMIN_TOKEN` (keep a copy; it unlocks `/admin/config` and `/admin/suppress`).
+5. **Upstream cap:** set `SB_UPSTREAM_LIMITER`'s `limit` in `wrangler.jsonc` to your daily Safe Browsing quota ÷ 1440.
+6. **Deploy:** `pnpm run deploy`. Never set `WARDEN_DEV_FEEDS` on this deployment.
+7. **First publish:** the cron runs at minute 17 of each hour. After it has run, `curl https://warden-feeds.<subdomain>.workers.dev/v1/manifest.json` should return a signed envelope with `"kid":"p1"`.
+8. **Extension:** build with `WXT_FEED_SERVICE_URL=https://warden-feeds.<subdomain>.workers.dev pnpm build` (from `packages/extension`) and check that a page loads and the popup doesn't say "protection reduced".
+
 ### Manifest signing
 
 The extension only accepts a feed manifest signed with an Ed25519 key it trusts. Every other file is pinned by its SHA-256 in the manifest, and the signature carries the signing time, so an older signed manifest can't be replayed. The manifest is signed when it's published (the hourly run) and when the admin changes the feed config; the manifest route serves that stored envelope as-is, and answers 503 rather than serve an unsigned manifest.
