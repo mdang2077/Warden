@@ -1,7 +1,7 @@
 import type { Server } from "node:http";
 import path from "node:path";
 import { type BrowserContext, test as base, chromium } from "@playwright/test";
-import { setManifestTampered, startFeedServer } from "./feed-server.ts";
+import { setManifestTampered, setSbFailing, startFeedServer } from "./feed-server.ts";
 
 const EXTENSION_PATH = path.resolve(import.meta.dirname, "../.output/chrome-mv3-e2e");
 
@@ -68,11 +68,13 @@ export const TEST_PAGES: Record<string, string> = {
 };
 
 export const test = base.extend<
-  { context: BrowserContext; extensionId: string; tamperedManifest: boolean },
+  { context: BrowserContext; extensionId: string; tamperedManifest: boolean; sbFailing: boolean },
   { feedServer: Server }
 >({
   /** Serve a forged manifest from the start (the extension syncs on install). */
   tamperedManifest: [false, { option: true }],
+  /** The Safe Browsing proxy answers 503 (over budget). */
+  sbFailing: [false, { option: true }],
   // The extension syncs on install, so the feed server must be up before Chrome starts.
   feedServer: [
     // biome-ignore lint/correctness/noEmptyPattern: Playwright fixture signature
@@ -83,8 +85,9 @@ export const test = base.extend<
     },
     { scope: "worker", auto: true },
   ],
-  context: async ({ feedServer: _, tamperedManifest }, use) => {
+  context: async ({ feedServer: _, tamperedManifest, sbFailing }, use) => {
     setManifestTampered(tamperedManifest);
+    setSbFailing(sbFailing);
     const context = await chromium.launchPersistentContext("", {
       channel: "chromium",
       args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],
@@ -128,6 +131,7 @@ export const test = base.extend<
     await use(context);
     await context.close();
     setManifestTampered(false);
+    setSbFailing(false);
   },
   extensionId: async ({ context }, use) => {
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));

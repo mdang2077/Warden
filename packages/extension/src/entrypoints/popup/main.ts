@@ -13,6 +13,7 @@ import {
   withSiteMode,
 } from "../../lib/popup-prefs.ts";
 import { blockedView } from "../../lib/popup-view.ts";
+import { readSbHealth, sbDegraded } from "../../lib/sb-health.ts";
 import { listShadowEntries } from "../../lib/shadow-log.ts";
 import { describeSignals, shadowExport, shadowSummary } from "../../lib/shadow-summary.ts";
 import { getTabVerdict, type TabVerdict } from "../../lib/tab-state.ts";
@@ -250,6 +251,10 @@ async function main() {
   if (!(await readPrefs(browser.storage.local)).phishing) {
     show("none", "Phishing protection is off", "");
     return;
+  }
+  // Lookups fail open (no block), so say when protection has dropped to Warden's own lists.
+  if (sbDegraded(await readSbHealth(browser.storage.session), Date.now())) {
+    (document.getElementById("sb-degraded") as HTMLElement).hidden = false;
   }
   const verdict = await getTabVerdict(browser.storage.session, tab.id);
 

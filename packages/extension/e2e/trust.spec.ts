@@ -96,3 +96,39 @@ test("the popup summarizes the Stage 2 log and lists pages that would have warne
   // Let the download finish so closing the browser doesn't wait on it.
   expect(await file.path()).toBeTruthy();
 });
+
+test.describe("when Safe Browsing is failing", () => {
+  test.use({ sbFailing: true });
+
+  test("the popup says protection is reduced, and pages still load", async ({
+    context,
+    extensionId,
+  }) => {
+    const url = "https://news.warden-test.example/story";
+    const page = await context.newPage();
+    await page.goto(url);
+    await expect(page.locator("h1")).toHaveText("Test page"); // fails open
+    await expect
+      .poll(() =>
+        worker(context).evaluate(
+          async () =>
+            ((await chrome.storage.session.get("sb_health")).sb_health ?? null) as unknown,
+        ),
+      )
+      .toMatchObject({ lastErrorAt: expect.any(Number) });
+    const popup = await openPopup(context, extensionId, url);
+    await expect(popup.locator("#sb-degraded")).toBeVisible();
+  });
+});
+
+test("the popup doesn't show the note while Safe Browsing works", async ({
+  context,
+  extensionId,
+}) => {
+  const url = "https://news.warden-test.example/story";
+  const page = await context.newPage();
+  await page.goto(url);
+  const popup = await openPopup(context, extensionId, url);
+  await expect(popup.locator("#status")).not.toHaveText("Checking…");
+  await expect(popup.locator("#sb-degraded")).toBeHidden();
+});

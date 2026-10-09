@@ -69,6 +69,11 @@ function buildFiles(): { files: Map<string, string>; manifest: unknown } {
 }
 
 let tampered = false;
+let sbFailing = false;
+/** Make the Safe Browsing proxy answer 503, like a spent upstream budget. */
+export function setSbFailing(on: boolean): void {
+  sbFailing = on;
+}
 /** Serve a manifest edited after signing (until set back to false). */
 export function setManifestTampered(on: boolean): void {
   tampered = on;
@@ -93,6 +98,11 @@ export async function startFeedServer(): Promise<http.Server> {
   });
   const server = http.createServer((req, res) => {
     const key = (req.url ?? "/").slice(1);
+    if (key === "sb/hashes-search" && req.method === "POST" && sbFailing) {
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "over budget" }));
+      return;
+    }
     if (key === "sb/hashes-search" && req.method === "POST") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ cacheDuration: "300s" }));

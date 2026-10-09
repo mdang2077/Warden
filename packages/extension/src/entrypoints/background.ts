@@ -52,6 +52,7 @@ import {
 } from "../lib/popup-prefs.ts";
 import { createRedirectTracker } from "../lib/redirects.ts";
 import { createSafeBrowsingClient } from "../lib/safe-browsing.ts";
+import { withHealthTracking } from "../lib/sb-health.ts";
 import { createShadowRecorder } from "../lib/shadow-log.ts";
 import { type LocalData, loadLocalData, SYNC_PERIOD_MINUTES, syncFeeds } from "../lib/sync.ts";
 import { clearTabVerdict, getTabVerdict, setTabVerdict } from "../lib/tab-state.ts";
@@ -138,7 +139,10 @@ const stages: Stage[] = [
   createStage1({
     lists,
     safeBrowsing: FEED_SERVICE_URL
-      ? createSafeBrowsingClient({ endpoint: `${FEED_SERVICE_URL}/sb/hashes-search` })
+      ? withHealthTracking(
+          createSafeBrowsingClient({ endpoint: `${FEED_SERVICE_URL}/sb/hashes-search` }),
+          browser.storage.session,
+        )
       : null,
   }),
   // The e2e build adds a test-only stage that blocks one reserved host.
