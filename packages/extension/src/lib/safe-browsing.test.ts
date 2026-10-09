@@ -101,6 +101,19 @@ describe("Safe Browsing client", () => {
     expect(f).toHaveBeenCalledTimes(2);
   });
 
+  it("never trusts a cached answer longer than 30 minutes, whatever cacheDuration says", async () => {
+    let t = 0;
+    const f = fakeFetch({ cacheDuration: "7200s" });
+    const client = createSafeBrowsingClient({ endpoint: "x", fetch: f, now: () => t });
+    await client.check(URL_);
+    t = 29 * 60_000;
+    await client.check(URL_);
+    expect(f).toHaveBeenCalledTimes(1);
+    t = 30 * 60_000 + 1;
+    await client.check(URL_);
+    expect(f).toHaveBeenCalledTimes(2); // Safe Browsing terms: data must be under 30 minutes old
+  });
+
   it("fails open on HTTP errors, network errors, and timeouts", async () => {
     const failures = [
       fakeFetch({}, 503),

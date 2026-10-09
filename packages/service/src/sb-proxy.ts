@@ -15,10 +15,51 @@ export interface RateLimiter {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
+/** Per-prefix answers shared by all clients (Workers Cache API in production). */
+export interface PrefixCache {
+  get(prefix: string): Promise<{ value: unknown; expiresAt: number } | null>;
+  put(prefix: string, value: unknown, expiresAt: number): Promise<void>;
+}
+
+/** Caps calls to Google across all clients; `take` is false once the budget is spent. */
+export interface UpstreamBudget {
+  take(): Promise<boolean>;
+}
+
 export interface SbProxyDeps {
   apiKey: string | undefined;
   limiter: RateLimiter | undefined;
   fetch: typeof fetch;
+  cache?: PrefixCache;
+  budget?: UpstreamBudget;
+  now?: () => number;
+}
+
+/**
+ * Safe Browsing terms: a URL may only be treated as unsafe on data refreshed within the past
+ * 30 minutes. The proxy caches for at most this long and tells clients only the remaining
+ * time, so proxy and client caches together never exceed it.
+ */
+export const MAX_CACHE_MS = 30 * 60_000;
+const DEFAULT_CACHE_MS = 5 * 60_000;
+
+interface FullHash {
+  fullHash: string;
+  fullHashDetails?: unknown[];
+}
+
+function parseDuration(duration: unknown): number {
+  const m = typeof duration === "string" ? /^(\d+(?:\.\d+)?)s$/.exec(duration) : null;
+  return m?.[1] ? Math.round(Number(m[1]) * 1000) : DEFAULT_CACHE_MS;
+}
+
+/** The base64 4-byte prefix of a base64 full hash, or null if it doesn't decode. */
+function prefixOf(fullHash: string): string | null {
+  try {
+    return btoa(atob(fullHash).slice(0, 4));
+  } catch {
+    return null;
+  }
 }
 
 export async function handleSbSearch(request: Request, deps: SbProxyDeps): Promise<Response> {
@@ -36,21 +77,59 @@ export async function handleSbSearch(request: Request, deps: SbProxyDeps): Promi
   const prefixes = parsePrefixes(body);
   if (!prefixes) return json({ error: "expected {prefixes: base64 4-byte strings}" }, 400);
 
-  const url = new URL(SB_ENDPOINT);
-  url.searchParams.set("key", deps.apiKey);
-  for (const p of prefixes) url.searchParams.append("hashPrefixes", p);
-
-  let upstream: Response;
-  try {
-    upstream = await deps.fetch(url.toString(), { headers: { accept: "application/json" } });
-  } catch {
-    return json({ error: "upstream unavailable" }, 502);
+  const now = deps.now ?? Date.now;
+  const t = now();
+  const answers = new Map<string, { fullHashes: FullHash[]; expiresAt: number }>();
+  const missing: string[] = [];
+  for (const p of prefixes) {
+    const hit = await deps.cache?.get(p).catch(() => null);
+    const value = hit?.value as { fullHashes?: FullHash[] } | undefined;
+    if (hit && hit.expiresAt > t && Array.isArray(value?.fullHashes)) {
+      answers.set(p, { fullHashes: value.fullHashes, expiresAt: hit.expiresAt });
+    } else {
+      missing.push(p);
+    }
   }
-  if (!upstream.ok) return json({ error: "upstream error" }, 502);
-  return new Response(await upstream.text(), {
-    status: 200,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-  });
+
+  if (missing.length) {
+    // Over budget: refuse rather than answer partially; a partial answer would look like
+    // "no hit" for the prefixes not asked, and the client would cache that.
+    if (deps.budget && !(await deps.budget.take())) return json({ error: "over budget" }, 503);
+
+    const url = new URL(SB_ENDPOINT);
+    url.searchParams.set("key", deps.apiKey);
+    for (const p of missing) url.searchParams.append("hashPrefixes", p);
+    let upstream: Response;
+    try {
+      upstream = await deps.fetch(url.toString(), { headers: { accept: "application/json" } });
+    } catch {
+      return json({ error: "upstream unavailable" }, 502);
+    }
+    if (!upstream.ok) return json({ error: "upstream error" }, 502);
+    let parsed: { fullHashes?: FullHash[]; cacheDuration?: unknown };
+    try {
+      parsed = (await upstream.json()) as typeof parsed;
+    } catch {
+      return json({ error: "upstream error" }, 502);
+    }
+    const expiresAt = t + Math.min(parseDuration(parsed.cacheDuration), MAX_CACHE_MS);
+    const fullHashes = Array.isArray(parsed.fullHashes) ? parsed.fullHashes : [];
+    for (const p of missing) {
+      const entry = { fullHashes: fullHashes.filter((h) => prefixOf(h.fullHash) === p), expiresAt };
+      answers.set(p, entry);
+      await deps.cache?.put(p, { fullHashes: entry.fullHashes }, expiresAt).catch(() => {});
+    }
+  }
+
+  const all = [...answers.values()];
+  const remainingMs = Math.min(...all.map((a) => a.expiresAt - t));
+  return json(
+    {
+      fullHashes: all.flatMap((a) => a.fullHashes),
+      cacheDuration: `${Math.max(0, Math.floor(remainingMs / 1000))}s`,
+    },
+    200,
+  );
 }
 
 export function parsePrefixes(body: string): string[] | null {

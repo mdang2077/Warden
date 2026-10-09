@@ -11,7 +11,12 @@ import type { Manifest } from "@warden/shared/feed-format";
 import { importPrivateKey, signManifest } from "@warden/shared/signed-manifest";
 import { loadConfig, saveConfig } from "./config.ts";
 import { MANIFEST_KEY } from "./publish.ts";
-import { handleSbSearch, type RateLimiter } from "./sb-proxy.ts";
+import {
+  handleSbSearch,
+  type PrefixCache,
+  type RateLimiter,
+  type UpstreamBudget,
+} from "./sb-proxy.ts";
 import { type BlobStore, getJson } from "./storage.ts";
 
 export interface AppDeps {
@@ -19,6 +24,10 @@ export interface AppDeps {
   fetch: typeof fetch;
   sbApiKey: string | undefined;
   sbLimiter: RateLimiter | undefined;
+  /** Shared per-prefix Safe Browsing answers (Workers Cache API). */
+  sbCache?: PrefixCache;
+  /** Overall cap on calls to Google (SB_UPSTREAM_LIMITER). */
+  sbBudget?: UpstreamBudget;
   adminToken: string | undefined;
   /** Base64 PKCS#8 Ed25519 private key (Worker secret MANIFEST_SIGNING_KEY). */
   signingKey: string | undefined;
@@ -50,6 +59,8 @@ export async function handleRequest(request: Request, deps: AppDeps): Promise<Re
       apiKey: deps.sbApiKey,
       limiter: deps.sbLimiter,
       fetch: deps.fetch,
+      ...(deps.sbCache ? { cache: deps.sbCache } : {}),
+      ...(deps.sbBudget ? { budget: deps.sbBudget } : {}),
     });
   }
   if (path === "admin/config") return handleAdminConfig(request, deps);

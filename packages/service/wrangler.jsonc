@@ -16,7 +16,17 @@
       "name": "SB_RATE_LIMITER",
       "namespace_id": "1001",
       "simple": { "limit": 120, "period": 60 }
+    },
+    {
+      // Overall cap on calls to Google (cache misses only), so a traffic spike can't burn the
+      // Safe Browsing quota. Per Cloudflare location, so approximate. Set it to the project's
+      // daily quota / 1440 once the quota is known (Google Cloud Console). Over the cap, the
+      // proxy answers 503 and extensions fail open with "protection reduced".
+      "name": "SB_UPSTREAM_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 }
     }
   ]
-  // Secrets (wrangler secret put): SB_API_KEY, ADMIN_TOKEN. Optional var: ALERT_WEBHOOK_URL.
+  // Secrets (wrangler secret put): SB_API_KEY, ADMIN_TOKEN, MANIFEST_SIGNING_KEY,
+  // MANIFEST_KEY_ID. Optional var: ALERT_WEBHOOK_URL.
 }

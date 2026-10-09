@@ -2,7 +2,9 @@
  * Safe Browsing v5 `hashes.search` client, via the Warden backend proxy (which holds the
  * API key). Only 4-byte hash prefixes leave the device; full hashes are compared locally.
  *
- * - Results are cached per prefix for the `cacheDuration` SB returns (hits and misses).
+ * - Results are cached per prefix for the `cacheDuration` SB returns (hits and misses), but
+ *   never longer than MAX_CACHE_MS: the Safe Browsing terms only allow treating a URL as
+ *   unsafe on data refreshed within the past 30 minutes.
  * - The request times out after 1.5 s; any failure is reported as an error, not a hit.
  * - Only SOCIAL_ENGINEERING (phishing) counts. Entries marked CANARY (not for enforcement)
  *   or FRAME_ONLY (not for top-level pages) are ignored.
@@ -13,6 +15,7 @@ import type { SafeBrowsing, SafeBrowsingVerdict } from "@warden/shared/stage1";
 
 export const SB_TIMEOUT_MS = 1500;
 const DEFAULT_CACHE_MS = 5 * 60_000;
+export const MAX_CACHE_MS = 30 * 60_000;
 const PHISHING = "SOCIAL_ENGINEERING";
 const IGNORED_ATTRIBUTES = new Set(["CANARY", "FRAME_ONLY"]);
 
@@ -84,7 +87,7 @@ export function createSafeBrowsingClient(options: SafeBrowsingClientOptions): Sa
       if (missing.length) {
         try {
           const response = await search(missing);
-          const expiresAt = now() + parseDuration(response.cacheDuration);
+          const expiresAt = now() + Math.min(parseDuration(response.cacheDuration), MAX_CACHE_MS);
           for (const prefix of missing) cache.set(prefix, { phishingHashes: new Set(), expiresAt });
           for (const full of response.fullHashes ?? []) {
             const hash = base64ToHex(full.fullHash);
