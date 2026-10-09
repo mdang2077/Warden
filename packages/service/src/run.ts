@@ -19,6 +19,7 @@ import { publish } from "./publish.ts";
 import { dropRatio, type QualityLog, recordQuality } from "./quality.ts";
 import { type ManifestSigner, resignManifest } from "./signing.ts";
 import type { BlobStore } from "./storage.ts";
+import { loadSuppressed } from "./suppress.ts";
 
 export const INGESTORS: Record<FeedId, Ingestor> = {
   openphish,
@@ -97,6 +98,7 @@ export async function runPipeline(options: RunOptions): Promise<QualityLog> {
     sharedHosts: bundledSharedHostsFile,
     popupNetworks: popupOut.file ?? bundledPopupNetworksFile,
     includeEvalOnly: options.devFeeds ?? false,
+    suppressed: await loadSuppressed(store),
   });
   log.published = published.published;
   log.version = published.manifest.version;

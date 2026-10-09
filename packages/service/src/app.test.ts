@@ -164,3 +164,27 @@ describe("handleRequest", () => {
     expect(res.status).toBe(405);
   });
 });
+
+describe("admin: suppressed entries", () => {
+  const H = "c".repeat(64);
+  it("requires the admin token, then stores and returns the normalized list", async () => {
+    const d = deps();
+    expect((await handleRequest(get("/admin/suppress"), d)).status).toBe(401);
+    const put = await handleRequest(
+      get("/admin/suppress", {
+        method: "PUT",
+        headers: { authorization: "Bearer secret" },
+        body: JSON.stringify([H, "junk", H]),
+      }),
+      d,
+    );
+    expect(put.status).toBe(200);
+    expect(await put.json()).toEqual([H]);
+    const list = await handleRequest(
+      get("/admin/suppress", { headers: { authorization: "Bearer secret" } }),
+      d,
+    );
+    expect(await list.json()).toEqual([H]);
+    expect((await handleRequest(get("/config/suppress.json"), d)).status).toBe(404); // never public
+  });
+});

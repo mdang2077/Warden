@@ -147,3 +147,18 @@ describe("publish: feed distribution (T4b.2)", () => {
     expect(snapshot?.feeds.openphish?.map((e) => e.hash)).toEqual(["aa"]);
   });
 });
+
+describe("publish: suppressed entries (wrong-block reports)", () => {
+  it("leaves suppressed entry hashes out of the snapshot, and the delta removes them", async () => {
+    const store = memoryStore();
+    await publish(store, input(100, [entry("aa"), entry("ab")]));
+    const out = await publish(store, {
+      ...input(200, [entry("aa"), entry("ab")]),
+      suppressed: ["aa"],
+    });
+    const snapshot = await getJson<Snapshot>(store, out.manifest.snapshot.key);
+    expect(snapshot?.feeds.openphish?.map((e) => e.hash)).toEqual(["ab"]);
+    const delta = await getJson<Delta>(store, (out.manifest.deltas.at(-1) as { key: string }).key);
+    expect(delta?.feeds.openphish?.removed).toEqual(["aa"]);
+  });
+});

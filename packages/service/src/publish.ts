@@ -36,6 +36,8 @@ export interface PublishInput {
   popupNetworks: PopupNetworksFile;
   /** Publish `eval_only` feeds too. Only for a dev run (WARDEN_DEV_FEEDS=1), never in production. */
   includeEvalOnly?: boolean;
+  /** Entry hashes pulled after wrong-block reports (suppress.ts); left out of every feed. */
+  suppressed?: readonly string[];
 }
 
 export interface PublishOutcome {
@@ -48,9 +50,13 @@ export async function publish(store: BlobStore, input: PublishInput): Promise<Pu
   const prevSnapshot = prev ? await getJson<Snapshot>(store, prev.snapshot.key) : null;
 
   const feeds: Snapshot["feeds"] = {};
+  const suppressed = new Set(input.suppressed ?? []);
   for (const feed of enabledFeeds(input.config)) {
     if (FEED_DISTRIBUTION[feed] !== "shippable" && !input.includeEvalOnly) continue;
-    feeds[feed] = (input.feeds[feed] ?? []).map(toPublished).sort(byHash);
+    feeds[feed] = (input.feeds[feed] ?? [])
+      .filter((e) => !suppressed.has(e.hash))
+      .map(toPublished)
+      .sort(byHash);
   }
 
   const allowlistSha = await sha256Hex(input.allowlistText);

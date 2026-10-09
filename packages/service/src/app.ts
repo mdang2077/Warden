@@ -5,6 +5,7 @@
  *   GET  /v1/{snapshots,deltas,allowlist,shared-hosts}/…   published files, immutable
  *   POST /sb/hashes-search     Safe Browsing proxy
  *   GET|PUT /admin/config      feed config, bearer ADMIN_TOKEN
+ *   GET|PUT /admin/suppress    entry hashes pulled after wrong-block reports (suppress.ts)
  * Nothing under state/, logs/, or config/ is ever served.
  */
 import { loadConfig, saveConfig } from "./config.ts";
@@ -17,6 +18,7 @@ import {
 } from "./sb-proxy.ts";
 import { type ManifestSigner, resignManifest, SIGNED_MANIFEST_KEY } from "./signing.ts";
 import type { BlobStore } from "./storage.ts";
+import { loadSuppressed, saveSuppressed } from "./suppress.ts";
 
 export interface AppDeps {
   store: BlobStore;
@@ -49,6 +51,7 @@ export async function handleRequest(request: Request, deps: AppDeps): Promise<Re
     });
   }
   if (path === "admin/config") return handleAdminConfig(request, deps);
+  if (path === "admin/suppress") return handleAdminSuppress(request, deps);
   if (request.method !== "GET") return text("method not allowed", 405);
 
   if (path === MANIFEST_KEY) {
@@ -80,12 +83,36 @@ export async function handleRequest(request: Request, deps: AppDeps): Promise<Re
   return text("not found", 404);
 }
 
-async function handleAdminConfig(request: Request, deps: AppDeps): Promise<Response> {
+/** null when the request carries the admin token; otherwise the response to send. */
+async function adminAuth(request: Request, deps: AppDeps): Promise<Response | null> {
   if (!deps.adminToken) return text("not configured", 503);
   const auth = request.headers.get("authorization") ?? "";
   if (!(await constantTimeEqual(auth, `Bearer ${deps.adminToken}`))) {
     return text("unauthorized", 401);
   }
+  return null;
+}
+
+/** The next hourly publish drops suppressed entries; clients remove them via the delta. */
+async function handleAdminSuppress(request: Request, deps: AppDeps): Promise<Response> {
+  const denied = await adminAuth(request, deps);
+  if (denied) return denied;
+  if (request.method === "GET") return Response.json(await loadSuppressed(deps.store));
+  if (request.method === "PUT") {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return text("expected a JSON array of entry hashes", 400);
+    }
+    return Response.json(await saveSuppressed(deps.store, body));
+  }
+  return text("method not allowed", 405);
+}
+
+async function handleAdminConfig(request: Request, deps: AppDeps): Promise<Response> {
+  const denied = await adminAuth(request, deps);
+  if (denied) return denied;
   if (request.method === "GET") {
     return Response.json(await loadConfig(deps.store));
   }

@@ -75,7 +75,8 @@ WXT_FEED_SERVICE_URL=https://warden-feeds.<subdomain>.workers.dev pnpm build
 | `GET /v1/manifest.json` | Current snapshot manifest, with the live feed config applied (kill switch) |
 | `GET /v1/{snapshots,deltas,allowlist,shared-hosts}/…` | Published files |
 | `POST /sb/hashes-search` | Safe Browsing v5 proxy (rate-limited per IP) |
-| `GET\|PUT /admin/config` | Feed config, bearer `ADMIN_TOKEN` |
+| `GET\|PUT /admin/config` | Feed config (kill switch), bearer `ADMIN_TOKEN`; re-signs the manifest |
+| `GET\|PUT /admin/suppress` | Entry hashes to drop after a wrong-block report (JSON array), bearer `ADMIN_TOKEN`; applied at the next hourly publish |
 
 Secrets and variables:
 
