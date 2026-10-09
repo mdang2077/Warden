@@ -198,3 +198,12 @@ button {
   padding: 2px 8px;
   font-size: 0.75rem;
 }
+
+.about {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+}
+
+.about a {
+  color: var(--muted);
+}

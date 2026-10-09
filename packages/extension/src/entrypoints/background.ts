@@ -203,7 +203,14 @@ export default defineBackground({
   main() {
     void refreshHijackRules().catch((err) => console.error("[Warden] hijack rules failed", err));
     // Sync on install/update and browser start, then every SYNC_PERIOD_MINUTES.
-    browser.runtime.onInstalled.addListener(() => void runSync());
+    browser.runtime.onInstalled.addListener(({ reason }) => {
+      void runSync();
+      // Safe Browsing terms: attribution and the reliability notice before the user starts
+      // relying on Warden. (Not in e2e builds: an extra tab would race tests that wait for one.)
+      if (reason === "install" && import.meta.env.MODE !== "e2e") {
+        void browser.tabs.create({ url: browser.runtime.getURL("/about.html") });
+      }
+    });
     browser.runtime.onStartup.addListener(() => void runSync());
     browser.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === SYNC_ALARM) void runSync();

@@ -132,3 +132,36 @@ test("the popup doesn't show the note while Safe Browsing works", async ({
   await expect(popup.locator("#status")).not.toHaveText("Checking…");
   await expect(popup.locator("#sb-degraded")).toBeHidden();
 });
+
+test("a Safe Browsing block carries Google's attribution and reliability notice; others don't", async ({
+  context,
+  extensionId,
+}) => {
+  const page = await context.newPage();
+  const warning = (s: string) =>
+    `chrome-extension://${extensionId}/warning.html?u=${encodeURIComponent("https://bad.example/")}&s=${s}`;
+  await page.goto(warning("safe_browsing"));
+  await expect(page.locator("#sb-attribution")).toBeVisible();
+  await expect(page.locator("#sb-attribution")).toContainText("Advisory provided by Google");
+  await expect(page.locator("#sb-attribution")).toContainText("cannot guarantee");
+  await page.goto(warning("openphish"));
+  await expect(page.locator("#sb-attribution")).toBeHidden();
+});
+
+test("the About page credits Google Safe Browsing and EasyList, and the popup links to it", async ({
+  context,
+  extensionId,
+}) => {
+  const url = "https://news.warden-test.example/story";
+  const page = await context.newPage();
+  await page.goto(url);
+  const popup = await openPopup(context, extensionId, url);
+  const opened = context.waitForEvent("page");
+  await popup.getByRole("link", { name: "About Warden" }).click();
+  const about = await opened;
+  await expect(about).toHaveURL(`chrome-extension://${extensionId}/about.html`);
+  await expect(about.locator("main")).toContainText("Google Safe Browsing");
+  await expect(about.locator("main")).toContainText("cannot guarantee");
+  await expect(about.locator("main")).toContainText("EasyList");
+  await expect(about.locator("main")).toContainText("CC BY-SA");
+});
