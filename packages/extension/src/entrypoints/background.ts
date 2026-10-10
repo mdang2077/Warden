@@ -250,7 +250,7 @@ export default defineBackground({
     // Tabs that have committed a web page. Strict mode's "new tab" check only judges a tab's
     // first navigation; recorded synchronously at commit, because the opener record is
     // cleared asynchronously and a page that redirects at once could otherwise be mistaken
-    // for a second, unclicked pop-up and closed (taskboard H8).
+    // for a second, unclicked pop-up and closed.
     const committedTabs = new Set<number>();
     const logExperiment = (entry: Parameters<typeof appendExperiment>[1]) =>
       appendExperiment(browser.storage.local, entry).catch(logHijackError);
@@ -497,7 +497,7 @@ export default defineBackground({
     // A DNR rule the worker disagrees with (stale since the last sync) gets one retry.
     const dnr = browser.declarativeNetRequest as unknown as DnrSessionApi;
     // A typed visit to a hijack-blocked site gets a one-tab, one-visit allow rule: a
-    // session-wide one would also let other sites open it later (taskboard H10).
+    // session-wide one would also let other sites open it later.
     const visitBypasses = new Map<number, { id: number; url: string }>();
     const dropVisitBypass = (tabId: number) => {
       const bypass = visitBypasses.get(tabId);

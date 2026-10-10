@@ -100,7 +100,7 @@ Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To r
 
 Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
 
-> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship. See Phase 4b in [`docs/taskboard.md`](docs/taskboard.md).
+> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship.
 
 ### Production deploy checklist
 
@@ -122,7 +122,7 @@ Everything below needs your own accounts; run it from `packages/service`.
 
 The extension only accepts a feed manifest signed with an Ed25519 key it trusts. Every other file is pinned by its SHA-256 in the manifest, and the signature carries the signing time, so an older signed manifest can't be replayed. The manifest is signed when it's published (the hourly run) and when the admin changes the feed config; the manifest route serves that stored envelope as-is, and answers 503 rather than serve an unsigned manifest.
 
-**What this protects against:** tampering at a CDN or on the network, replaying an old signed manifest, and edits to anything in storage (the manifest, the feed config, list files) by someone without the signing key. **What it doesn't:** someone who can run code as the Worker (a Cloudflare account takeover) can use the key; that would need offline signing. The design is in [`docs/design/2026-10-07-manifest-signing-design.md`](docs/design/2026-10-07-manifest-signing-design.md).
+**What this protects against:** tampering at a CDN or on the network, replaying an old signed manifest, and edits to anything in storage (the manifest, the feed config, list files) by someone without the signing key. **What it doesn't:** someone who can run code as the Worker (a Cloudflare account takeover) can use the key; that would need offline signing.
 
 - **New key:** `node packages/service/src/runners/keygen.ts --kid k2` prints the private key, which you store with `wrangler secret put MANIFEST_SIGNING_KEY` (and `MANIFEST_KEY_ID`), and the public key for `packages/shared/src/manifest-keys.json`. Add `--dev-vars` to write a local key into `packages/service/.dev.vars` instead.
 - **Production vs. development keys:** `packages/shared/src/manifest-keys.json` holds production keys, trusted by every build (empty until there's a production deployment). `manifest-dev-keys.json` holds development keys, which the extension trusts **only when its feed service is on this machine** (`127.0.0.1`, `localhost`). So a leaked development key can't sign anything a store build accepts. `k1` is the current development key; its private half lives only in its owner's `.dev.vars`.
@@ -164,8 +164,7 @@ Reports live in [`packages/eval/reports/`](packages/eval/reports/).
 | `packages/service/` | Feed aggregation Worker and Safe Browsing proxy |
 | `packages/eval/` | FP/recall harnesses, crawler, reports |
 | `packages/eval/docker/` | Hardened container for crawling live phishing pages |
-| `docs/` | Design plan (`PLAN.md`), task status (`taskboard.md`), FP policy, Hijack Guard guide, shared-host and crawler notes |
-| `docs/design/` | Design specs |
+| `docs/` | FP policy, privacy policy, permissions and store-listing notes, Hijack Guard guide, shared-host and crawler notes |
 
 ## License
 

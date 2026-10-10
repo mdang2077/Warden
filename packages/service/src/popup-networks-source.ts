@@ -43,7 +43,7 @@ export function extractPopupDomains(text: string): string[] {
  * Domains never published as pop networks, even when EasyList lists them: real sites or
  * link redirectors whose blocking would break ordinary clicks (Warden blocks same-tab loads
  * too, not only new windows). Each entry drops the domain and its subdomains. Review list:
- * packages/eval/reports/HIJACK_TRANCO.md (taskboard H4).
+ * packages/eval/reports/HIJACK_TRANCO.md.
  */
 export const POPUP_NETWORK_EXCLUDES: readonly string[] = [
   // Link redirectors and a shortener that ordinary sites send normal outbound links through.

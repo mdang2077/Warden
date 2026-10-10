@@ -14,3 +14,6 @@ packages/service/out/
 .worktrees/
 .superpowers/
 .impeccable/
+
+# Private design notes (separate repo: mdang2077/Warden-notes)
+docs/private/

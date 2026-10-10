@@ -18,4 +18,4 @@ Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.t
 
 **Remote code:** none. Feeds and config are fetched as JSON data only; the built bundle is checked in CI for `eval`, `new Function` and remote scripts (`packages/extension/e2e/bundle.spec.ts`).
 
-**Data use:** for privacy-policy wording, see taskboard T4b.9. In short: 4-byte hash prefixes go to the Safe Browsing proxy, snapshots are downloaded, and nothing about browsing history, page content or typed data leaves the device.
+**Data use:** for the full wording, see [`privacy-policy.md`](privacy-policy.md). In short: 4-byte hash prefixes go to the Safe Browsing proxy, snapshots are downloaded, and nothing about browsing history, page content or typed data leaves the device.

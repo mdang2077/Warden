@@ -6,7 +6,6 @@
  * manifest pins every other file by SHA-256, so this authenticates the whole sync.
  *
  * WebCrypto only, so the same code runs in the Worker, the extension, and Node tests.
- * Design: docs/design/2026-10-07-manifest-signing-design.md.
  */
 import { FORMAT_SCHEMA, type Manifest } from "./feed-format.ts";
 import devKeysFile from "./manifest-dev-keys.json" with { type: "json" };

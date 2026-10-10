@@ -1,5 +1,5 @@
 /**
- * Hijack guard experiments, log-only (taskboard H8, H9): what a stricter rule *would* have
+ * Hijack guard experiments, log-only: what a stricter rule *would* have
  * blocked, recorded on this device so the rules can be judged on real browsing before they
  * act. Nothing here closes a tab or cancels a download.
  *
