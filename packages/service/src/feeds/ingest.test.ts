@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { memoryStore } from "../storage.ts";
+import { CERT_PL_URL, certPl } from "./cert-pl.ts";
 import { ENTRY_TTL_MS, ingest } from "./ingest.ts";
 import { OPENPHISH_URL, openphish } from "./openphish.ts";
 import { createPhishStats } from "./phishstats.ts";
-import { parseUrlLines } from "./types.ts";
+import { parseDomainLines, parseUrlLines } from "./types.ts";
 
 const HOUR = 60 * 60_000;
 
@@ -96,5 +97,35 @@ describe("PhishStats", () => {
     );
     const result = await createPhishStats({ minScore: 7 }).poll(fetchFn as typeof fetch, {});
     expect(result).toEqual({ status: "updated", urls: ["https://hi.example/"] });
+  });
+});
+
+describe("parseDomainLines", () => {
+  it("turns bare domains into whole-site entries and skips anything else", () => {
+    expect(
+      parseDomainLines(
+        "evil.example\n\n  XN--80AK6AA92E.example \r\n# comment\nnodot\nhttps://u.example/\n",
+      ),
+    ).toEqual(["https://evil.example/", "https://xn--80ak6aa92e.example/"]);
+  });
+});
+
+describe("CERT Polska", () => {
+  it("polls the domain list conditionally and records whole-site entries", async () => {
+    const store = memoryStore();
+    const fetchFn = vi.fn(async (..._args: FetchArgs) =>
+      textResponse("a.example\nb.example\n", { "last-modified": "Sat, 10 Oct 2026 20:45:07 GMT" }),
+    );
+    const first = await ingest(certPl, store, fetchFn as typeof fetch, 0);
+    expect(fetchFn).toHaveBeenCalledWith(CERT_PL_URL, expect.anything());
+    expect(first.records.map((r) => `${r.source} ${r.url}`)).toEqual([
+      "cert_pl https://a.example/",
+      "cert_pl https://b.example/",
+    ]);
+
+    fetchFn.mockImplementationOnce(async () => textResponse("", {}, 304));
+    await ingest(certPl, store, fetchFn as typeof fetch, certPl.minIntervalMs);
+    const headers = fetchFn.mock.calls[1]?.[1]?.headers as Record<string, string>;
+    expect(headers["if-modified-since"]).toBe("Sat, 10 Oct 2026 20:45:07 GMT");
   });
 });

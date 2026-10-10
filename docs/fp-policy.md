@@ -47,6 +47,7 @@ down to the cap, and unit tests cover the clamping.
 | Stage 1: OpenPhish (Tier A) | `block` | URL / path-prefix matching only |
 | Stage 1: Phishing.Database (Tier B) | `escalate` | Disabled by default. Can contribute to `block` only when confirmed (see §5) |
 | Stage 1: PhishStats (Tier B) | `escalate` | Disabled by default. Same as above |
+| Stage 1: CERT Polska warning list (Tier B) | `escalate` | Disabled by default, eval-only. Domain-level entries; shared hosts and allowlisted sites are dropped |
 | Stage 2: heuristics / classifier (parked) | `warn` | Can never block |
 | Stage 3: LLM adjudicator (parked) | `warn`, veto-only | Can only lower a Stage 2 decision, never raise it |
 

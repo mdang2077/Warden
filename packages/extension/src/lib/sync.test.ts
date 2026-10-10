@@ -35,6 +35,7 @@ const FEEDS_CONFIG = {
   openphish: ON,
   phishing_database: { enabled: false, tier: "B" as const },
   phishstats: { enabled: false, tier: "B" as const },
+  cert_pl: { enabled: false, tier: "B" as const },
 };
 
 async function pub(url: string): Promise<PublishedEntry> {

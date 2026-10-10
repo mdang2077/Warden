@@ -20,7 +20,7 @@ export type StageId = (typeof STAGE_IDS)[number];
 export type FeedTier = "A" | "B";
 
 /** Local blocklist feeds the service publishes. Safe Browsing is queried live instead. */
-export const FEED_IDS = ["openphish", "phishing_database", "phishstats"] as const;
+export const FEED_IDS = ["openphish", "phishing_database", "phishstats", "cert_pl"] as const;
 export type FeedId = (typeof FEED_IDS)[number];
 
 /** Where a decision or signal came from. */

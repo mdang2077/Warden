@@ -16,6 +16,7 @@ export const DEFAULT_FEED_CONFIG: Readonly<FeedConfig> = {
   openphish: { enabled: true, tier: "A" },
   phishing_database: { enabled: false, tier: "B" },
   phishstats: { enabled: false, tier: "B" },
+  cert_pl: { enabled: false, tier: "B" },
 };
 
 /** Validates a partial config, falling back to defaults field by field. Never throws. */

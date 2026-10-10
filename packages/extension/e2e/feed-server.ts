@@ -63,6 +63,7 @@ function buildFiles(): { files: Map<string, string>; manifest: unknown } {
       openphish: { enabled: true, tier: "A" },
       phishing_database: { enabled: false, tier: "B" },
       phishstats: { enabled: false, tier: "B" },
+      cert_pl: { enabled: false, tier: "B" },
     },
   };
   return { files, manifest };

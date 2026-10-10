@@ -10,6 +10,7 @@ export const SOURCE_LABELS: Readonly<Record<SourceId, string>> = {
   openphish: "OpenPhish",
   phishing_database: "Phishing.Database",
   phishstats: "PhishStats",
+  cert_pl: "CERT Polska",
   allowlist: "Allowlist",
   user_override: "Your settings",
 };
@@ -20,6 +21,7 @@ const BLOCK_SOURCES = new Set<SourceId>([
   "openphish",
   "phishing_database",
   "phishstats",
+  "cert_pl",
 ]);
 
 export interface WarningParams {

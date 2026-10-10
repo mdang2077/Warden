@@ -15,6 +15,7 @@ function manifest(version: number, deltas: [number, number][]): Manifest {
       openphish: { enabled: true, tier: "A" },
       phishing_database: { enabled: false, tier: "B" },
       phishstats: { enabled: false, tier: "B" },
+      cert_pl: { enabled: false, tier: "B" },
     },
   };
 }
@@ -57,6 +58,7 @@ describe("FEED_DISTRIBUTION", () => {
       openphish: "eval_only",
       phishstats: "eval_only",
       phishing_database: "shippable",
+      cert_pl: "eval_only",
     });
   });
 });

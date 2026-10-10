@@ -8,6 +8,7 @@ import { bundledSharedHosts, bundledSharedHostsFile } from "@warden/shared/share
 import type { FeedId } from "@warden/shared/types";
 import { refreshAllowlist } from "./allowlist-source.ts";
 import { enabledFeeds, loadConfig } from "./config.ts";
+import { certPl } from "./feeds/cert-pl.ts";
 import { ingest } from "./feeds/ingest.ts";
 import { openphish } from "./feeds/openphish.ts";
 import { phishingDatabase } from "./feeds/phishing-database.ts";
@@ -25,6 +26,7 @@ export const INGESTORS: Record<FeedId, Ingestor> = {
   openphish,
   phishing_database: phishingDatabase,
   phishstats: createPhishStats(),
+  cert_pl: certPl,
 };
 
 export interface RunOptions {

@@ -28,6 +28,7 @@ describe("feed config", () => {
       openphish: { enabled: false, tier: "A" },
       phishing_database: { enabled: true, tier: "B" },
       phishstats: { enabled: false, tier: "B" },
+      cert_pl: { enabled: false, tier: "B" },
     });
   });
 

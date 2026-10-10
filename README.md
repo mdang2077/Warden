@@ -86,7 +86,7 @@ Secrets and variables:
 | `ADMIN_TOKEN` | Optional. Enables `/admin/config` |
 | `ALERT_WEBHOOK_URL` | Optional. Feed-quality alerts |
 | `MANIFEST_SIGNING_KEY`, `MANIFEST_KEY_ID` | Required. The Ed25519 key that signs the manifest, and its id (see [Manifest signing](#manifest-signing)). Without them the manifest route returns 503 |
-| `WARDEN_DEV_FEEDS` | Local/personal runs only. `1` also publishes feeds whose terms forbid redistribution (OpenPhish, PhishStats), under a separate `dev/` storage prefix. Never set it on a public deployment |
+| `WARDEN_DEV_FEEDS` | Local/personal runs only. `1` also publishes eval-only feeds (OpenPhish, PhishStats, CERT Polska), under a separate `dev/` storage prefix. Never set it on a public deployment |
 
 Run it locally (secrets go in `packages/service/.dev.vars`, which is gitignored; create a signing key there once with `node packages/service/src/runners/keygen.ts --dev-vars`):
 
@@ -100,7 +100,7 @@ Then build the extension with `WXT_FEED_SERVICE_URL=http://127.0.0.1:8787`. To r
 
 Deploy with `pnpm run deploy` from `packages/service/` (plain `pnpm deploy` is a different, built-in pnpm command). It needs a Cloudflare account and an R2 bucket named `warden-feeds`.
 
-> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship.
+> **Feed licensing:** OpenPhish and PhishStats terms don't allow redistributing their data, including derived hashes, so a normal (production) run never publishes them: they're ingested for the quality log only. CERT Polska's warning list has no published reuse terms, so it's handled the same way until they confirm. The local command above sets `WARDEN_DEV_FEEDS:1` so your own copy still gets OpenPhish. Safe Browsing and Phishing.Database (MIT) are fine to ship.
 
 ### Production deploy checklist
 
