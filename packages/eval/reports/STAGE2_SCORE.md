@@ -1,6 +1,6 @@
 # Stage 2 score report (S2.11)
 
-- Features generated 2026-10-08T23:48:27.196Z (source af073fcfc3b4)
+- Features generated 2026-10-10T20:46:52.074Z (source 523c68469354)
 - Rows: 3890 benign, 130 phish, 4 skipped
 - Threshold 8; CI budget: raw benign warn rate on gated pages ≤ 0.1%
 

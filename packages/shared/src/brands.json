@@ -39,7 +39,9 @@
         "s-microsoft.com",
         "office365.us",
         "office365-net.us",
-        "onedrive.us"
+        "onedrive.us",
+        "office365.cn",
+        "office365-net.cn"
       ],
       "contextAliases": ["outlook"]
     },
@@ -388,7 +390,14 @@
       "id": "tiktok",
       "name": "TikTok",
       "aliases": ["tiktok"],
-      "domains": ["tiktok.com", "tiktokcdn.com", "tiktok-row.net", "tiktok-row.org"]
+      "domains": [
+        "tiktok.com",
+        "tiktokcdn.com",
+        "tiktok-row.net",
+        "tiktok-row.org",
+        "tiktok-minis.com",
+        "tiktok-minis.us"
+      ]
     },
     {
       "id": "yahoo",
@@ -404,7 +413,8 @@
         "yahoo.fr",
         "yahoo.com.tw",
         "yahoo.jp",
-        "yahoo-net.jp"
+        "yahoo-net.jp",
+        "storage-yahoo.jp"
       ]
     },
     {
@@ -428,7 +438,8 @@
         "adobe.co.jp",
         "adobe.ly",
         "adobe-identity.com",
-        "adobe-addons.com"
+        "adobe-addons.com",
+        "adobe-campaign.com"
       ]
     },
     {
@@ -607,7 +618,8 @@
         "yandex-team.ru",
         "yandex-net.ru",
         "yandex.cloud",
-        "yandex.st"
+        "yandex.st",
+        "yandex-bank.net"
       ]
     },
     {
@@ -762,7 +774,8 @@
         "hsbc.net",
         "hsbc.uk",
         "hsbc.co.in",
-        "hsbc.com.br"
+        "hsbc.com.br",
+        "hsbc.com.au"
       ]
     },
     {
