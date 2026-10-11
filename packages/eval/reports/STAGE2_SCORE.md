@@ -1,6 +1,6 @@
 # Stage 2 score report (S2.11)
 
-- Features generated 2026-10-11T19:45:06.750Z (source 523c68469354)
+- Features generated 2026-10-11T19:51:56.866Z (source 523c68469354)
 - Rows: 3890 benign, 470 phish, 5 skipped
 - Threshold 8; CI budget: raw benign warn rate on gated pages ≤ 0.1%
 
@@ -22,8 +22,8 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 | benign | tranco-login | tune | 1928 | 1341 | 115 | 0 | 0 |
 | benign | universities | holdout | 1 | 1 | 0 | 0 | 0 |
 | benign | universities | tune | 3 | 3 | 0 | 0 | 0 |
-| phish | openphish | holdout | 159 | 109 | 70 | 24 | 24 |
-| phish | openphish | tune | 289 | 172 | 155 | 35 | 34 |
+| phish | openphish | holdout | 159 | 109 | 67 | 27 | 27 |
+| phish | openphish | tune | 289 | 172 | 137 | 53 | 52 |
 | phish | phishstats | tune | 22 | 0 | 22 | 0 | 0 |
 
 ## Threshold sweep (gated pages, raw)
@@ -32,9 +32,9 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 |--:|--:|--:|
 | 6 | 0 of 2206 (0.00%) | 93 of 281 (33.10%) |
 | 7 | 0 of 2206 (0.00%) | 80 of 281 (28.47%) |
-| 8 | 0 of 2206 (0.00%) | 59 of 281 (21.00%) |
+| 8 | 0 of 2206 (0.00%) | 80 of 281 (28.47%) |
 | 9 | 0 of 2206 (0.00%) | 29 of 281 (10.32%) |
-| 10 | 0 of 2206 (0.00%) | 20 of 281 (7.12%) |
+| 10 | 0 of 2206 (0.00%) | 29 of 281 (10.32%) |
 
 ## Signal fire counts (gated pages)
 
@@ -57,6 +57,7 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 
 | Label: counted signals | Pages |
 |---|--:|
+| phish: brandMismatch:1cue + brandKeyword | 21 |
 | phish: brandMismatch:2cues + tenantPlatform | 17 |
 | phish: brandMismatch:2cues + brandKeyword | 9 |
 | phish: exfil:formService + tenantPlatform | 7 |

@@ -38,7 +38,7 @@ describe("score", () => {
     expect(r.points).toBe(4);
     expect(r.contributions).toEqual([
       { family: "urlHost", signal: "lookalike", points: 4, anchor: false, counted: true },
-      { family: "urlHost", signal: "brandKeyword", points: 3, anchor: false, counted: false },
+      { family: "urlHost", signal: "brandKeyword", points: 4, anchor: false, counted: false },
       { family: "urlHost", signal: "deepSubdomain", points: 1, anchor: false, counted: false },
     ]);
   });
@@ -81,6 +81,12 @@ describe("score", () => {
     );
     expect(r.points).toBe(6);
     expect(r.decision).toBe("suspicious");
+  });
+
+  it("warns on a one-cue brand claim with the brand's name in an unowned URL", () => {
+    const r = score(input({ brandMismatch: { cues: 1 }, url: url({ brandKeyword: true }) }));
+    expect(r.points).toBe(8);
+    expect(r.decision).toBe("warn_candidate");
   });
 
   it("takes a threshold for sweeps", () => {

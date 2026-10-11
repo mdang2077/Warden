@@ -51,7 +51,12 @@ export const POINTS = {
   /** Visitor-IP lookup in page code: common in kits, also in analytics. Supporting only. */
   ipLookup: 2,
   lookalike: 4,
-  brandKeyword: 3,
+  /**
+   * A brand's name in the host or path of a site no listed brand owns: 20 of the Tranco top
+   * 100k homepages. At 4 a one-cue brand claim plus this warns (retuned 2026-10-11 on the
+   * tune split: phish 35 → 53 of 172, holdout 24 → 27 of 109, benign 0 → 0 of 2,206).
+   */
+  brandKeyword: 4,
   ipHost: 3,
   /** Many benign sites live on hosting platforms too. */
   tenantPlatform: 2,
