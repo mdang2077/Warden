@@ -249,6 +249,35 @@ describe("Stage 2 score in the shadow log", () => {
     expect(JSON.stringify(entry?.score)).not.toContain("example");
   });
 
+  it("counts a page whose skeleton matches a known kit, and stores no hash", async () => {
+    const kit = "0123456789abcdef";
+    const record = createShadowRecorder({
+      area: memoryArea(),
+      allowlisted: () => false,
+      stage1For: async () => null,
+      brands,
+      kits: new Set([kit]),
+    });
+    const entry = await record(
+      { ...msg(PW), brandClaim: { brand: "paypal", cues: ["title"] }, kit },
+      sender("https://login.example.org/"),
+    );
+    expect(entry?.score).toEqual({
+      points: 8,
+      decision: "warn_candidate",
+      signals: ["brandMismatch:1cue", "kitMatch"],
+    });
+    expect(JSON.stringify(entry)).not.toContain(kit);
+  });
+
+  it("ignores a malformed kit hash", () => {
+    expect(parseFieldsMessage({ ...msg(), kit: "not-a-hash" })).toEqual(msg());
+    expect(parseFieldsMessage({ ...msg(), kit: "0123456789abcdef" })).toEqual({
+      ...msg(),
+      kit: "0123456789abcdef",
+    });
+  });
+
   it("never makes an allowlisted page a warn candidate", async () => {
     const entry = await recorder()(phishy, sender("https://paypal.bank.example/login"));
     expect(entry?.score?.decision).toBe("suspicious");

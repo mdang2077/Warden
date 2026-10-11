@@ -14,6 +14,7 @@ import type { BrandClaim, BrandCue } from "@warden/shared/stage2/brand-claim";
 import { brandMismatch } from "@warden/shared/stage2/brand-mismatch";
 import type { ExfilEndpoint, ExfilScan } from "@warden/shared/stage2/exfil-scan";
 import { type ExfilSignal, exfilSignal } from "@warden/shared/stage2/exfil-signal";
+import { bundledKits, kitMatch } from "@warden/shared/stage2/kits";
 import { type Stage2Decision, score } from "@warden/shared/stage2/score";
 import { urlSignals } from "@warden/shared/stage2/url-signals";
 import type { Decision } from "@warden/shared/types";
@@ -54,6 +55,8 @@ export interface FieldsMessage {
   identifierFields: number;
   brandClaim?: BrandClaim;
   exfil?: ExfilScan;
+  /** S2.9 page skeleton hash (page/skeleton.ts), checked against known kits here. */
+  kit?: string;
 }
 
 const ENDPOINTS = new Set<ExfilEndpoint>(["telegram", "discord", "formService"]);
@@ -112,12 +115,14 @@ export function parseFieldsMessage(msg: unknown): FieldsMessage | null {
   if (identifierFields === null) return null;
   const claim = parseClaim((m as { brandClaim?: unknown }).brandClaim);
   const exfil = parseExfil((m as { exfil?: unknown }).exfil);
+  const kit = (m as { kit?: unknown }).kit;
   return {
     type: "warden:fields",
     secrets,
     identifierFields,
     ...(claim ? { brandClaim: claim } : {}),
     ...(exfil ? { exfil } : {}),
+    ...(typeof kit === "string" && /^[0-9a-f]{16}$/.test(kit) ? { kit } : {}),
   };
 }
 
@@ -131,6 +136,8 @@ export interface RecorderDeps {
   trusted?: (host: string) => Promise<boolean>;
   /** The shared-host list for URL signals; defaults to the bundled list. */
   sharedHosts?: () => SharedHostList;
+  /** Known kit skeletons; defaults to the bundled list. */
+  kits?: ReadonlySet<string>;
   now?: () => number;
 }
 
@@ -175,6 +182,7 @@ export function createShadowRecorder(deps: RecorderDeps) {
         brandMismatch: mismatch ? { cues: mismatch.cues.length } : null,
         exfil,
         url: urlSignals(url, brands, shared),
+        kit: kitMatch(msg.kit ?? null, deps.kits ?? bundledKits),
         gated,
         eligible: !allowlisted && !trusted,
       });

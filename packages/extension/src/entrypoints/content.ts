@@ -10,7 +10,8 @@
  * page claims (S2.6). Only the brand id and cue names are sent, and only on the device.
  * It also scans the page's scripts and form targets for where credentials would go (S2.7):
  * the endpoint kind and the hosts login forms post to go to the background, which stores
- * only the kind.
+ * only the kind. And it hashes the page's tag skeleton (S2.9) so the background can check
+ * it against known phishing kits; the hash never leaves the device.
  */
 import { bundledBrands } from "@warden/shared/brands";
 import {
@@ -20,6 +21,7 @@ import {
   type FormInfo,
   hasSecretSurface,
 } from "@warden/shared/page/extract";
+import { pageFingerprint } from "@warden/shared/page/skeleton";
 import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
 import { scanExfil } from "@warden/shared/stage2/exfil-scan";
 import { browser } from "wxt/browser";
@@ -36,7 +38,16 @@ export default defineContentScript({
     let sentGate = false;
 
     const send = (message: FieldsMessage) => {
-      browser.runtime.sendMessage(message).catch(() => {
+      void (async () => {
+        let out = message;
+        try {
+          const kit = await pageFingerprint(document);
+          if (kit) out = { ...out, kit };
+        } catch {
+          // no kit signal; the rest still goes out
+        }
+        await browser.runtime.sendMessage(out);
+      })().catch(() => {
         // The worker may be restarting; a missed shadow entry is fine.
       });
     };
