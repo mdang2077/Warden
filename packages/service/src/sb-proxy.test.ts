@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { encodeSearchHashesResponse, type SbSearchResponse } from "./sb-protobuf.ts";
 import { handleSbSearch, MAX_PREFIXES, parsePrefixes, SB_ENDPOINT } from "./sb-proxy.ts";
 
 const PREFIX = btoa("\x01\x02\x03\x04");
@@ -12,10 +13,12 @@ function req(body: unknown, init: RequestInit = {}) {
   });
 }
 
+/** Google's reply: protobuf on success, a JSON error body otherwise (as v5 does). */
 function upstream(body: unknown = { fullHashes: [], cacheDuration: "300s" }, status = 200) {
-  return vi.fn(
-    async (_input: string | URL | Request, _init?: RequestInit) =>
-      new Response(JSON.stringify(body), { status }),
+  return vi.fn(async (_input: string | URL | Request, _init?: RequestInit) =>
+    status === 200
+      ? new Response(encodeSearchHashesResponse(body as SbSearchResponse), { status })
+      : new Response(JSON.stringify(body), { status }),
   );
 }
 
@@ -53,12 +56,14 @@ describe("handleSbSearch", () => {
     const called = new URL(String(f.mock.calls[0]?.[0]));
     expect(called.origin + called.pathname).toBe(SB_ENDPOINT);
     expect(called.searchParams.get("key")).toBe("KEY");
-    expect(called.searchParams.get("alt")).toBe("json");
+    expect(called.searchParams.has("alt")).toBe(false);
     expect(called.searchParams.getAll("hashPrefixes")).toEqual([PREFIX]);
   });
 
   it("calls fetch without a `this`, as the Workers runtime requires", async () => {
-    const answer = new Response(JSON.stringify({ fullHashes: [], cacheDuration: "300s" }));
+    const answer = new Response(
+      encodeSearchHashesResponse({ fullHashes: [], cacheDuration: "300s" }),
+    );
     const strictFetch = function (this: unknown) {
       if (this !== undefined) throw new TypeError("Illegal invocation");
       return Promise.resolve(answer);
@@ -138,7 +143,10 @@ describe("sb proxy: shared cache and upstream budget (T4b.5)", () => {
   const P2 = btoa("\x05\x06\x07\x08");
   // A full hash whose first 4 bytes are P1's.
   const FULL1 = btoa(`\x01\x02\x03\x04${"x".repeat(28)}`);
-  const hit = { fullHash: FULL1, fullHashDetails: [{ threatType: "SOCIAL_ENGINEERING" }] };
+  const hit = {
+    fullHash: FULL1,
+    fullHashDetails: [{ threatType: "SOCIAL_ENGINEERING", attributes: [] }],
+  };
 
   function memoryCache() {
     const m = new Map<string, { value: unknown; expiresAt: number }>();

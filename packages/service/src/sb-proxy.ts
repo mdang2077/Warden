@@ -6,6 +6,7 @@
  * - the rate-limit key is a SHA-256 of the client IP, never the IP itself.
  */
 import { sha256Hex } from "@warden/shared/feed-format";
+import { decodeSearchHashesResponse } from "./sb-protobuf.ts";
 
 export const SB_ENDPOINT = "https://safebrowsing.googleapis.com/v5/hashes:search";
 export const MAX_PREFIXES = 30;
@@ -98,21 +99,20 @@ export async function handleSbSearch(request: Request, deps: SbProxyDeps): Promi
 
     const url = new URL(SB_ENDPOINT);
     url.searchParams.set("key", deps.apiKey);
-    // v5 answers in binary protobuf unless asked for JSON; the Accept header isn't enough.
-    url.searchParams.set("alt", "json");
     for (const p of missing) url.searchParams.append("hashPrefixes", p);
     let upstream: Response;
     try {
       // Called bare: Workers' fetch throws "Illegal invocation" when `this` is another object.
       const fetchFn = deps.fetch;
-      upstream = await fetchFn(url.toString(), { headers: { accept: "application/json" } });
+      upstream = await fetchFn(url.toString(), { headers: { accept: "application/x-protobuf" } });
     } catch {
       return json({ error: "upstream unavailable" }, 502);
     }
     if (!upstream.ok) return json({ error: "upstream error" }, 502);
+    // v5 replies in protobuf only (with a key it refuses alt=json); sb-protobuf.ts decodes it.
     let parsed: { fullHashes?: FullHash[]; cacheDuration?: unknown };
     try {
-      parsed = (await upstream.json()) as typeof parsed;
+      parsed = decodeSearchHashesResponse(new Uint8Array(await upstream.arrayBuffer()));
     } catch {
       return json({ error: "upstream error" }, 502);
     }
