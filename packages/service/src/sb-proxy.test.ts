@@ -56,6 +56,20 @@ describe("handleSbSearch", () => {
     expect(called.searchParams.getAll("hashPrefixes")).toEqual([PREFIX]);
   });
 
+  it("calls fetch without a `this`, as the Workers runtime requires", async () => {
+    const answer = new Response(JSON.stringify({ fullHashes: [], cacheDuration: "300s" }));
+    const strictFetch = function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      return Promise.resolve(answer);
+    };
+    const res = await handleSbSearch(req({ prefixes: [PREFIX] }), {
+      apiKey: "KEY",
+      limiter: allow,
+      fetch: strictFetch as unknown as typeof fetch,
+    });
+    expect(res.status).toBe(200);
+  });
+
   it("rate-limits on a hash of the IP, never the IP itself", async () => {
     const limiter = { limit: vi.fn(async (_o: { key: string }) => ({ success: false })) };
     const res = await handleSbSearch(req({ prefixes: [PREFIX] }), {

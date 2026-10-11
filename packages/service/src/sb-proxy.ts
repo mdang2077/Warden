@@ -101,7 +101,9 @@ export async function handleSbSearch(request: Request, deps: SbProxyDeps): Promi
     for (const p of missing) url.searchParams.append("hashPrefixes", p);
     let upstream: Response;
     try {
-      upstream = await deps.fetch(url.toString(), { headers: { accept: "application/json" } });
+      // Called bare: Workers' fetch throws "Illegal invocation" when `this` is another object.
+      const fetchFn = deps.fetch;
+      upstream = await fetchFn(url.toString(), { headers: { accept: "application/json" } });
     } catch {
       return json({ error: "upstream unavailable" }, 502);
     }

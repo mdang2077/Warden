@@ -54,12 +54,15 @@ const budgetFor = (env: Env): UpstreamBudget | undefined => {
 const storeFor = (env: Env): BlobStore =>
   devFeeds(env) ? prefixedStore(r2Store(env.FEEDS), "dev/") : r2Store(env.FEEDS);
 
+/** The runtime's fetch, callable as a property: Workers reject it with another `this`. */
+const globalFetch: typeof fetch = (input, init) => fetch(input, init);
+
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
     const budget = budgetFor(env);
     return handleRequest(request, {
       store: storeFor(env),
-      fetch,
+      fetch: globalFetch,
       sbApiKey: env.SB_API_KEY,
       sbLimiter: env.SB_RATE_LIMITER,
       sbCache,
@@ -73,7 +76,7 @@ export default {
     ctx.waitUntil(
       runPipeline({
         store: storeFor(env),
-        fetch,
+        fetch: globalFetch,
         now: Date.now(),
         devFeeds: devFeeds(env),
         signer: createSigner(env.MANIFEST_SIGNING_KEY, env.MANIFEST_KEY_ID),
