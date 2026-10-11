@@ -1,9 +1,10 @@
 /**
- * Hijack guard, strict mode: records the user's real clicks so the worker can tell a link
- * the user chose from a click hijacked by the page. Runs in every frame from
- * document_start (hijack scripts often live in the video player's cross-origin iframe).
- * Listeners go in immediately, but clicks are held until the worker says this tab's site
- * is in strict mode; otherwise they are dropped and the listeners removed.
+ * Hijack guard: records the user's real clicks so the worker can tell a link the user chose
+ * from a click hijacked by the page (strict mode), and a file the user clicked a link to
+ * from a forced download (download-guard.ts). Runs in every frame from document_start
+ * (hijack scripts often live in the video player's cross-origin iframe). Listeners go in
+ * immediately, but clicks are held until the worker says the guard runs on this site;
+ * otherwise (guard off, or the site set to Allow) they are dropped and the listeners removed.
  *
  * Only the time, input kind, and the visible link's href are sent, to the local worker.
  * Nothing is stored and nothing leaves the device. Nothing is added to the page.
@@ -44,14 +45,14 @@ export default defineContentScript({
     window.addEventListener("pointerdown", onPointer, { capture: true });
     window.addEventListener("keydown", onKey, { capture: true });
 
-    let strict = false;
+    let wanted = false;
     try {
-      strict = (await browser.runtime.sendMessage({ type: STRICT_QUERY })) === true;
+      wanted = (await browser.runtime.sendMessage({ type: STRICT_QUERY })) === true;
     } catch {
-      // worker unavailable: strict mode simply doesn't run
+      // worker unavailable: nothing is judged by clicks
     }
-    relay.resolve(strict);
-    if (!strict) {
+    relay.resolve(wanted);
+    if (!wanted) {
       window.removeEventListener("pointerdown", onPointer, { capture: true });
       window.removeEventListener("keydown", onKey, { capture: true });
     }

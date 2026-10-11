@@ -27,14 +27,13 @@ import {
   replaceRuleRange,
 } from "../lib/dnr.ts";
 import { createDnrHealer } from "../lib/dnr-heal.ts";
+import { DOWNLOAD_CLICK_WINDOW_MS } from "../lib/download-guard.ts";
+import { createDownloadHandler } from "../lib/download-handler.ts";
+import { parseChoice } from "../lib/download-prompt.ts";
 import { CASCADE_BUDGET_MS, createNavigationHandler } from "../lib/handler.ts";
 import { createHijackAction, getHijackRecord } from "../lib/hijack-action.ts";
 import { CLICK_WAIT_MS, CLICK_WINDOW_MS, createClickLog, isHijack } from "../lib/hijack-detect.ts";
-import {
-  appendExperiment,
-  createRedirectWatch,
-  downloadExperiment,
-} from "../lib/hijack-experiments.ts";
+import { appendExperiment, createRedirectWatch } from "../lib/hijack-experiments.ts";
 import { compileHijackRules, installHijackRules, withUserBlocks } from "../lib/hijack-rules.ts";
 import { buildWarningUrl } from "../lib/interstitial.ts";
 import { openListStore } from "../lib/list-store.ts";
@@ -49,6 +48,7 @@ import {
   PREFS_KEY,
   readPrefs,
   siteKey,
+  siteMode,
 } from "../lib/popup-prefs.ts";
 import { createRedirectTracker } from "../lib/redirects.ts";
 import { createSafeBrowsingClient } from "../lib/safe-browsing.ts";
@@ -314,8 +314,18 @@ export default defineBackground({
         sendResponse(text ? { type: NOTICE_MESSAGE, text } : null);
         return;
       }
+      const choice = parseChoice(message);
+      if (choice) {
+        void downloadGuard.onChoice(choice).catch(logHijackError);
+        return;
+      }
       if (isStrictQuery(message)) {
-        void prefsReady.then(() => sendResponse(strictSite(sender.tab?.url) !== null));
+        // Clicks are recorded wherever the guard runs: strict mode judges pop-ups and
+        // redirects by them, and the download guard lets through files the user clicked.
+        void prefsReady.then(() => {
+          const site = sender.tab?.url ? siteKey(sender.tab.url) : null;
+          sendResponse(prefs.hijack && site !== null && siteMode(prefs, site) !== "allow");
+        });
         return true; // answered asynchronously
       }
       const click = parseClickMessage(message);
@@ -471,28 +481,41 @@ export default defineBackground({
       })().catch(logHijackError);
     });
 
-    // H9, log-only: downloads a strict site started without a click, or installers from
-    // another site. Nothing is cancelled. Needs the `downloads` permission, which store builds
-    // leave out (it adds an install warning), so `browser.downloads` is undefined there.
-    browser.downloads?.onCreated.addListener((item) => {
-      void (async () => {
+    // H9: a download the page forced (an installer from another site the user didn't click a
+    // link to, or any file on a strict site) is paused and the user asked Keep or Cancel on
+    // the page (download-handler.ts). Needs the `downloads` permission.
+    const downloadGuard = createDownloadHandler({
+      downloads: {
+        pause: (id) => browser.downloads.pause(id),
+        resume: (id) => browser.downloads.resume(id),
+        cancel: (id) => browser.downloads.cancel(id),
+        removeFile: (id) => browser.downloads.removeFile(id),
+        erase: (query) => browser.downloads.erase(query),
+        search: (query) => browser.downloads.search(query),
+      },
+      session,
+      modeFor: async (pageUrl) => {
         await prefsReady;
-        if (!prefs.hijack) return;
-        const pageSite = item.referrer ? siteKey(item.referrer) : null;
-        const entry = downloadExperiment(
-          {
-            at: Date.now(),
-            url: item.finalUrl || item.url,
-            referrer: item.referrer ?? "",
-            filename: item.filename ?? "",
-          },
-          {
-            strict: pageSite !== null && isStrict(prefs, pageSite),
-            clickedLinkSites: clicks.recentLinkSites(CLICK_WINDOW_MS),
-          },
-        );
-        if (entry) await logExperiment(entry);
-      })().catch(logHijackError);
+        return prefs.hijack ? siteMode(prefs, siteKey(pageUrl)) : "off";
+      },
+      clickedLinkSites: () => clicks.recentLinkSites(DOWNLOAD_CLICK_WINDOW_MS),
+      tabsOnSite: async (site) => {
+        const tabs = await browser.tabs.query({});
+        return tabs
+          .filter((t) => t.id !== undefined && t.url && siteKey(t.url) === site)
+          .sort(
+            (a, b) =>
+              Number(b.active) - Number(a.active) || (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0),
+          )
+          .map((t) => t.id as number);
+      },
+      ask: async (tabId, message) =>
+        (await browser.tabs.sendMessage(tabId, message, { frameId: 0 }).catch(() => undefined)) ===
+        true,
+      log: logExperiment,
+    });
+    browser.downloads?.onCreated.addListener((item) => {
+      void downloadGuard.onCreated(item).catch(logHijackError);
     });
 
     // A DNR rule the worker disagrees with (stale since the last sync) gets one retry.

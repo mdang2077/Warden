@@ -1,14 +1,13 @@
 /**
- * Hijack guard experiments, log-only: what a stricter rule *would* have
- * blocked, recorded on this device so the rules can be judged on real browsing before they
- * act. Nothing here closes a tab or cancels a download.
+ * Hijack guard experiments: what a stricter rule *would* have blocked (H8, log-only), and
+ * the downloads the forced-download guard paused (H9, download-handler.ts), recorded on
+ * this device so the rules can be judged on real browsing.
  *
  * - H8 "click-redirect": on a strict site, the user clicked a visible link to site A (so
  *   strict mode allowed it), and within REDIRECT_WATCH_MS a server or script redirect took
  *   the tab to a third site C. Link shorteners and outbound-link trackers do this too, which
  *   is why it only logs.
- * - H9 "download": a download a strict site started without a click on a visible link to
- *   the file's site, or an installer-type file from a different site than the page.
+ * - H9 "download": a download download-guard.ts paused and asked about.
  *
  * Entries hold site names, file types and times only, never full URLs.
  */
@@ -39,6 +38,8 @@ export type ExperimentEntry =
       /** Lowercase file extension, or "" when unknown. */
       fileType: string;
       reason: "no-click" | "installer";
+      /** H9 now acts: the download was paused (or had already finished) and the user asked. */
+      action?: "paused" | "finished";
     };
 
 function siteOf(rawUrl: string): string | null {
@@ -96,37 +97,6 @@ export function createRedirectWatch(now: () => number = Date.now) {
   };
 }
 
-const INSTALLER = /\.(exe|msi|msix|appx|dmg|pkg|apk|scr|bat|cmd|com|jar|vbs|ps1)$/i;
-
-export function downloadExperiment(
-  item: { at: number; url: string; referrer: string; filename: string },
-  ctx: {
-    /** The page that started the download is on a strict site. */
-    strict: boolean;
-    /** Sites of visible links the user clicked in the last second, any tab. */
-    clickedLinkSites: readonly string[];
-  },
-): ExperimentEntry | null {
-  const site = siteOf(item.referrer) ?? siteOf(item.url);
-  const downloadSite = item.url.startsWith("blob:") ? site : siteOf(item.url);
-  if (!site || !downloadSite) return null;
-  let name = item.filename;
-  if (!name) {
-    try {
-      name = new URL(item.url.startsWith("blob:") ? item.url.slice(5) : item.url).pathname;
-    } catch {
-      name = "";
-    }
-  }
-  const ext = /\.([a-z0-9]{1,5})$/i.exec(name)?.[1]?.toLowerCase() ?? "";
-  const base = { at: item.at, experiment: "download" as const, site, downloadSite, fileType: ext };
-  if (ctx.strict && downloadSite !== site && !ctx.clickedLinkSites.includes(downloadSite)) {
-    return { ...base, reason: "no-click" };
-  }
-  if (downloadSite !== site && INSTALLER.test(name)) return { ...base, reason: "installer" };
-  return null;
-}
-
 export async function appendExperiment(area: KeyValueArea, entry: ExperimentEntry): Promise<void> {
   const log = ((await area.get(KEY))[KEY] as ExperimentEntry[] | undefined) ?? [];
   await area.set({ [KEY]: [...log, entry].slice(-MAX_EXPERIMENTS) });
@@ -141,7 +111,9 @@ export function describeExperiment(e: ExperimentEntry): string {
   if (e.experiment === "click-redirect") {
     return `${e.site}: clicked a link to ${e.linkSite}, landed on ${e.landedSite}`;
   }
-  return e.reason === "installer"
-    ? `${e.site}: .${e.fileType} installer from ${e.downloadSite}`
-    : `${e.site}: download from ${e.downloadSite} you didn't click`;
+  const what =
+    e.reason === "installer"
+      ? `${e.site}: .${e.fileType} installer from ${e.downloadSite}`
+      : `${e.site}: download from ${e.downloadSite} you didn't click`;
+  return e.action ? `${what} (paused, you were asked)` : what;
 }

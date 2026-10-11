@@ -18,7 +18,7 @@ Warden does two things:
 
 **Blocks known phishing pages.** Before a page loads, Warden checks its address against Google Safe Browsing. If the page is a known phishing site, a red warning appears instead, with "Back to safety" as the main button. Only hash prefixes of the address leave your device; the full address never does.
 
-**Stops pop-ups and forced redirects.** Streaming and download sites often open ad tabs or redirect you to scam pages when you click. Warden closes those tabs and sends hijacked tabs back, and shows a small notice so you know what happened. Strict mode, which you turn on per site, also catches hijacks from sites on no list. If a junk site keeps coming back, you can block it with one click.
+**Stops pop-ups and forced redirects.** Streaming and download sites often open ad tabs or redirect you to scam pages when you click. Warden closes those tabs, sends hijacked tabs back, and pauses fake-installer downloads a page forces on you so you can cancel them, with a small notice so you know what happened. Strict mode, which you turn on per site, also catches hijacks from sites on no list. If a junk site keeps coming back, you can block it with one click.
 
 What Warden doesn't do:
 - It doesn't catch every phishing page. New ones appear constantly, and Warden only blocks pages already on a list. Be careful where you type passwords.

@@ -39,6 +39,9 @@ export const TEST_PAGES: Record<string, string> = {
   "/forced-download":
     "<!doctype html><title>Video</title><p>Loading…</p>" +
     '<script>setTimeout(() => { location.href = "https://files.other-test.example/setup.exe"; }, 300);</script>',
+  // A visible link straight to a file on another site: the user asked for it (H9).
+  "/download-link":
+    '<!doctype html><title>Downloads</title><a id="get" href="https://files.other-test.example/app.exe">Download the app</a>',
   "/chase-login":
     "<!doctype html><title>Chase Online - Sign In</title><h1>Chase Online sign in</h1>" +
     '<form><input name="user"><input type="password" name="pw"><button>Sign in</button></form>',

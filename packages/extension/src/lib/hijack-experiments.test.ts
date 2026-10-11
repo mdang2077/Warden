@@ -3,7 +3,6 @@ import {
   appendExperiment,
   createRedirectWatch,
   describeExperiment,
-  downloadExperiment,
   listExperiments,
   MAX_EXPERIMENTS,
   REDIRECT_WATCH_MS,
@@ -67,63 +66,6 @@ describe("redirect watch (H8)", () => {
   it("only watches tabs it was told about", () => {
     const { w } = watchSetup();
     expect(w.onCommit(9, "https://casino.example/", ["server_redirect"])).toBeNull();
-  });
-});
-
-describe("downloadExperiment (H9)", () => {
-  const base = {
-    at: 2_000,
-    url: "https://files.example/get?id=1",
-    referrer: "https://stream.example/watch",
-    filename: "",
-  };
-
-  it("logs a download on a strict site that no visible-link click asked for", () => {
-    expect(downloadExperiment(base, { strict: true, clickedLinkSites: [] })).toEqual({
-      at: 2_000,
-      experiment: "download",
-      site: "stream.example",
-      downloadSite: "files.example",
-      fileType: "",
-      reason: "no-click",
-    });
-  });
-
-  it("allows a strict-site download the user clicked a visible link to", () => {
-    expect(
-      downloadExperiment(base, { strict: true, clickedLinkSites: ["files.example"] }),
-    ).toBeNull();
-  });
-
-  it("logs an installer from another site anywhere, by file name or URL path", () => {
-    const exe = { ...base, url: "https://cdn.example/setup.exe" };
-    expect(downloadExperiment(exe, { strict: false, clickedLinkSites: [] })).toMatchObject({
-      downloadSite: "cdn.example",
-      fileType: "exe",
-      reason: "installer",
-    });
-    const named = { ...base, filename: "/Users/me/Downloads/Player Update.DMG" };
-    expect(downloadExperiment(named, { strict: false, clickedLinkSites: [] })).toMatchObject({
-      fileType: "dmg",
-      reason: "installer",
-    });
-  });
-
-  it("ignores same-site and non-installer downloads off strict sites", () => {
-    const own = { ...base, url: "https://stream.example/setup.exe" };
-    expect(downloadExperiment(own, { strict: false, clickedLinkSites: [] })).toBeNull();
-    const pdf = { ...base, url: "https://cdn.example/report.pdf" };
-    expect(downloadExperiment(pdf, { strict: false, clickedLinkSites: [] })).toBeNull();
-  });
-
-  it("reads the page's site from a blob URL when there is no referrer", () => {
-    const blob = {
-      ...base,
-      url: "blob:https://stream.example/1234",
-      referrer: "",
-      filename: "x.apk",
-    };
-    expect(downloadExperiment(blob, { strict: false, clickedLinkSites: [] })).toBeNull(); // same site
   });
 });
 

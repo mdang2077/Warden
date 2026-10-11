@@ -1,5 +1,5 @@
 /// <reference types="chrome" />
-import type { BrowserContext } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { POPNET_HOST } from "./feed-server.ts";
 import { expect, test } from "./fixtures.ts";
 
@@ -346,16 +346,30 @@ test("experiment H8: a clicked link that redirects to a third site is logged, no
     });
 });
 
-test("experiment H9: a download a strict site forced without a click is logged, not cancelled", async ({
+const prompt = (page: Page) => page.locator("warden-download-prompt .card");
+
+/** Chrome's download records whose URL ends with `name` (Playwright saves under random names). */
+const downloadsFrom = (context: BrowserContext, name: string) =>
+  worker(context).evaluate(
+    async (n) =>
+      (await chrome.downloads.search({}))
+        .filter((d) => d.url.endsWith(n) || d.finalUrl.endsWith(n))
+        .map((d) => ({ state: d.state, exists: d.exists })),
+    name,
+  );
+
+test("H9: a forced installer download from another site is paused and the user asked; Cancel removes it", async ({
   context,
   extensionId: _,
 }) => {
   await hijackRulesReady(context);
-  await setStrict(context);
   const page = await context.newPage();
   const download = page.waitForEvent("download");
   await page.goto(`${STREAM}/forced-download`);
-  expect((await download).suggestedFilename()).toBe("setup.exe"); // still downloaded
+  expect((await download).suggestedFilename()).toBe("setup.exe");
+  await expect(prompt(page)).toContainText(
+    "Warden paused a download of a .exe file from other-test.example",
+  );
   await expect
     .poll(async () => (await experiments(context)).at(-1))
     .toMatchObject({
@@ -363,6 +377,40 @@ test("experiment H9: a download a strict site forced without a click is logged, 
       site: "warden-test.example",
       downloadSite: "other-test.example",
       fileType: "exe",
-      reason: "no-click",
+      reason: "installer",
     });
+  await expect.poll(async () => (await downloadsFrom(context, "/setup.exe")).length).toBe(1);
+  await prompt(page).getByRole("button", { name: "Cancel download" }).click();
+  await expect(prompt(page)).toHaveCount(0);
+  await expect.poll(() => downloadsFrom(context, "/setup.exe")).toEqual([]);
+});
+
+test("H9: Keep lets the paused download through", async ({ context, extensionId: _ }) => {
+  await hijackRulesReady(context);
+  const page = await context.newPage();
+  const download = page.waitForEvent("download");
+  await page.goto(`${STREAM}/forced-download`);
+  await download;
+  await prompt(page).getByRole("button", { name: "Keep" }).click();
+  await expect(prompt(page)).toHaveCount(0);
+  await expect
+    .poll(() => downloadsFrom(context, "/setup.exe"))
+    .toEqual([{ state: "complete", exists: true }]);
+});
+
+test("H9: a file the user clicked a visible link to downloads without asking", async ({
+  context,
+  extensionId: _,
+}) => {
+  await hijackRulesReady(context);
+  const page = await context.newPage();
+  await page.goto(`${STREAM}/download-link`);
+  const download = page.waitForEvent("download");
+  await page.click("#get");
+  expect((await download).suggestedFilename()).toBe("setup.exe");
+  await expect
+    .poll(() => downloadsFrom(context, "/app.exe"))
+    .toEqual([{ state: "complete", exists: true }]);
+  await page.waitForTimeout(500);
+  await expect(prompt(page)).toHaveCount(0);
 });

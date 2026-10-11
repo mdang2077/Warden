@@ -1,6 +1,6 @@
 # Chrome Web Store: permission justifications
 
-Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.ts` is used, so none were removed. `downloads` (experiment H9) is left out of store builds since 2026-10-11 (it adds an install warning for a log-only experiment); development builds keep it. The one-liners below are ready to paste into the store's review form.
+Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.ts` is used, so none were removed. `downloads` was added on 2026-10-11 for the forced-download guard. The one-liners below are ready to paste into the store's review form.
 
 **Single purpose:** Warden protects users from phishing pages and from the pop-ups and forced redirects that lead to them.
 
@@ -12,6 +12,7 @@ Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.t
 | `storage` | Keeps the user's settings, trusted and blocked sites, per-tab verdicts, and the on-device Stage 2 log. Nothing is synced or sent anywhere. | `lib/popup-prefs.ts`, `lib/trusted-sites.ts`, `lib/overrides.ts`, `lib/tab-state.ts`, `lib/hijack-action.ts`, `lib/shadow-log.ts` |
 | `alarms` | Refreshes the phishing-list snapshot about once an hour. | `entrypoints/background.ts` |
 | `declarativeNetRequest` | Blocks known phishing pages and known pop-up networks before they load, using rules the browser applies itself. | `lib/dnr.ts`, `lib/hijack-rules.ts`, `entrypoints/background.ts` |
+| `downloads` | Pauses a download that a page forced on the user (for example a fake installer from another site started by a hijacked click) and asks on the page whether to keep or cancel it. Warden reads only the file's address, name and type to decide; it never opens, scans or uploads files. | `lib/download-handler.ts`, `lib/download-guard.ts`, `entrypoints/background.ts` |
 | `unlimitedStorage` | The phishing-list snapshot (hashed URL prefixes) is kept in IndexedDB and can exceed the default quota. | `lib/list-store.ts` |
 | Host permission `<all_urls>` | Phishing pages and pop-up hijacks can be on any site. Needed to observe redirects and to run the content scripts that detect login forms and show block notices on any page. | `entrypoints/*.content.ts`, `entrypoints/background.ts` |
 
