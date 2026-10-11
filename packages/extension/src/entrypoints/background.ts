@@ -472,8 +472,9 @@ export default defineBackground({
     });
 
     // H9, log-only: downloads a strict site started without a click, or installers from
-    // another site. Nothing is cancelled.
-    browser.downloads.onCreated.addListener((item) => {
+    // another site. Nothing is cancelled. Needs the `downloads` permission, which store builds
+    // leave out (it adds an install warning), so `browser.downloads` is undefined there.
+    browser.downloads?.onCreated.addListener((item) => {
       void (async () => {
         await prefsReady;
         if (!prefs.hijack) return;

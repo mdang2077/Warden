@@ -1,6 +1,6 @@
 # Chrome Web Store: permission justifications
 
-Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.ts` is used, so none were removed. `downloads` was added the same day for experiment H9; drop it before submission if H9 doesn't graduate. The one-liners below are ready to paste into the store's review form.
+Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.ts` is used, so none were removed. `downloads` (experiment H9) is left out of store builds since 2026-10-11 (it adds an install warning for a log-only experiment); development builds keep it. The one-liners below are ready to paste into the store's review form.
 
 **Single purpose:** Warden protects users from phishing pages and from the pop-ups and forced redirects that lead to them.
 
@@ -12,7 +12,6 @@ Audited 2026-10-08 (T4b.7). Every permission in `packages/extension/wxt.config.t
 | `storage` | Keeps the user's settings, trusted and blocked sites, per-tab verdicts, and the on-device Stage 2 log. Nothing is synced or sent anywhere. | `lib/popup-prefs.ts`, `lib/trusted-sites.ts`, `lib/overrides.ts`, `lib/tab-state.ts`, `lib/hijack-action.ts`, `lib/shadow-log.ts` |
 | `alarms` | Refreshes the phishing-list snapshot about once an hour. | `entrypoints/background.ts` |
 | `declarativeNetRequest` | Blocks known phishing pages and known pop-up networks before they load, using rules the browser applies itself. | `lib/dnr.ts`, `lib/hijack-rules.ts`, `entrypoints/background.ts` |
-| `downloads` | Notices when a page forces a file download (for example a fake installer started without a click), to warn about it. Warden reads only the file's site, type and time; it never opens, scans or uploads files. | `entrypoints/background.ts`, `lib/hijack-experiments.ts` |
 | `unlimitedStorage` | The phishing-list snapshot (hashed URL prefixes) is kept in IndexedDB and can exceed the default quota. | `lib/list-store.ts` |
 | Host permission `<all_urls>` | Phishing pages and pop-up hijacks can be on any site. Needed to observe redirects and to run the content scripts that detect login forms and show block notices on any page. | `entrypoints/*.content.ts`, `entrypoints/background.ts` |
 

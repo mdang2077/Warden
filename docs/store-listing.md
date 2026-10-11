@@ -43,5 +43,4 @@ Phishing data from Google Safe Browsing. Google works to provide the most accura
 - Permission justifications: `docs/cws-permissions.md`.
 
 ## Before submitting
-- Remove `downloads` from the manifest if experiment H9 hasn't graduated (it adds an install warning).
 - Build with the production feed service URL, and add the production manifest key to `manifest-keys.json`.
