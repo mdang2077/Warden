@@ -5,6 +5,9 @@
   "name": "warden-feeds",
   "main": "src/runners/worker.ts",
   "compatibility_date": "2026-10-01",
+  // Served at warden-feeds.mdang2077.workers.dev; no per-version preview URLs.
+  "workers_dev": true,
+  "preview_urls": false,
   "triggers": {
     // Hourly ingest + publish. OpenPhish refreshes every 12 h; ETags make most polls cheap.
     "crons": ["17 * * * *"]
