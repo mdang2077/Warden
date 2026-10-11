@@ -9,13 +9,15 @@ import type { ExfilSignal } from "./exfil-signal.ts";
 import type { UrlSignals } from "./url-signals.ts";
 
 export type Stage2Decision = "none" | "suspicious" | "warn_candidate";
-export type Family = "pageBrand" | "credentialDestination" | "urlHost";
+export type Family = "pageBrand" | "credentialDestination" | "urlHost" | "pageKit";
 
 export interface ScoreInput {
   /** S2.6 brand mismatch, with how many cues backed the claim. */
   brandMismatch: { cues: number } | null;
   exfil: ExfilSignal | null;
   url: UrlSignals;
+  /** S2.9: the page skeleton matches a known phishing kit (kits.ts). */
+  kit?: boolean;
   /** The page has a secret-entry surface (not an identifier-only step). */
   gated: boolean;
   /** Not allowlisted and not trusted by the user. */
@@ -61,6 +63,11 @@ export const POINTS = {
   /** Many benign sites live on hosting platforms too. */
   tenantPlatform: 2,
   deepSubdomain: 1,
+  /**
+   * The page's skeleton matches a known kit. Supporting, not an anchor: on holdout sites
+   * the tune-built list matched 1 of 3,898 benign pages (a homepage).
+   */
+  kitMatch: 4,
 } as const;
 
 export const WARN_THRESHOLD = 8;
@@ -103,6 +110,9 @@ function fired(input: ScoreInput): Fired[] {
     "deepSubdomain",
   ] as const) {
     if (input.url[s]) out.push({ family: "urlHost", signal: s, points: POINTS[s], anchor: false });
+  }
+  if (input.kit) {
+    out.push({ family: "pageKit", signal: "kitMatch", points: POINTS.kitMatch, anchor: false });
   }
   return out;
 }

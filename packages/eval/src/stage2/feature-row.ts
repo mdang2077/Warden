@@ -9,12 +9,14 @@ import path from "node:path";
 import { bundledBrands } from "@warden/shared/brands";
 import { canonicalize } from "@warden/shared/canonicalize";
 import { extractBrandInput, extractExfilScripts } from "@warden/shared/page/extract";
+import { pageFingerprint } from "@warden/shared/page/skeleton";
 import { registrableDomain } from "@warden/shared/psl";
 import { bundledSharedHosts } from "@warden/shared/shared-hosts";
 import { detectBrandClaim } from "@warden/shared/stage2/brand-claim";
 import { brandMismatch } from "@warden/shared/stage2/brand-mismatch";
 import { scanExfil } from "@warden/shared/stage2/exfil-scan";
 import { exfilSignal } from "@warden/shared/stage2/exfil-signal";
+import { kitMatch } from "@warden/shared/stage2/kits";
 import { urlSignals } from "@warden/shared/stage2/url-signals";
 import type { CrawlRecord } from "../crawl/crawler.ts";
 import { classifyInterception } from "../crawl/interception.ts";
@@ -42,10 +44,12 @@ export async function featureRow(
   const host = canon?.host ?? new URL(raw).hostname;
   let input: ReturnType<typeof extractBrandInput>;
   let scripts: ReturnType<typeof extractExfilScripts>;
+  let fingerprint: string | null;
   try {
     const page = parseSavedPage(readFileSync(file, "utf8"), raw);
     input = extractBrandInput(page.doc);
     scripts = extractExfilScripts(page.doc);
+    fingerprint = await pageFingerprint(page.doc);
     await page.close();
   } catch {
     return "skip";
@@ -64,6 +68,7 @@ export async function featureRow(
         claim && brands && brandMismatch(claim, host, brands) ? { cues: claim.cues.length } : null,
       exfil: exfilSignal(scanExfil({ forms: input.forms, ...scripts }), host),
       url: urlSignals(canon, brands, bundledSharedHosts),
+      kit: kitMatch(fingerprint),
     },
   };
 }

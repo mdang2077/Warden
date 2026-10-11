@@ -23,6 +23,8 @@ export interface FeatureRow {
   brandMismatch: { cues: number } | null;
   exfil: ExfilSignal | null;
   url: UrlSignals;
+  /** S2.9: the page skeleton matches a known kit (built from tune-split pages only). */
+  kit: boolean;
 }
 
 export interface FeaturesHeader {
@@ -76,6 +78,7 @@ export function scoreInput(row: FeatureRow, eligible = !row.allowlisted): ScoreI
     brandMismatch: row.brandMismatch,
     exfil: row.exfil,
     url: row.url,
+    kit: row.kit,
     gated: row.gated,
     eligible,
   };
@@ -97,6 +100,7 @@ function isRow(x: unknown): x is FeatureRow {
     (r.split === "tune" || r.split === "holdout") &&
     typeof r.gated === "boolean" &&
     typeof r.allowlisted === "boolean" &&
+    typeof r.kit === "boolean" &&
     (r.brandMismatch === null || typeof r.brandMismatch?.cues === "number") &&
     (r.exfil === null ||
       (typeof r.exfil?.ip === "boolean" &&

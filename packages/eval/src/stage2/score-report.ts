@@ -80,6 +80,7 @@ export function renderScoreReport(rows: readonly FeatureRow[], header: FeaturesH
     "exfil:crossSiteForm",
     "ipLookup",
     ...URL_KEYS,
+    "kitMatch",
   ];
   const signals = names.map((s) => `| ${s} | ${fires(benign, s)} | ${fires(phish, s)} |`);
 

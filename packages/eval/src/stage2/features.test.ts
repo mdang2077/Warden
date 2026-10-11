@@ -158,6 +158,7 @@ describe("serializeFeatures / parseFeatures", () => {
     allowlisted: true,
     brandMismatch: null,
     exfil: null,
+    kit: false,
     url: {
       lookalike: false,
       brandKeyword: false,

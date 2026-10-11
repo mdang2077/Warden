@@ -1,6 +1,6 @@
 # Stage 2 score report (S2.11)
 
-- Features generated 2026-10-11T19:51:56.866Z (source 523c68469354)
+- Features generated 2026-10-11T20:30:22.649Z (source 78893a196cc0)
 - Rows: 3890 benign, 470 phish, 5 skipped
 - Threshold 8; CI budget: raw benign warn rate on gated pages ≤ 0.1%
 
@@ -22,19 +22,19 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 | benign | tranco-login | tune | 1928 | 1341 | 115 | 0 | 0 |
 | benign | universities | holdout | 1 | 1 | 0 | 0 | 0 |
 | benign | universities | tune | 3 | 3 | 0 | 0 | 0 |
-| phish | openphish | holdout | 159 | 109 | 67 | 27 | 27 |
-| phish | openphish | tune | 289 | 172 | 137 | 53 | 52 |
+| phish | openphish | holdout | 159 | 109 | 62 | 32 | 31 |
+| phish | openphish | tune | 289 | 172 | 118 | 72 | 70 |
 | phish | phishstats | tune | 22 | 0 | 22 | 0 | 0 |
 
 ## Threshold sweep (gated pages, raw)
 
 | Threshold | Benign warn | Phish warn |
 |--:|--:|--:|
-| 6 | 0 of 2206 (0.00%) | 93 of 281 (33.10%) |
-| 7 | 0 of 2206 (0.00%) | 80 of 281 (28.47%) |
-| 8 | 0 of 2206 (0.00%) | 80 of 281 (28.47%) |
-| 9 | 0 of 2206 (0.00%) | 29 of 281 (10.32%) |
-| 10 | 0 of 2206 (0.00%) | 29 of 281 (10.32%) |
+| 6 | 0 of 2206 (0.00%) | 117 of 281 (41.64%) |
+| 7 | 0 of 2206 (0.00%) | 104 of 281 (37.01%) |
+| 8 | 0 of 2206 (0.00%) | 104 of 281 (37.01%) |
+| 9 | 0 of 2206 (0.00%) | 51 of 281 (18.15%) |
+| 10 | 0 of 2206 (0.00%) | 51 of 281 (18.15%) |
 
 ## Signal fire counts (gated pages)
 
@@ -52,26 +52,36 @@ _Raw_ = allowlist exemption off (what CI gates). _Eligible_ = as the extension w
 | ipHost | 0 | 0 |
 | tenantPlatform | 0 | 97 |
 | deepSubdomain | 0 | 0 |
+| kitMatch | 0 | 67 |
 
 ## Warn-candidate combinations (raw)
 
 | Label: counted signals | Pages |
 |---|--:|
 | phish: brandMismatch:1cue + brandKeyword | 21 |
-| phish: brandMismatch:2cues + tenantPlatform | 17 |
+| phish: brandMismatch:2cues + tenantPlatform | 10 |
 | phish: brandMismatch:2cues + brandKeyword | 9 |
+| phish: brandMismatch:2cues + tenantPlatform + kitMatch | 7 |
+| phish: brandMismatch:2cues + kitMatch | 7 |
 | phish: exfil:formService + tenantPlatform | 7 |
-| phish: exfil:telegram + tenantPlatform | 6 |
-| phish: brandMismatch:1cue + exfil:telegram | 4 |
-| phish: brandMismatch:1cue + exfil:discord + tenantPlatform | 3 |
+| phish: exfil:crossSiteForm + kitMatch | 6 |
+| phish: exfil:telegram + kitMatch | 6 |
+| phish: brandMismatch:1cue + kitMatch | 5 |
+| phish: exfil:telegram + tenantPlatform | 4 |
 | phish: brandMismatch:1cue + exfil:discord + brandKeyword | 3 |
-| phish: brandMismatch:2cues + exfil:telegram + tenantPlatform | 2 |
-| phish: brandMismatch:2cues + exfil:telegram | 2 |
+| phish: brandMismatch:2cues + exfil:telegram + tenantPlatform + kitMatch | 2 |
+| phish: brandMismatch:1cue + exfil:discord + tenantPlatform + kitMatch | 2 |
+| phish: exfil:telegram + tenantPlatform + kitMatch | 2 |
+| phish: brandMismatch:1cue + exfil:telegram | 2 |
+| phish: brandMismatch:1cue + exfil:telegram + kitMatch | 2 |
+| phish: brandMismatch:2cues + exfil:telegram + kitMatch | 1 |
 | phish: brandMismatch:1cue + exfil:formService + tenantPlatform | 1 |
 | phish: brandMismatch:2cues + exfil:telegram + brandKeyword | 1 |
+| phish: brandMismatch:2cues + exfil:telegram | 1 |
 | phish: brandMismatch:1cue + exfil:discord | 1 |
 | phish: brandMismatch:1cue + exfil:crossSiteForm + tenantPlatform | 1 |
 | phish: brandMismatch:1cue + exfil:telegram + brandKeyword | 1 |
+| phish: brandMismatch:1cue + exfil:discord + tenantPlatform | 1 |
 | phish: brandMismatch:1cue + exfil:telegram + tenantPlatform | 1 |
 
 ## Benign warn candidates (raw): 0

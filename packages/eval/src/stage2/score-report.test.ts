@@ -17,6 +17,7 @@ const row = (over: Partial<FeatureRow>): FeatureRow => ({
   allowlisted: true,
   brandMismatch: null,
   exfil: null,
+  kit: false,
   url: NO_URL,
   ...over,
 });
