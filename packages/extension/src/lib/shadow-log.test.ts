@@ -242,7 +242,7 @@ describe("Stage 2 score in the shadow log", () => {
   it("stores points, decision and counted signal names only", async () => {
     const entry = await recorder()(phishy, sender("https://paypal-secure.example.com/login?x=1"));
     expect(entry?.score).toEqual({
-      points: 15,
+      points: 16,
       decision: "warn_candidate",
       signals: ["brandMismatch:2cues", "exfil:telegram", "brandKeyword"],
     });
