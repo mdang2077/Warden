@@ -1,1 +1,3 @@
-{ "keys": [] }
+{
+  "keys": [{ "kid": "p1", "publicKey": "gvkCpepQkdbqcbXe+EtU9xws/tQkzHd4jtKD6DBCtJw=" }]
+}
