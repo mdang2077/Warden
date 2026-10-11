@@ -14,6 +14,12 @@ const cards = () => [
   ...(document.querySelector(PROMPT_TAG)?.shadowRoot?.querySelectorAll(".card") ?? []),
 ];
 
+const button = (card: Element | undefined, name: "keep" | "cancel") => {
+  const b = card?.querySelector(`button.${name}`);
+  if (!(b instanceof HTMLButtonElement)) throw new Error(`no ${name} button`);
+  return b;
+};
+
 describe("download prompt", () => {
   it("asks until the user picks, once, and shows names as text", () => {
     const choose = vi.fn();
@@ -21,8 +27,8 @@ describe("download prompt", () => {
     const [card] = cards();
     expect(card?.textContent).toContain("<b>x</b> from evil.example");
     expect(card?.querySelector("b")).toBeNull();
-    (card?.querySelector("button.cancel") as HTMLButtonElement).click();
-    (card?.querySelector("button.keep") as HTMLButtonElement).click();
+    button(card, "cancel").click();
+    button(card, "keep").click();
     expect(choose).toHaveBeenCalledTimes(1);
     expect(choose).toHaveBeenCalledWith(false);
     expect(cards()).toHaveLength(0);
@@ -33,7 +39,7 @@ describe("download prompt", () => {
     showDownloadPrompt(document, { id: 1, text: "a" }, choose);
     showDownloadPrompt(document, { id: 2, text: "b" }, choose);
     expect(cards().map((c) => (c as HTMLElement).dataset.downloadId)).toEqual(["1", "2"]);
-    (cards()[1]?.querySelector("button.keep") as HTMLButtonElement).click();
+    button(cards()[1], "keep").click();
     expect(choose).toHaveBeenCalledWith(true);
   });
 
