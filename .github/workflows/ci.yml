@@ -25,8 +25,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      # The crawler tests load pages in a real headless Chromium.
+      # The crawler tests load pages in a real headless Chromium, sandbox on. Ubuntu 24.04
+      # blocks the unprivileged user namespaces the sandbox needs unless AppArmor allows them.
       - run: pnpm --filter @warden/eval exec playwright install --with-deps chromium
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: pnpm test
       # S2.11: score the committed Stage 2 features; fails over the 0.1% raw benign warn budget
       # or when signal code changed without rerunning `harness.ts extract`.
