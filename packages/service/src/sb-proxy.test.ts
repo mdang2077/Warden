@@ -53,6 +53,7 @@ describe("handleSbSearch", () => {
     const called = new URL(String(f.mock.calls[0]?.[0]));
     expect(called.origin + called.pathname).toBe(SB_ENDPOINT);
     expect(called.searchParams.get("key")).toBe("KEY");
+    expect(called.searchParams.get("alt")).toBe("json");
     expect(called.searchParams.getAll("hashPrefixes")).toEqual([PREFIX]);
   });
 

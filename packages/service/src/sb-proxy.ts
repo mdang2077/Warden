@@ -98,6 +98,8 @@ export async function handleSbSearch(request: Request, deps: SbProxyDeps): Promi
 
     const url = new URL(SB_ENDPOINT);
     url.searchParams.set("key", deps.apiKey);
+    // v5 answers in binary protobuf unless asked for JSON; the Accept header isn't enough.
+    url.searchParams.set("alt", "json");
     for (const p of missing) url.searchParams.append("hashPrefixes", p);
     let upstream: Response;
     try {
